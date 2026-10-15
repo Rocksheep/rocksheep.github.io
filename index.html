@@ -214,6 +214,14 @@ footer .hi{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--ink
  */
 const GAMES = [
   {
+    title: 'Caterpillar Chaos',
+    href: 'caterpillar_chaos.html',
+    tags: ['Action', 'Strategy', 'Multiplayer'],
+    blurb: 'Turn-based caterpillar warfare on a random island. Bazookas, banana bombs and angry sheep, for 2 or 4 players or against the CPU.',
+    image: 'assets/caterpillar_chaos.svg',
+    isNew: true,
+  },
+  {
     title: 'Asphalt Tycoon: Island',
     href: 'asphalt_tycoon.html',
     tags: ['Tycoon', 'Simulation', 'Strategy'],
@@ -226,7 +234,7 @@ const GAMES = [
 // Fixed colours for known tags; anything else cycles through the palette.
 const TAG_COLORS = {
   Tycoon: 'var(--yellow)', Simulation: 'var(--cyan)', Strategy: 'var(--violet)',
-  Puzzle: 'var(--green)', Arcade: 'var(--pink)', Action: 'var(--orange)',
+  Puzzle: 'var(--green)', Arcade: 'var(--pink)', Action: 'var(--orange)', Multiplayer: 'var(--pink)',
 };
 const PALETTE = ['var(--pink)', 'var(--green)', 'var(--orange)', 'var(--cyan)', 'var(--violet)', 'var(--yellow)'];
 const allTags = [...new Set(GAMES.flatMap(g => g.tags))].sort();

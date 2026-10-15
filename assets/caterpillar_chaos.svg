@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="640" height="400">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b1040"/>
+      <stop offset=".6" stop-color="#5b2a86"/>
+      <stop offset="1" stop-color="#ff7e7e"/>
+    </linearGradient>
+    <mask id="sunStripes">
+      <rect width="320" height="200" fill="#fff"/>
+      <g fill="#000">
+        <rect x="190" y="84" width="90" height="2"/>
+        <rect x="190" y="92" width="90" height="3"/>
+        <rect x="190" y="101" width="90" height="4"/>
+        <rect x="190" y="111" width="90" height="5"/>
+      </g>
+    </mask>
+    <pattern id="dirt" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#8a5a34"/>
+      <rect width="4" height="4" fill="#7a4e2d"/>
+      <rect x="4" y="4" width="4" height="4" fill="#94603a"/>
+      <rect x="6" y="1" width="1" height="1" fill="#a5703f"/>
+      <rect x="1" y="6" width="1" height="1" fill="#6a4226"/>
+    </pattern>
+  </defs>
+
+  <rect width="320" height="200" fill="url(#sky)"/>
+  <g fill="#fff">
+    <rect x="22" y="14" width="1" height="1"/><rect x="58" y="30" width="1" height="1"/><rect x="96" y="10" width="1" height="1"/>
+    <rect x="140" y="24" width="1" height="1"/><rect x="176" y="8" width="1" height="1"/><rect x="214" y="20" width="1" height="1"/>
+    <rect x="262" y="12" width="1" height="1"/><rect x="300" y="28" width="1" height="1"/><rect x="40" y="50" width="1" height="1"/>
+    <rect x="120" y="46" width="1" height="1"/><rect x="286" y="52" width="1" height="1"/>
+  </g>
+  <circle cx="235" cy="88" r="38" fill="#ffd23f" mask="url(#sunStripes)"/>
+
+  <!-- far hills -->
+  <path d="M0 132 L30 118 L62 126 L96 104 L130 120 L170 110 L210 124 L246 106 L284 118 L320 108 L320 200 L0 200Z" fill="#3b2470"/>
+  <path d="M0 146 L40 136 L80 142 L120 130 L160 140 L204 132 L250 142 L290 134 L320 140 L320 200 L0 200Z" fill="#2a1a55"/>
+
+  <!-- terrain with crater -->
+  <path d="M0 150 C30 140 52 122 82 124 C110 126 120 146 138 150 L150 150 C152 166 182 170 186 150
+           C204 140 222 118 252 116 C280 114 300 132 320 128 L320 200 L0 200Z" fill="url(#dirt)"/>
+  <path d="M0 150 C30 140 52 122 82 124 C110 126 120 146 138 150 L150 150" fill="none" stroke="#7ddc4f" stroke-width="4"/>
+  <path d="M186 150 C204 140 222 118 252 116 C280 114 300 132 320 128" fill="none" stroke="#7ddc4f" stroke-width="4"/>
+  <path d="M150 150 C152 166 182 170 186 150" fill="none" stroke="#4a2c18" stroke-width="3"/>
+  <!-- cave -->
+  <ellipse cx="74" cy="168" rx="22" ry="9" fill="#2a1a55"/>
+  <path d="M52 168 A22 9 0 0 0 96 168" fill="none" stroke="#7ddc4f" stroke-width="2"/>
+
+  <!-- water -->
+  <rect y="186" width="320" height="14" fill="#2a4fbf" opacity=".92"/>
+  <g fill="#4a78ea">
+    <rect x="0" y="185" width="10" height="2"/><rect x="24" y="186" width="10" height="2"/><rect x="50" y="185" width="10" height="2"/>
+    <rect x="80" y="186" width="10" height="2"/><rect x="110" y="185" width="10" height="2"/><rect x="140" y="186" width="10" height="2"/>
+    <rect x="170" y="185" width="10" height="2"/><rect x="200" y="186" width="10" height="2"/><rect x="232" y="185" width="10" height="2"/>
+    <rect x="262" y="186" width="10" height="2"/><rect x="292" y="185" width="10" height="2"/>
+  </g>
+
+  <!-- rocket trail arc -->
+  <path d="M78 112 Q150 30 210 92" fill="none" stroke="#cfc7da" stroke-width="2.5" stroke-dasharray="3 4" stroke-linecap="round" opacity=".85"/>
+  <g transform="translate(212 96) rotate(52)">
+    <rect x="-6" y="-2" width="10" height="4" fill="#d8d4e0"/>
+    <rect x="4" y="-2" width="3" height="4" fill="#ff4f6d"/>
+    <rect x="-7" y="-4" width="2" height="8" fill="#6b6b70"/>
+    <rect x="-11" y="-1" width="4" height="2" fill="#ffd23f"/>
+  </g>
+
+  <!-- explosion near the blue caterpillar -->
+  <g transform="translate(244 112)">
+    <path d="M0 -26 L7 -11 L22 -18 L14 -4 L28 4 L12 8 L16 24 L3 13 L-6 28 L-8 12 L-24 18 L-14 4 L-28 -4 L-12 -8 L-18 -22 L-4 -12Z" fill="#ff4f6d"/>
+    <path d="M0 -17 L5 -7 L15 -11 L9 -2 L18 3 L7 6 L10 16 L2 8 L-4 18 L-5 7 L-15 11 L-9 2 L-18 -3 L-7 -5 L-11 -14 L-2 -8Z" fill="#ff8c3f"/>
+    <circle r="7" fill="#ffd23f"/>
+    <circle r="3.5" fill="#fff2c2"/>
+    <g fill="#7a4e2d"><rect x="-30" y="-20" width="3" height="3"/><rect x="26" y="-24" width="2" height="2"/><rect x="32" y="10" width="3" height="3"/><rect x="-34" y="12" width="2" height="2"/></g>
+  </g>
+
+  <!-- red caterpillar (left, aiming bazooka) -->
+  <g transform="translate(70 124)">
+    <circle cx="-14" cy="-4" r="4.5" fill="#a3324a"/>
+    <circle cx="-9" cy="-5" r="4.5" fill="#ff4f6d"/>
+    <circle cx="-4" cy="-4" r="4.5" fill="#a3324a"/>
+    <circle cx="1" cy="-5" r="4.5" fill="#ff4f6d"/>
+    <circle cx="7" cy="-8" r="5.5" fill="#ff4f6d"/>
+    <path d="M7 -13 L8 -20 M10 -13 L13 -19" stroke="#a3324a" stroke-width="1.2"/>
+    <rect x="7" y="-21" width="2" height="2" fill="#ffd23f"/><rect x="12" y="-20" width="2" height="2" fill="#ffd23f"/>
+    <rect x="7" y="-11" width="3" height="3" fill="#fff"/><rect x="10.5" y="-10.5" width="3" height="3" fill="#fff"/>
+    <rect x="8.6" y="-10.4" width="1.4" height="1.4" fill="#05020c"/><rect x="12" y="-10" width="1.4" height="1.4" fill="#05020c"/>
+    <path d="M2 -8 L14 -17" stroke="#4a7a3a" stroke-width="4"/>
+  </g>
+
+  <!-- blue caterpillar (right, flying from the blast) -->
+  <g transform="translate(262 100) rotate(-28)">
+    <circle cx="-12" cy="0" r="4.5" fill="#2a7ab8"/>
+    <circle cx="-7" cy="-2" r="4.5" fill="#3fb0ff"/>
+    <circle cx="-2" cy="0" r="4.5" fill="#2a7ab8"/>
+    <circle cx="3" cy="-2" r="4.5" fill="#3fb0ff"/>
+    <circle cx="9" cy="-4" r="5.5" fill="#3fb0ff"/>
+    <path d="M9 -9 L8 -16 M12 -9 L15 -15" stroke="#2a7ab8" stroke-width="1.2"/>
+    <rect x="7" y="-17" width="2" height="2" fill="#ffd23f"/><rect x="14" y="-16" width="2" height="2" fill="#ffd23f"/>
+    <circle cx="9" cy="-6" r="2" fill="#fff"/><circle cx="13" cy="-5.5" r="2" fill="#fff"/>
+    <circle cx="9" cy="-6" r=".9" fill="#05020c"/><circle cx="13" cy="-5.5" r=".9" fill="#05020c"/>
+    <ellipse cx="11" cy="-1" rx="1.4" ry="1.8" fill="#05020c"/>
+  </g>
+
+  <!-- grenade and banana in the air -->
+  <circle cx="118" cy="60" r="3.5" fill="#3d8a3d"/><rect x="116.5" y="54" width="3" height="2" fill="#9a9aa0"/>
+  <path d="M150 34 A6 6 0 0 0 162 34" fill="none" stroke="#ffe14d" stroke-width="3.5"/>
+
+  <!-- tombstone -->
+  <g transform="translate(296 128)">
+    <rect x="-5" y="-12" width="10" height="12" fill="#8a8496"/>
+    <rect x="-1" y="-10" width="2" height="7" fill="#5a5468"/><rect x="-3" y="-8" width="6" height="2" fill="#5a5468"/>
+  </g>
+</svg>

@@ -92,6 +92,19 @@ button{font:inherit;color:inherit}
 #thought{left:0;top:0;background:#f4f1ea;color:#111;border:3px solid #111;border-radius:14px;padding:4px 10px;font-size:19px;max-width:240px;display:none;box-shadow:3px 3px 0 rgba(0,0,0,.4)}
 #thought::after{content:"";position:absolute;left:50%;bottom:-12px;width:10px;height:10px;background:#f4f1ea;border:3px solid #111;border-radius:50%;transform:translateX(-50%)}
 
+/* ---------- quest ---------- */
+#questMark{position:fixed;left:0;top:0;z-index:6;display:none;pointer-events:auto;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:11px;
+  background:var(--gold);color:#111;border:3px solid #111;padding:6px 8px;box-shadow:3px 3px 0 rgba(0,0,0,.5);white-space:nowrap}
+#questMark.bang{font-size:20px;padding:4px 12px;animation:bob .8s ease-in-out infinite alternate}
+#questMark.edge{font-size:10px;padding:5px 7px;animation:none}
+@keyframes bob{to{margin-top:-8px}}
+.card.talk{max-width:560px}
+.talk h2{color:var(--gold)}
+.talk p{font-size:22px;margin:0 0 12px}
+.shanty{border-left:4px solid var(--gold);padding:6px 0 6px 14px;margin:6px 0 14px;color:#ffe9a0;font-style:italic;font-size:22px;line-height:1.3}
+.qbar{height:12px;background:#2b2b2e;border:2px solid #666;margin:4px 0 12px}
+.qbar u{display:block;height:100%;background:var(--gold);text-decoration:none}
+
 /* ---------- overlays ---------- */
 .overlay{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto;background:rgba(0,0,0,.55)}
 .overlay[hidden]{display:none}
@@ -178,6 +191,7 @@ h2{font-family:'Press Start 2P',monospace;font-weight:400;text-align:center;font
   <div id="toasts" aria-live="polite"></div>
 </div>
 <div id="fx"></div>
+<button id="questMark" type="button" title="Talk to the stranded sailor"></button>
 <div id="tip"></div>
 <div id="thought"></div>
 
@@ -202,6 +216,14 @@ h2{font-family:'Press Start 2P',monospace;font-weight:400;text-align:center;font
       <button class="btn" id="resumeBtn" type="button" style="--c:var(--gold)">▶ RESUME</button>
       <button class="btn" id="restartBtn" type="button" style="--c:var(--red)">↻ NEW ISLAND</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="talkScr" hidden>
+  <div class="card talk">
+    <h2 id="talkWho"></h2>
+    <div id="talkBody"></div>
+    <div class="row" id="talkBtns"></div>
   </div>
 </div>
 
@@ -423,6 +445,14 @@ function houseGeo(roof, walls) {
   ]);
 }
 const HOUSE_GEO = houseGeo(0xa8553a, 0xefe2c4), DOUBT_HOUSE_GEO = houseGeo(0x5f636c, 0xc9c4b8);
+const BIG_HOUSE_GEO = merge([
+  [Box(5, 3.4, 3.8).translate(0, 1.7, 0), 0xefe2c4],
+  [Box(5.25, 0.22, 4.05).translate(0, 1.75, 0), 0x8a5a33],
+  [new THREE.ConeGeometry(3.2, 1.9, 4).rotateY(Math.PI / 4).scale(1.18, 1, 0.92).translate(0, 4.35, 0), 0xa8553a],
+  [Box(0.8, 1.3, 0.1).translate(0, 0.65, 1.92), 0x5a3a22],
+  ...[[-1.6, 0.9], [1.6, 0.9], [-1.6, 2.5], [0, 2.5], [1.6, 2.5]].map(([x, y]) => [Box(0.6, 0.55, 0.1).translate(x, y, 1.92), 0x9fd3ee]),
+  [Box(0.4, 1.2, 0.4).translate(-1.4, 4.9, -0.6), 0x7a6f66],
+]);
 
 /* ============================================================
    Terrain + water + sky dressing
@@ -716,6 +746,8 @@ const store = { type: 'store', info: true, pos: new V3(VILLAGE.x, PLAT, VILLAGE.
   scene.add(addShadow(g));
   store.g = g;
 }
+// Grab the sacks for a crate of food (handy for hungry sailors), grab the barn for wood.
+const storeFood = { type: 'foodpile', info: true, pos: new V3(store.pos.x - 2.3, PLAT, store.pos.z + 1.8), pickR: 1.5, pickH: 0.5, canPick: () => R.food >= 1 };
 function refreshStore() {
   const nf = Math.min(12, Math.ceil(R.food / 18)), nw = Math.min(12, Math.ceil(R.wood / 12));
   store.sacks.forEach((s, i) => s.visible = i < nf);
@@ -774,11 +806,11 @@ function pushOutOfTemple(p, m) {
 }
 
 class House {
-  constructor(x, z, faction = 'mine', progress = 1) {
-    this.type = 'house'; this.info = true; this.faction = faction; this.progress = progress;
+  constructor(x, z, faction = 'mine', big = false) {
+    this.type = 'house'; this.info = true; this.faction = faction; this.progress = 1; this.big = big; this.beds = big ? 7 : 3;
     this.pos = new V3(x, heightAt(x, z), z); this.burning = 0; this.dead = false;
-    this.pickR = 2; this.pickH = 1.2;
-    this.mesh = new THREE.Mesh(faction === 'mine' ? HOUSE_GEO : DOUBT_HOUSE_GEO, VC);
+    this.pickR = big ? 3 : 2; this.pickH = big ? 2 : 1.2;
+    this.mesh = new THREE.Mesh(big ? BIG_HOUSE_GEO : faction === 'mine' ? HOUSE_GEO : DOUBT_HOUSE_GEO, VC);
     this.mesh.position.copy(this.pos);
     this.mesh.rotation.y = Math.atan2((faction === 'mine' ? VILLAGE : DOUBT).x - x, (faction === 'mine' ? VILLAGE : DOUBT).z - z);
     addShadow(this.mesh);
@@ -801,7 +833,7 @@ class House {
       scene.remove(this.mesh);
       removeFrom(world.houses, this);
       emit(this.pos.x, this.pos.y + 1, this.pos.z, { c: 0x333333, n: 30, size: 1.4, spd: 3, up: 3, life: 1.6, grow: 1 });
-      if (this.faction === 'mine') toast('🔥 A house burned down. That is three fewer beds.', 'bad');
+      if (this.faction === 'mine') toast(`🔥 A house burned down. That is ${this.beds} fewer beds.`, 'bad');
     }
   }
   extinguish() { if (this.burning) { this.burning = 0; this.mesh.material = VC; emit(this.pos.x, this.pos.y + 2, this.pos.z, { c: 0xdddddd, n: 12, size: 1, up: 3, life: 1.2 }); } }
@@ -839,8 +871,8 @@ class Field {
 // Scaffolds come from the workshop. Drop one on open ground to plan a house; drop more on the same plan to grow it.
 const BLUEPRINTS = [null,
   { key: 'house', label: 'House', wood: 30, time: 18, w: 2.8, d: 2.8, desc: 'room for 3 more villagers' },
-  { key: 'farm', label: 'Farm', wood: 25, time: 14, w: 7, d: 5.5, desc: 'a field of crops' },
-  { key: 'shrine', label: 'Shrine', wood: 60, time: 28, w: 4.2, d: 4.2, desc: '+1 prayer every second' },
+  { key: 'bighouse', label: 'Big House', wood: 55, time: 26, w: 5.2, d: 4.2, desc: 'room for 7 more villagers' },
+  { key: 'shrine', label: 'Shrine', wood: 60, time: 28, w: 4.2, d: 4.2, desc: '+1 prayer every 2 seconds' },
   { key: 'wonder', label: 'Cow Wonder', wood: 150, time: 55, w: 6.5, d: 6.5, desc: 'a golden cow statue that keeps impressing Doubtsby' },
 ];
 const SCAFFOLD_GEO = (() => {
@@ -855,7 +887,7 @@ const SCAFFOLD_GEO = (() => {
 })();
 const BP_GEO = {
   house: HOUSE_GEO,
-  farm: merge([[Box(7, 0.25, 5.5).translate(0, 0.12, 0), 0x7a5a36], ...[...Array(24)].map((_, i) => [Box(0.45, 1, 0.45).translate(-2.8 + (i % 6) * 1.12, 0.5, -1.8 + Math.floor(i / 6) * 1.2), 0x8fbf45])]),
+  bighouse: BIG_HOUSE_GEO,
   shrine: merge([
     [Box(4.2, 0.6, 4.2).translate(0, 0.3, 0), 0xdedad0], [Box(3.2, 0.5, 3.2).translate(0, 0.85, 0), 0xe9e6dc],
     [new THREE.CylinderGeometry(0.45, 0.85, 5, 4).rotateY(Math.PI / 4).translate(0, 3.6, 0), 0xf4f1ea],
@@ -873,7 +905,8 @@ const BP_GEO = {
 };
 const GHOST_MAT = new THREE.MeshLambertMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.28, depthWrite: false, vertexColors: true });
 
-const workshop = { type: 'workshop', info: true, pos: new V3(at(-12, 6).x, PLAT, at(-12, 6).z), pickR: 3, pickH: 1.5, canPick: () => true, stock: [], timer: 6 };
+const SCAFFOLD_COST = 25, SCAFFOLD_MAX = 3;
+const workshop = { type: 'workshop', info: true, pos: new V3(at(-12, 6).x, PLAT, at(-12, 6).z), pickR: 3, pickH: 1.5, canPick: () => true, stock: [], timer: 30, fast: false };
 {
   const W = 0x8a5a33, L = 0xb98a52;
   const g = workshop.g = new THREE.Group();
@@ -891,17 +924,18 @@ const workshop = { type: 'workshop', info: true, pos: new V3(at(-12, 6).x, PLAT,
   workshop.slot = i => g.localToWorld(new V3(-1.9 + i * 1.25, 0, 3.4)).setY(PLAT);
   workshop.layout = () => workshop.stock.forEach((sc, i) => { sc.pos.copy(workshop.slot(i)); sc.mesh.scale.setScalar(0.72); sc.sync(); });
   workshop.restock = sc => {
-    if (workshop.stock.length >= 4) return false;
+    if (workshop.stock.length >= SCAFFOLD_MAX) return false;
     sc.state = 'stock'; workshop.stock.push(sc); workshop.layout(); return true;
   };
+  workshop.builders = () => world.villagers.filter(v => v.faction === 'mine' && v.alive && v.job === 'builder').length;
   workshop.update = dt => {
     workshop.timer -= dt;
     if (workshop.timer > 0) return;
-    workshop.timer = 12;
-    if (workshop.stock.length < 4 && R.wood >= 10) {
-      R.wood -= 10;
+    workshop.timer = workshop.fast ? 22 : 45;
+    if (workshop.stock.length < SCAFFOLD_MAX && R.wood >= SCAFFOLD_COST && workshop.builders() > 0) {
+      R.wood -= SCAFFOLD_COST;
       workshop.restock(new Scaffold(workshop.pos));
-      floatText(workshop.pos.x, workshop.pos.y + 4, workshop.pos.z, '+1 scaffold (-10 wood)', '#e0a060');
+      floatText(workshop.pos.x, workshop.pos.y + 4, workshop.pos.z, `+1 scaffold (-${SCAFFOLD_COST} wood)`, '#e0a060');
     }
   };
 }
@@ -974,7 +1008,7 @@ class Site {
   rebuild() {
     this.g.clear();
     const bp = this.bp, geo = BP_GEO[bp.key];
-    this.g.rotation.y = bp.key === 'farm' ? 0 : this.rot;
+    this.g.rotation.y = this.rot;
     this.ghost = new THREE.Mesh(geo, GHOST_MAT);
     this.real = new THREE.Mesh(geo, VC); this.real.castShadow = true;
     this.g.add(this.ghost, this.real);
@@ -1023,8 +1057,7 @@ class Site {
   complete() {
     this.remove();
     const { x, z } = this.pos, key = this.bp.key;
-    if (key === 'house') new House(x, z, 'mine').mesh.rotation.y = this.rot;
-    else if (key === 'farm') { const f = new Field(x, z); f.crop = 5; f.refresh(); }
+    if (key === 'house' || key === 'bighouse') new House(x, z, 'mine', key === 'bighouse').mesh.rotation.y = this.rot;
     else new Building(key, x, z, this.rot);
     floatText(x, this.pos.y + 5, z, `${this.bp.label.toUpperCase()} BUILT!`, '#9dff7a', true);
     toast(`🏗️ Your builders finished a <b>${this.bp.label.toUpperCase()}</b>: ${this.bp.desc}.`, 'learn');
@@ -1063,6 +1096,7 @@ class Bundle {
   remove() { this.removed = true; this.state = 'gone'; scene.remove(this.mesh); removeFrom(world.bundles, this); }
   land() {
     this.state = 'idle'; this.mesh.rotation.set(0, 0, 0); this.sync();
+    if (questTake(this)) return;
     const site = siteNear(this.pos);
     if (site) { this.amount = site.deliver(this.amount); if (this.amount <= 0) this.remove(); return; }
     if (flat(this.pos, store.pos) < 5.5) { R.wood += this.amount; floatText(store.pos.x, store.pos.y + 4, store.pos.z, `+${this.amount} wood`, '#e0a060'); this.remove(); }
@@ -1095,6 +1129,7 @@ class Tree {
   extinguish() { if (this.burning) { this.burning = 0; this.mesh.material = VC; emit(this.pos.x, this.pos.y + 2, this.pos.z, { c: 0xdddddd, n: 8, size: 0.8, up: 3, life: 1 }); } }
   land(speed) {
     this.mesh.rotation.x = this.mesh.rotation.z = 0;
+    if (questTake(this)) return;
     const site = siteNear(this.pos);
     if (site) {
       const left = site.deliver(Math.floor(this.wood));
@@ -1173,6 +1208,7 @@ class Crate {
   take(n) { const g = Math.min(n, this.amount); this.amount -= g; if (this.amount <= 0) this.remove(); return g; }
   remove() { this.alive = false; this.state = 'gone'; scene.remove(this.mesh); removeFrom(world.crates, this); }
   land(speed) {
+    if (questTake(this)) return;
     if (flat(this.pos, store.pos) < 5.5) {
       R.food += this.amount; floatText(store.pos.x, store.pos.y + 4, store.pos.z, `+${this.amount} food`, '#ffd23f', true);
       emit(this.pos.x, this.pos.y + 0.5, this.pos.z, { c: 0xffd23f, n: 12, size: 0.4, spd: 3, up: 4, life: 0.7 });
@@ -1198,6 +1234,7 @@ function flyStep(e, dt) {
   }
 }
 function landWater(e, speed) {
+  if (quest.ship && questTake(e)) return;
   emit(e.pos.x, WATER + 0.2, e.pos.z, { c: [0xffffff, 0xbfe6ff], n: 24, size: 0.5, spd: 3, up: 7, grav: -20, life: 0.8 });
   sfx.splash();
   if (e.type === 'villager') { e.state = 'idle'; e.plan.length = 0; e.gentle = false; floatText(e.pos.x, e.pos.y + 1.5, e.pos.z, 'BLUB', '#bfe6ff'); return; }
@@ -1345,7 +1382,7 @@ class Villager {
         : u < b + 4 + 2 * a ? { x: temple.pos.x - a + (u - b - 4), z: temple.pos.z - b }
         : { x: temple.pos.x + a, z: temple.pos.z - b + (u - b - 4 - 2 * a) };
       this.plan = [go(() => p, 0.4), act(rand(18, 26), 'pray', null, (dt, e) => {
-        R.prayer = Math.min(PRAYER_MAX, R.prayer + 0.6 * dt);
+        R.prayer = Math.min(PRAYER_MAX, R.prayer + 0.3 * dt);
         e.heading = angLerp(e.heading, Math.atan2(temple.pos.x - e.pos.x, temple.pos.z - e.pos.z), dt * 4);
         if (Math.random() < dt * 0.6) emit(e.pos.x, e.pos.y + 1.4, e.pos.z, { c: 0xffe27a, size: 0.25, up: 2, spd: 0.2, grav: 1, life: 1.2 });
       })];
@@ -1781,7 +1818,7 @@ class Creature {
         break;
       }
       case 'dance':
-        this.plan = [...this.intoYard(), act(6, 'dance', null, (dt) => { R.prayer = Math.min(PRAYER_MAX, R.prayer + 3 * dt); }), call(e => floatText(e.pos.x, e.pos.y + 7 * S, e.pos.z, 'The faithful are delighted!', '#ffd23f')), done];
+        this.plan = [...this.intoYard(), act(6, 'dance', null, (dt) => { R.prayer = Math.min(PRAYER_MAX, R.prayer + 1.5 * dt); }), call(e => floatText(e.pos.x, e.pos.y + 7 * S, e.pos.z, 'The faithful are delighted!', '#ffd23f')), done];
         break;
       case 'show':
         this.plan = [go(() => DOUBT, 9), act(6, 'dance'), call(e => impressAt(DOUBT.x, DOUBT.z, Math.round(8 + 4 * S), 'cow moves')), done];
@@ -1953,6 +1990,214 @@ function updateLeash() {
   leash.mesh.visible = true;
 }
 
+/* ---------- Side quest: the stranded ship ---------- */
+// A ship runs aground. Bring wood to fix it, then food for the voyage; the ship's carpenter stays as a reward.
+const CAPTAIN = 'Captain Wobbly Pete', SHIP_NAME = 'the Soggy Biscuit', CARPENTER = 'Splinters McGee';
+const SHANTY = {
+  intro: ['Oh, we sailed from Port Mildew with a hold full of cheese,', 'Then we bumped into your island and went in up to our knees!', 'Way-hey, the hull is holey and the mast has gone to bits,', 'So send us down some timber, god, before the captain quits!'],
+  food: ['Oh, a sailor needs his biscuits and a sailor needs his bread,', 'Or he gets a little grumpy and he eats the cat instead!'],
+  bye: ['So farewell, Little Gullible, we will sing of you at sea,', 'Of the cow, the hand, the timber, and the god who set us free!'],
+};
+const quest = { stage: 'hidden', wood: 0, food: 0, NEED_WOOD: 80, NEED_FOOD: 60, t: 0, ship: null, sailor: null, news: true };
+function shipGeo(broken) {
+  const hull = 0x7a4f2c, dark = 0x4f331d, wood = 0xb98a52, parts = [
+    [Box(3.2, 1.6, 8).translate(0, 0.8, 0), hull], [Box(2.5, 1.3, 1.8).translate(0, 0.95, 4.7), hull], [Box(1.4, 1.0, 1.2).translate(0, 1.1, 5.9), hull],
+    [Box(3.3, 0.3, 7.7).translate(0, 1.15, 0), 0xa8423a], [Box(3.4, 0.25, 8.2).translate(0, 1.7, 0), dark],
+    [Box(2.6, 1.4, 2.4).translate(0, 2.4, -2.6), 0x8a5a33], [Box(2.9, 0.3, 2.7).translate(0, 3.2, -2.6), dark],
+    [Box(0.5, 0.5, 0.06).translate(-0.6, 2.5, -1.38), 0x9fd3ee], [Box(0.5, 0.5, 0.06).translate(0.6, 2.5, -1.38), 0x9fd3ee],
+  ];
+  if (broken) parts.push(
+    [Box(0.34, 1.7, 0.34).translate(0, 2.5, 0.8), wood],
+    [Box(0.3, 4.2, 0.3).rotateZ(1.15).translate(1.6, 2.4, 1.0), wood],
+    [Box(2.6, 1.9, 0.08).rotateZ(1.15).rotateY(0.35).translate(2.4, 1.9, 1.9), 0xd8cfbd],
+    [Box(0.12, 1.0, 1.5).translate(1.64, 0.75, 1.6), 0x1a1a1a], [Box(0.12, 0.7, 0.9).translate(-1.64, 0.6, -0.6), 0x1a1a1a],
+  );
+  else parts.push(
+    [Box(0.34, 7.4, 0.34).translate(0, 5.3, 0.8), wood], [Box(4.4, 0.22, 0.22).translate(0, 8.1, 0.8), wood], [Box(4.4, 0.18, 0.18).translate(0, 4.3, 0.8), wood],
+    [Box(4.1, 3.7, 0.1).translate(0, 6.2, 0.98), 0xf4f1ea], [Box(4.1, 0.5, 0.11).translate(0, 6.2, 1.0), 0xa8423a],
+    [Box(0.06, 0.6, 1.0).translate(0, 9.3, 0.4), 0xff5a5a],
+  );
+  return merge(parts);
+}
+function findShipSpot() {
+  for (const [lo, hi] of [[35, 70], [30, 90], [20, 120]]) {
+    let best = null;
+    for (let a = 0; a < Math.PI * 2; a += 0.04) {
+      const dx = Math.cos(a), dz = Math.sin(a);
+      let r = 20;
+      while (r < 108 && heightAt(dx * r, dz * r) > 0.4) r += 0.5;
+      if (r >= 108) continue;
+      const beach = { x: dx * r, z: dz * r }, dv = flat(beach, VILLAGE);
+      if (dv < lo || dv > hi || flat(beach, DOUBT) < 35) continue;
+      if (heightAt(dx * (r - 4), dz * (r - 4)) < 0.8 || heightAt(dx * (r + 7), dz * (r + 7)) > -1.2) continue;
+      const score = -Math.abs(dv - 48);
+      if (!best || score > best.score) best = { score, dx, dz, r };
+    }
+    if (best) return best;
+  }
+  return null;
+}
+function setupQuest() {
+  const spot = findShipSpot();
+  if (!spot) { quest.stage = 'done'; return; }
+  const { dx, dz, r } = spot;
+  const ship = quest.ship = { type: 'ship', info: true, pickR: 4.5, pickH: 2, canPick: () => quest.stage !== 'done', pos: new V3(dx * (r + 4), WATER, dz * (r + 4)), out: new V3(dx, 0, dz) };
+  ship.mesh = new THREE.Mesh(shipGeo(true), VC);
+  ship.mesh.position.set(ship.pos.x, WATER - 0.45, ship.pos.z);
+  ship.mesh.rotation.set(0, Math.atan2(-dx, -dz), 0.14, 'YXZ');
+  scene.add(addShadow(ship.mesh));
+  // The captain: stripy shirt, big hat, and an arm for waving.
+  const sx = dx * (r - 2.5), sz = dz * (r - 2.5);
+  const sailor = quest.sailor = { type: 'sailor', pos: new V3(sx, heightAt(sx, sz), sz), pickR: 0.9, pickH: 0.7, canPick: () => quest.stage !== 'hidden' && quest.stage !== 'sailing' && quest.stage !== 'done', t: 0 };
+  const g = sailor.g = new THREE.Group();
+  const body = new THREE.Mesh(merge([[GEO.vBody, 0x2a4a8a], [Box(0.5, 0.1, 0.5).translate(0, 0.42, 0), 0xf4f1ea], [Box(0.48, 0.1, 0.48).translate(0, 0.22, 0), 0xf4f1ea]]), VC);
+  body.position.y = 0.32;
+  const head = new THREE.Mesh(GEO.vHead, MAT.skin[1]); head.position.y = 1.1;
+  const hat = new THREE.Mesh(merge([[Box(0.62, 0.12, 0.34), 0x1a1a1a], [Box(0.4, 0.2, 0.3).translate(0, 0.14, 0), 0x1a1a1a], [Box(0.12, 0.1, 0.05).translate(0, 0.14, 0.16), 0xffd23f]]), VC); hat.position.y = 1.33;
+  const beard = new THREE.Mesh(Box(0.3, 0.18, 0.12), mat(0xd8d0c0)); beard.position.set(0, 1.0, 0.16);
+  sailor.arm = new THREE.Group(); sailor.arm.position.set(0.28, 0.85, 0);
+  const arm = new THREE.Mesh(Box(0.1, 0.45, 0.1).translate(0, 0.22, 0), MAT.skin[1]); sailor.arm.add(arm);
+  for (const x of [-0.1, 0.1]) { const l = new THREE.Mesh(GEO.vLeg, MAT.leg); l.position.set(x, 0.34, 0); g.add(l); }
+  g.add(body, head, hat, beard, sailor.arm);
+  g.position.copy(sailor.pos); g.rotation.y = Math.atan2(-dx, -dz) + Math.PI;
+  scene.add(addShadow(g));
+}
+const QUEST_MARK = $('#questMark');
+function questTake(e) {
+  const kind = e.type === 'tree' || e.type === 'bundle' ? 'wood' : e.type === 'crate' ? 'food' : null;
+  if (!kind || quest.stage !== kind) return false;
+  if (flat(e.pos, quest.ship.pos) > 7.5 && flat(e.pos, quest.sailor.pos) > 5) return false;
+  const need = kind === 'wood' ? quest.NEED_WOOD : quest.NEED_FOOD;
+  const amt = Math.floor(e.type === 'tree' ? e.wood : e.amount), take = Math.min(amt, need - quest[kind]), left = amt - take;
+  quest[kind] += take;
+  floatText(quest.ship.pos.x, 4, quest.ship.pos.z, `+${take} ${kind} (${quest[kind]}/${need})`, kind === 'wood' ? '#e0a060' : '#ffd23f', true);
+  sfx.pop();
+  if (e.type === 'tree' || left <= 0) { if (e.type === 'tree' && left > 0) R.wood += left; e.remove(); }
+  else { e.amount = left; e.state = 'idle'; e.pos.y = surf(e.pos.x, e.pos.z); e.sync(); }
+  if (quest[kind] >= need) {
+    if (kind === 'wood') { quest.stage = 'fixing'; quest.t = 18; toast(`🔨 That is enough wood! The crew of ${SHIP_NAME} gets hammering.`); }
+    else { quest.stage = 'reward'; quest.news = true; toast(`⚓ ${CAPTAIN} would like a word. Click the <b>!</b>`, 'tip'); sfx.chime(); }
+  }
+  return true;
+}
+function updateQuest(dt) {
+  if (!quest.ship) return;
+  const S = quest.sailor;
+  if (quest.stage === 'hidden' && simTime > 40) {
+    quest.stage = 'intro'; quest.news = true;
+    toast(`⚓ A ship has run aground on the coast and somebody is waving at you. Click the <b>!</b> to go and see.`, 'tip');
+    sfx.chime();
+  }
+  if (quest.stage === 'fixing') {
+    quest.t -= dt;
+    const p = quest.ship.pos;
+    if (Math.random() < dt * 4) { emit(p.x + rand(-1.5, 1.5), 2.2, p.z + rand(-2, 2), { c: [0xc8b48a, 0xffe27a], n: 3, size: 0.4, spd: 2, up: 3, life: 0.6 }); if (flat(p, camera.position) < 80) sfx.chop(); }
+    if (quest.t <= 0) {
+      quest.ship.mesh.geometry = shipGeo(false);
+      quest.ship.mesh.rotation.z = 0; quest.ship.mesh.position.y = WATER - 0.2;
+      quest.stage = 'foodask'; quest.news = true;
+      toast(`⚓ ${SHIP_NAME.replace('the ', 'The ')} floats again! ${CAPTAIN} has one more favour to ask.`, 'tip');
+      sfx.fanfare();
+    }
+  }
+  if (quest.stage === 'sailing') {
+    quest.t += dt;
+    const m = quest.ship.mesh;
+    m.position.addScaledVector(quest.ship.out, dt * Math.min(6, quest.t * 1.5));
+    m.rotation.y = lerp(m.rotation.y, Math.atan2(quest.ship.out.x, quest.ship.out.z), dt);
+    if (quest.t > 25) { scene.remove(m); quest.stage = 'done'; }
+  }
+  // The captain waves when he has something to say, and sways when he sings.
+  if (S.g.parent) {
+    S.t += dt;
+    S.arm.rotation.z = quest.news ? -2.4 + Math.sin(S.t * 10) * 0.5 : -0.2;
+    S.g.rotation.z = state === 'talk' ? Math.sin(S.t * 3) * 0.12 : 0;
+  }
+}
+function updateQuestMark() {
+  const el = QUEST_MARK;
+  if (!quest.sailor || state !== 'play' || ['hidden', 'sailing', 'done'].includes(quest.stage)) { el.style.display = 'none'; return; }
+  const label = quest.news ? '!' : quest.stage === 'wood' ? `🪵 ${quest.wood}/${quest.NEED_WOOD}` : quest.stage === 'food' ? `🍞 ${quest.food}/${quest.NEED_FOOD}` : quest.stage === 'fixing' ? '🔨 fixing...' : '!';
+  const p = tmpV2.copy(quest.sailor.pos); p.y += 2.4;
+  const sc = toScreen(p, tmpV), m = 28;
+  const on = sc && sc.x > m && sc.x < innerWidth - m && sc.y > 70 && sc.y < innerHeight - 120;
+  el.style.display = 'block';
+  el.className = on ? (quest.news ? 'bang' : '') : 'edge';
+  el.textContent = on ? label : `⚓ ${label}`;
+  el.dataset.on = on ? '1' : '';
+  let x = sc ? sc.x : innerWidth / 2, y = sc ? sc.y : innerHeight - 140;
+  if (!on) {
+    // Point the way along the screen edge.
+    tmpV.copy(quest.sailor.pos).project(camera);
+    let nx = tmpV.x, ny = tmpV.y;
+    if (tmpV.z > 1) { nx = -nx; ny = -ny; }
+    const k = 1 / Math.max(Math.abs(nx), Math.abs(ny), 1e-3);
+    x = clamp((nx * k * 0.5 + 0.5) * innerWidth, 60, innerWidth - 60);
+    y = clamp((-ny * k * 0.5 + 0.5) * innerHeight, 90, innerHeight - 150);
+  }
+  el.style.transform = `translate(${x}px,${y}px) translate(-50%,-100%)`;
+}
+QUEST_MARK.onclick = () => {
+  audio();
+  if (QUEST_MARK.dataset.on) openTalk(); else flyTo(quest.sailor.pos.x, quest.sailor.pos.z, 40);
+};
+function singShanty() { [392, 440, 494, 523, 494, 440, 392, 330, 392, 392, 440, 392, 330, 294, 330, 392].forEach((f, i) => blip({ f, d: 0.2, type: 'triangle', v: 0.06, delay: i * 0.21 })); }
+function openTalk() {
+  if (state !== 'play' || !quest.sailor || !quest.sailor.canPick()) return;
+  if (held || heldFire) release();
+  mode = null; state = 'talk';
+  $('#tip').style.display = 'none';
+  const verse = lines => `<div class="shanty">${lines.map(l => `♪ ${l}`).join('<br>')}</div>`;
+  const bar = (n, need) => `<div class="qbar"><u style="width:${n / need * 100}%"></u></div>`;
+  let body = '', btns = [['AYE AYE', closeTalk]];
+  switch (quest.stage) {
+    case 'intro':
+      body = `<p>Ahoy, Your Enormousness! We ran ${SHIP_NAME} straight into your lovely beach. The hull has a hole you could drive a cow through.</p>${verse(SHANTY.intro)}<p>Fetch us <b>${quest.NEED_WOOD} wood</b> and we will patch her up. Drop trees or bundles of wood on the ship. There is a reward in it for you!</p>`;
+      btns = [['▶ WE WILL HELP', () => { quest.stage = 'wood'; closeTalk(); toast(`🪵 Side quest: bring <b>${quest.NEED_WOOD} wood</b> to ${SHIP_NAME}. Grab the store for wood, or uproot trees.`, 'tip'); }], ['MAYBE LATER', closeTalk]];
+      singShanty(); break;
+    case 'wood':
+      body = `<p>Still need timber, matey! Drop trees or bundles of wood right on the ship.</p>${bar(quest.wood, quest.NEED_WOOD)}<p>Wood: <b>${quest.wood}/${quest.NEED_WOOD}</b></p>`; break;
+    case 'fixing':
+      body = '<p>Hammer, hammer, ow, my thumb, hammer! Nearly there.</p>'; break;
+    case 'foodask':
+      body = `<p>She floats! But a long voyage needs biscuits.</p>${verse(SHANTY.food)}<p>Bring us <b>${quest.NEED_FOOD} food</b>: grab the sacks at your store, or drop bread from the sky right onto the ship.</p>`;
+      btns = [['▶ FOOD IS COMING', () => { quest.stage = 'food'; closeTalk(); toast(`🍞 Side quest: bring <b>${quest.NEED_FOOD} food</b> to ${SHIP_NAME}. Grab the food sacks at the store, or cast Food on the ship.`, 'tip'); }]];
+      singShanty(); break;
+    case 'food':
+      body = `<p>The crew's tummies are rumbling. Drop crates of food on the ship!</p>${bar(quest.food, quest.NEED_FOOD)}<p>Food: <b>${quest.food}/${quest.NEED_FOOD}</b></p>`; break;
+    case 'reward':
+      body = `<p>Ye've saved us, Your Divinity! As thanks, our carpenter <b>${CARPENTER}</b> is staying on your island. He builds scaffolds <b>twice as fast</b>, and he has knocked together <b>two scaffolds</b> for you already.</p>${verse(SHANTY.bye)}`;
+      btns = [['⚓ FAIR WINDS!', () => { closeTalk(); grantReward(); }]];
+      singShanty(); break;
+  }
+  quest.news = false;
+  $('#talkWho').textContent = CAPTAIN.toUpperCase();
+  $('#talkBody').innerHTML = body;
+  $('#talkBtns').replaceChildren(...btns.map(([label, fn], i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.style.setProperty('--c', i ? 'var(--ink)' : 'var(--gold)'); b.textContent = label; b.onclick = fn; return b; }));
+  $('#talkScr').hidden = false;
+  $('#talkBtns button')?.focus();
+}
+function closeTalk() {
+  if (state !== 'talk') return;
+  state = 'play'; $('#talkScr').hidden = true;
+  if (quest.stage === 'intro') quest.news = true;
+}
+function grantReward() {
+  workshop.fast = true;
+  const v = new Villager(quest.sailor.pos.x, quest.sailor.pos.z, 'mine', 'builder');
+  v.name = CARPENTER;
+  for (let i = 0; i < 2; i++) {
+    const sc = new Scaffold(workshop.pos);
+    if (!workshop.restock(sc)) { sc.pos.set(workshop.pos.x + rand(-3, 3), workshop.pos.y, workshop.pos.z + 4 + i * 1.8); sc.sync(); }
+  }
+  floatText(workshop.pos.x, workshop.pos.y + 4, workshop.pos.z, '+2 SCAFFOLDS', '#9dff7a', true);
+  toast(`⚓ ${CARPENTER} joins Little Gullible. Your workshop now makes scaffolds twice as fast, and there are two new ones waiting.`, 'learn');
+  align = clamp(align + 0.08, -1, 1);
+  scene.remove(quest.sailor.g);
+  quest.stage = 'sailing'; quest.t = 0;
+  sfx.fanfare();
+}
+
 /* ============================================================
    World setup
    ============================================================ */
@@ -1961,7 +2206,7 @@ function setupWorld() {
   for (const [dx, dz] of [[-14, -6], [-17, 12], [-7, 15], [11, -9], [17, -7]]) new House(...V(dx, dz));
   for (const [dx, dz] of [[-6, 0], [5, 4], [0, -6], [3, -5], [-4, 6]]) new House(DOUBT.x + dx, DOUBT.z + dz, 'doubt');
   for (const [dx, dz] of [[14, 0], [14, 7.5], [5, 15]]) new Field(...V(dx, dz));
-  for (let i = 0; i < 2; i++) workshop.restock(new Scaffold(workshop.pos));
+  workshop.restock(new Scaffold(workshop.pos));
   // A ring of forest close to the village so the woodcutters have something to do from minute one.
   let tries = 0;
   while (world.trees.length < 30 && tries++ < 500) {
@@ -1988,6 +2233,7 @@ function setupWorld() {
   const s1 = textSprite('LITTLE GULLIBLE', '#ffffff', 'your village'); s1.position.set(VILLAGE.x, 30, VILLAGE.z - 12); scene.add(s1);
   const s2 = textSprite('DOUBTSBY', '#cfcfcf', 'they do not believe in you'); s2.position.set(DOUBT.x, 18, DOUBT.z); scene.add(s2);
   creature = new Creature($('#nameIn').value.trim() || 'Sir Moosalot');
+  setupQuest();
 }
 
 /* ============================================================
@@ -2098,8 +2344,10 @@ function pickEntity(r, maxT) {
     if (s < bs) { bs = s; best = e; }
   };
   test(creature);
+  if (quest.sailor) test(quest.sailor);
   for (const l of [world.villagers, world.trees, world.rocks, world.crates, world.scaffolds, world.bundles]) for (const e of l) test(e);
-  if (!best) { test(store, true); test(temple, true); test(workshop, true); for (const l of [world.houses, world.fields, world.sites, world.buildings]) for (const e of l) test(e, true); }
+  if (!best) test(storeFood, true);
+  if (!best) { test(store, true); test(temple, true); test(workshop, true); if (quest.ship) test(quest.ship, true); for (const l of [world.houses, world.fields, world.sites, world.buildings]) for (const e of l) test(e, true); }
   return best;
 }
 const grabbable = e => e && ['villager', 'tree', 'rock', 'crate', 'scaffold', 'bundle'].includes(e.type);
@@ -2173,12 +2421,18 @@ function onDown(e) {
     }
     return;
   }
-  if (leash.mode === 'hand' && hover?.info) { setLeash('tied', hover); return; }
+  if (leash.mode === 'hand' && hover?.info && hover.type !== 'foodpile') { setLeash('tied', hover); return; }
   if (hover === store && R.wood >= 1) {
     const b = new Bundle(store.pos, Math.min(20, Math.floor(R.wood)));
     R.wood -= b.amount; floatText(store.pos.x, store.pos.y + 4, store.pos.z, `-${b.amount} wood`, '#e0a060');
     grab(b); mode = 'hold'; return;
   }
+  if (hover === storeFood) {
+    const c = new Crate(storeFood.pos.x, storeFood.pos.y + 1, storeFood.pos.z, Math.min(15, Math.floor(R.food)));
+    R.food -= c.amount; floatText(store.pos.x, store.pos.y + 4, store.pos.z, `-${c.amount} food`, '#ffd23f');
+    grab(c); mode = 'hold'; return;
+  }
+  if (hover?.type === 'sailor') { openTalk(); return; }
   if (hover?.type === 'site') {
     if (hover.progress > 0.02) { floatText(hover.pos.x, hover.pos.y + 3, hover.pos.z, 'Already being built', '#ff8a8a'); sfx.no(); return; }
     const sc = new Scaffold(hover.pos); hover.takeScaffold(); grab(sc); mode = 'hold'; return;
@@ -2261,6 +2515,7 @@ addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') { if (e.key === 'Enter') startGame(); return; }
   const k = e.key.toLowerCase();
   if (k === 'escape') {
+    if (state === 'talk') { closeTalk(); return; }
     if (state === 'play' && armed) { setArmed(null); return; }
     if (state === 'play') pause(); else if (state === 'paused') resume();
     return;
@@ -2377,6 +2632,8 @@ function updateHand(dt) {
     if (flat(groundHit, workshop.pos) < 4.5) tipHtml = 'Put it back in the <i>workshop</i>';
     else if (site) tipHtml = site.n >= 4 ? 'This plan is as big as it gets' : `Drop: turn the ${site.bp.label.toLowerCase()} plan into a <i>${BLUEPRINTS[site.n + 1].label}</i>`;
     else { const err = spotProblem(groundHit.x, groundHit.z, BLUEPRINTS[1]); tipHtml = err ? `<i>${err}</i>` : 'Drop: plan a <i>House</i> here'; }
+  } else if (held && quest.ship && quest.stage === (held.type === 'crate' ? 'food' : 'wood') && ['tree', 'bundle', 'crate'].includes(held.type) && flat(groundHit, quest.ship.pos) < 7.5) {
+    tipHtml = 'Drop: give it to the <i>sailors</i>';
   } else if (held && (held.type === 'tree' || held.type === 'bundle') && siteNear(groundHit)) {
     tipHtml = 'Drop: give the wood to this <i>plan</i>';
   } else if (held && (held.type === 'tree' || held.type === 'crate' || held.type === 'bundle') && flat(groundHit, store.pos) < 5.5) {
@@ -2397,14 +2654,17 @@ function infoFor(e) {
     case 'rock': return 'Rock · excellent for throwing';
     case 'crate': return `Bread crate · ${e.amount} food · drop it on the store`;
     case 'store': return `Village store · <i>${Math.floor(R.food)}</i> food · <i>${Math.floor(R.wood)}</i> wood${R.wood >= 1 ? ' · grab to take wood' : ''}`;
-    case 'workshop': return `Workshop · ${workshop.stock.length}/4 scaffolds ready · makes one from 10 wood`;
+    case 'workshop': return `Workshop · ${workshop.stock.length}/${SCAFFOLD_MAX} scaffolds · ${workshop.builders() ? `a builder makes one from ${SCAFFOLD_COST} wood every ${workshop.fast ? 22 : 45}s` : '<i>needs a builder to make scaffolds</i>'}`;
     case 'scaffold': return 'Scaffold · drop on flat ground to plan a house, or on a plan to grow it';
+    case 'sailor': return `${CAPTAIN} · <i>click to talk</i>`;
+    case 'ship': return quest.stage === 'wood' ? `${SHIP_NAME} · drop wood here (${quest.wood}/${quest.NEED_WOOD})` : quest.stage === 'food' ? `${SHIP_NAME} · drop food here (${quest.food}/${quest.NEED_FOOD})` : `${SHIP_NAME}, a ship in trouble`;
+    case 'foodpile': return `Food sacks · <i>${Math.floor(R.food)}</i> food · grab to take some`;
     case 'bundle': return `Wood · ${e.amount} · drop on a plan or the store`;
     case 'site': { const b = e.bp, nx = BLUEPRINTS[e.n + 1]; return `Plan: <i>${b.label}</i> · wood ${Math.floor(e.wood)}/${b.wood} · built ${Math.floor(e.progress * 100)}%${nx && e.progress < 0.02 ? ` · +1 scaffold makes a ${nx.label}` : ''}`; }
-    case 'shrine': return 'Shrine · +1 prayer every second';
+    case 'shrine': return 'Shrine · +1 prayer every 2 seconds';
     case 'wonder': return converted ? 'Cow Wonder · magnificent' : 'Cow Wonder · Doubtsby cannot stop staring at it';
     case 'temple': { const n = world.villagers.filter(v => v.faction === 'mine' && v.job === 'worshipper').length; return `Temple · ${n} worshipper${n === 1 ? '' : 's'} · drop villagers here to pray · the yard is where your creature sleeps`; }
-    case 'house': return e.faction !== 'mine' ? 'A skeptical house' : e.done ? (e.burning ? 'House · <i>ON FIRE</i>' : 'House · room for 3') : `House · being built (${Math.floor(e.progress * 100)}%)`;
+    case 'house': return e.faction !== 'mine' ? 'A skeptical house' : e.done ? (e.burning ? 'House · <i>ON FIRE</i>' : `${e.big ? 'Big house' : 'House'} · room for ${e.beds}`) : `House · being built (${Math.floor(e.progress * 100)}%)`;
     case 'field': return `Field · ${Math.floor(e.crop)}/30 crops · drop villagers here to farm`;
   }
   return '';
@@ -2488,12 +2748,20 @@ function updateThought() {
 /* ============================================================
    Village simulation
    ============================================================ */
-const capacity = () => world.houses.filter(h => h.faction === 'mine' && h.done && !h.dead).length * 3;
-let birthT = 16, treeT = 6, fullT = 40;
+const capacity = () => world.houses.filter(h => h.faction === 'mine' && h.done && !h.dead).reduce((n, h) => n + h.beds, 0);
+let birthT = 16, treeT = 6, fullT = 40, fieldT = 20;
+const FIELD_COST = 40;
+function findFieldSpot() {
+  for (let i = 0; i < 150; i++) {
+    const a = rand(6.28), r = rand(12, 26), x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r;
+    if (!spotProblem(x, z, { w: 7, d: 5.5 })) return { x, z };
+  }
+  return null;
+}
 function updateVillage(dt) {
   for (const f of world.fields) { f.crop = Math.min(30, f.crop + dt * 0.5); f.refresh(); }
   const mine = world.villagers.filter(v => v.faction === 'mine' && v.alive);
-  R.prayer = Math.min(PRAYER_MAX, R.prayer + mine.length * 0.03 * dt);
+  R.prayer = Math.min(PRAYER_MAX, R.prayer + mine.length * 0.01 * dt);
   // New babies when there's food and room.
   birthT -= dt;
   if (birthT <= 0) {
@@ -2509,8 +2777,23 @@ function updateVillage(dt) {
     }
   }
   workshop.update(dt);
+  fieldT -= dt;
+  if (fieldT <= 0) {
+    fieldT = 20;
+    const farmers = mine.filter(v => v.job === 'farmer').length;
+    if (R.wood >= FIELD_COST && R.food < 50 && farmers >= world.fields.length && world.fields.length < 9) {
+      const p = findFieldSpot();
+      if (p) {
+        R.wood -= FIELD_COST;
+        for (const t of [...world.trees]) if (Math.abs(t.pos.x - p.x) < 4.5 && Math.abs(t.pos.z - p.z) < 4) t.remove();
+        const f = new Field(p.x, p.z); f.crop = 4; f.refresh();
+        floatText(p.x, f.pos.y + 3, p.z, 'NEW FIELD!', '#9dff7a', true);
+        toast(`🌾 Your farmers turned ${FIELD_COST} wood into a new field.`);
+      }
+    }
+  }
   for (const b of world.buildings) {
-    if (b.type === 'shrine') { R.prayer = Math.min(PRAYER_MAX, R.prayer + dt); if (Math.random() < dt * 2) emit(b.pos.x, b.pos.y + 7, b.pos.z, { c: 0xffe27a, size: 0.4, up: 2, spd: 0.5, grav: 0, life: 1 }); }
+    if (b.type === 'shrine') { R.prayer = Math.min(PRAYER_MAX, R.prayer + dt * 0.5); if (Math.random() < dt * 2) emit(b.pos.x, b.pos.y + 7, b.pos.z, { c: 0xffe27a, size: 0.4, up: 2, spd: 0.5, grav: 0, life: 1 }); }
     if (b.type === 'wonder' && !converted && state === 'play') {
       impress = Math.min(100, impress + dt * 0.35); lastImpress = simTime;
       if (Math.random() < dt * 3) emit(b.pos.x + rand(-2, 2), b.pos.y + rand(3, 7), b.pos.z + rand(-2, 2), { c: [0xffe27a, 0xffffff], size: 0.5, up: 1, spd: 0.5, grav: 0, life: 1 });
@@ -2582,7 +2865,7 @@ const HOW = [
   '<b>Click and hold</b> villagers, trees, rocks and crates to pick them up. <b>Fling</b> to throw.',
   '<b>Drop a villager</b> on a field, the forest, the temple or the store to give them that job',
   '<b>Drop trees and crates</b> on the store to stock it up. <b>Grab the store</b> to take wood out.',
-  '<b>Scaffolds</b> come from the workshop. Drop one on flat ground to plan a house; add more to the same plan for a farm, a shrine, then a Cow Wonder.',
+  '<b>Scaffolds</b> come slowly from the workshop (it needs a builder). Drop one on flat ground to plan a house; add more to the same plan for a big house, a shrine, then a Cow Wonder.',
   'Builders bring wood to plans. Speed them up by <b>dropping trees or wood</b> straight onto a plan.',
   '<b>L</b> puts your creature on a <b>leash</b>. Click a building to tie it up there. It sleeps in the temple yard.',
   '<b>1 2 3</b> ready a miracle, then click the ground. Fireballs get thrown.',
@@ -2597,7 +2880,7 @@ const TIPS = [
   [19, 'Worshippers at the temple make <b>prayer</b>. Spend it on miracles with <b>1</b>, <b>2</b> and <b>3</b>.'],
   [30, 'That enormous cow is yours. Cast miracles near it and it will learn them. <b>Flick</b> it to slap, <b>rub</b> it to stroke.'],
   [42, 'Your goal: impress <b>Doubtsby</b> (top of the screen, click it) until they believe in you.'],
-  [56, 'Need more room? Grab a <b>scaffold</b> from the workshop and drop it on flat ground to plan a house. Stack more scaffolds on the plan for bigger buildings.'],
+  [56, 'Need more room? Grab a <b>scaffold</b> from the workshop and drop it on flat ground to plan a house. Stack more scaffolds on the plan for bigger buildings. The workshop needs a builder to make more.'],
   [72, 'Press <b>L</b> to put your creature on a <b>leash</b>. It follows your hand when the leash goes tight. Click a building to tie it up there.'],
 ];
 let tipQueue = [];
@@ -2664,6 +2947,7 @@ function tick(dt) {
   creature.update(dt);
   for (const l of [world.trees, world.rocks, world.crates, world.fireballs, world.clouds, world.houses, world.scaffolds, world.bundles]) for (const e of [...l]) e.update(dt);
   updateVillage(dt);
+  updateQuest(dt);
   refreshStore();
   fireLight.intensity = Math.max(0, fireLight.intensity - dt * 160);
 }
@@ -2693,11 +2977,12 @@ function frame(now) {
   updateFloats(dt);
   if (state === 'play') updateHud(dt);
   updateThought();
+  updateQuestMark();
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.BW = { camera, tick, workshop, leash, setLeash, spotProblem, YARD_MID, inYard, get hover() { return hover; }, get mode() { return mode; }, get held() { return held; }, store, temple, get state() { return state; }, get align() { return align; }, R, world, get creature() { return creature; }, cam, hand, ptr, castMiracle, get impress() { return impress; }, set impress(v) { impress = v; } };
+window.BW = { quest, openTalk, camera, tick, workshop, leash, setLeash, spotProblem, YARD_MID, inYard, get hover() { return hover; }, get mode() { return mode; }, get held() { return held; }, store, temple, get state() { return state; }, get align() { return align; }, R, world, get creature() { return creature; }, cam, hand, ptr, castMiracle, get impress() { return impress; }, set impress(v) { impress = v; } };
 </script>
 </body>
 </html>

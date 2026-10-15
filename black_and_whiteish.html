@@ -115,11 +115,28 @@ button{font:inherit;color:inherit}
 #goal[hidden],#cpanel[hidden]{display:none}
 .mir.locked{filter:grayscale(1);opacity:.3}
 .mir.locked::after{content:"🔒";position:absolute;top:2px;right:4px;font-size:14px}
-#caption{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9;width:min(640px,calc(100vw - 24px));padding:16px 18px 14px;margin:0}
-#caption[hidden]{display:none}
-#caption b.who{display:block;font-family:'Press Start 2P',monospace;font-weight:400;font-size:9px;color:var(--gold);margin-bottom:8px}
-#capText{font-size:23px;margin:0 0 12px;line-height:1.25}
-#caption .row{margin-top:0}
+/* cinematics */
+.lb{position:fixed;left:0;right:0;height:0;background:#000;z-index:8;transition:height .6s ease}
+#lbTop{top:0}#lbBot{bottom:0}
+body.cine #lbTop{height:12vh}
+body.cine #lbBot{height:17vh}
+#cineSkip{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:14px;z-index:11;display:none;font-family:'Press Start 2P',monospace;font-size:9px;color:#aaa;background:none;border:2px solid #555;padding:8px 10px;cursor:pointer}
+body.cine #cineSkip{display:block}
+#cineSkip:hover{color:#fff;border-color:#fff}
+#sub{position:fixed;left:50%;bottom:calc(2vh + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:10;width:min(760px,calc(100vw - 24px));min-height:13vh;padding:10px 16px;cursor:pointer;text-align:center}
+#sub[hidden]{display:none}
+#subWho{display:block;font-family:'Press Start 2P',monospace;font-size:10px;margin-bottom:8px;letter-spacing:.06em}
+#subText{font-size:26px;line-height:1.25;margin:0;min-height:1.25em;text-shadow:2px 2px 0 #000}
+#subText b{color:var(--gold);font-weight:400}
+#subHint{display:block;margin-top:6px;font-family:'Press Start 2P',monospace;font-size:7px;color:#666}
+#subChoices{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#subChoices .btn{font-size:10px}
+#subInput{background:#000;border:3px solid var(--ink);color:var(--ink);font-family:'VT323',monospace;font-size:24px;padding:4px 10px;text-align:center;width:min(260px,100%);-webkit-user-select:text;user-select:text}
+#card{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%) scale(.92);z-index:9;text-align:center;opacity:0;transition:opacity .6s,transform .6s;pointer-events:none;width:calc(100vw - 32px)}
+#card.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#cardTitle{display:block;font-family:'Press Start 2P',monospace;font-size:clamp(20px,5vw,46px);color:#fff;text-shadow:3px 3px 0 #555,6px 6px 0 #000;line-height:1.2}
+#cardSub{display:block;margin-top:12px;font-size:clamp(20px,3vw,28px);color:var(--gold);text-shadow:2px 2px 0 #000}
+@media (max-width:760px){#subText{font-size:20px}body.cine #lbBot{height:22vh}}
 .talk .sub{text-align:center;color:var(--dim);font-family:'Press Start 2P',monospace;font-size:8px;margin:-6px 0 14px}
 .card.talk{max-width:560px}
 .talk h2{color:var(--gold)}
@@ -219,13 +236,14 @@ h2{font-family:'Press Start 2P',monospace;font-weight:400;text-align:center;font
   </section>
   <div id="toasts" aria-live="polite"></div>
 </div>
-<div id="caption" class="card" hidden>
-  <b class="who">📜 THE NARRATOR</b>
-  <p id="capText"></p>
-  <div class="row">
-    <button class="btn" id="capNext" type="button" style="--c:var(--gold)">▶ NEXT</button>
-    <button class="btn" id="capSkip" type="button">SKIP INTRO</button>
-  </div>
+<div class="lb" id="lbTop"></div><div class="lb" id="lbBot"></div>
+<button id="cineSkip" type="button">SKIP ▸▸</button>
+<div id="card"><b id="cardTitle"></b><span id="cardSub"></span></div>
+<div id="sub" class="panel" hidden>
+  <b id="subWho"></b>
+  <p id="subText"></p>
+  <div id="subChoices"></div>
+  <span id="subHint">CLICK OR PRESS SPACE ▸</span>
 </div>
 <div id="fx"></div>
 <div id="tip"></div>
@@ -251,15 +269,6 @@ h2{font-family:'Press Start 2P',monospace;font-weight:400;text-align:center;font
       <button class="btn" id="resumeBtn" type="button" style="--c:var(--gold)">▶ RESUME</button>
       <button class="btn" id="restartBtn" type="button" style="--c:var(--red)">↻ NEW ISLAND</button>
     </div>
-  </div>
-</div>
-
-<div class="overlay" id="talkScr" hidden>
-  <div class="card talk">
-    <h2 id="talkWho"></h2>
-    <p class="sub" id="talkSub"></p>
-    <div id="talkBody"></div>
-    <div class="row" id="talkBtns"></div>
   </div>
 </div>
 
@@ -1142,7 +1151,7 @@ class Site {
   complete() {
     this.remove();
     const { x, z } = this.pos, key = this.bp.key;
-    if (key === 'house' || key === 'bighouse') { new House(x, z, 'mine', key === 'bighouse').mesh.rotation.y = this.rot; flags.housesBuilt++; }
+    if (key === 'house' || key === 'bighouse') { new House(x, z, 'mine', key === 'bighouse').mesh.rotation.y = this.rot; flags.housesBuilt++; flags.lastHouse = this.pos.clone(); }
     else new Building(key, x, z, this.rot);
     floatText(x, this.pos.y + 5, z, `${this.bp.label.toUpperCase()} BUILT!`, '#9dff7a', true);
     toast(`🏗️ Your builders finished a <b>${this.bp.label.toUpperCase()}</b>: ${this.bp.desc}.`, 'learn');
@@ -1795,9 +1804,10 @@ const TRAINABLE = Object.keys(ACT).filter(k => ACT[k].train);
 function findMeadow() {
   let best = null;
   for (let i = 0; i < 600; i++) {
-    const a = rand(6.28), r = rand(32, 46), x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r, h = heightAt(x, z);
-    if (h < 1.6 || h > 9 || slopeAt(x, z) > 1.4 || flat({ x, z }, DOUBT) < 30 || flat({ x, z }, ISLE) < 25 || flat({ x, z }, TEMPLE_AT) < 30) continue;
-    const sc = -Math.abs(r - 38);
+    const a = rand(6.28), r = rand(34, 60), x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r, h = heightAt(x, z);
+    if (h < 1.6 || h > 9 || slopeAt(x, z) > 1.4 || woodsAt(x, z) > 0.45 || flat({ x, z }, DOUBT) < 30 || flat({ x, z }, ISLE) < 25 || flat({ x, z }, TEMPLE_AT) < 30 || blockedByProp(x, z, 12)) continue;
+    if (world.trees.some(t => flat(t.pos, { x, z }) < 9)) continue;
+    const sc = -Math.abs(r - 42);
     if (!best || sc > best.sc) best = { x, z, sc };
   }
   return best || { x: VILLAGE.x + 30, z: VILLAGE.z - 20 };
@@ -2211,24 +2221,25 @@ function unlock(k, label) {
 }
 
 // A patch of dirt with stakes and a sign, where the village wants something built.
+const plotSigns = [];
 function makePlot(pos, w, d, label) {
   const g = new THREE.Group(), parts = [[Box(w, 0.12, d).translate(0, 0.06, 0), 0x9a7a4e]];
   for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) parts.push([Box(0.15, 1, 0.15).translate(x, 0.5, z), 0x8a5a33]);
   parts.push([Box(0.15, 1.7, 0.15).translate(0, 0.85, d / 2 + 0.7), 0x8a5a33], [Box(1.7, 0.8, 0.1).translate(0, 1.55, d / 2 + 0.76), 0xe9d8b0]);
   g.add(new THREE.Mesh(merge(parts), VC));
-  const s = textSprite(label, '#ffd23f'); s.scale.set(11, 2.75, 1); s.position.y = 4.5; g.add(s);
+  const s = textSprite(label, '#ffd23f'); s.scale.set(11, 2.75, 1); s.position.y = 4.5; g.add(s); plotSigns.push(s);
   g.position.copy(pos);
   scene.add(addShadow(g));
   return g;
 }
 function buildStore() {
-  store.built = true; store.g.visible = true;
+  store.built = true; growIn(store.g);
   if (store.plot) { scene.remove(store.plot); store.plot = null; }
   emit(store.pos.x, store.pos.y + 1, store.pos.z, { c: [0xc8b48a, 0xffe27a], n: 50, size: 0.8, spd: 6, up: 6, life: 1 });
   refreshStore();
 }
 function buildWorkshop() {
-  workshop.built = true; workshop.g.visible = true;
+  workshop.built = true; growIn(workshop.g);
   if (workshop.plot) { scene.remove(workshop.plot); workshop.plot = null; }
   emit(workshop.pos.x, workshop.pos.y + 1, workshop.pos.z, { c: [0xc8b48a, 0xffe27a], n: 50, size: 0.8, spd: 6, up: 6, life: 1 });
   workshop.restock(new Scaffold(workshop.pos));
@@ -2266,6 +2277,7 @@ class Npc {
     g.rotation.y = look.face ?? Math.atan2(VILLAGE.x - p.x, VILLAGE.z + 6 - p.z);
     g.scale.setScalar(1.3);
     g.visible = !this.hidden;
+    this.baseFace = g.rotation.y;
     scene.add(addShadow(g));
     NPC[key] = this; npcs.push(this);
   }
@@ -2277,6 +2289,13 @@ class Npc {
   get wants() { return this.quests.some(q => q.stage === 'offer' || q.stage === 'turnin'); }
   update(dt) {
     this.t += dt;
+    if (this.talking) {
+      this.g.rotation.y = angLerp(this.g.rotation.y, Math.atan2(camera.position.x - this.pos.x, camera.position.z - this.pos.z), Math.min(1, dt * 5));
+      this.arm.rotation.z = 0.9 + Math.sin(this.t * 6) * 0.6;
+      this.g.position.y = this.pos.y + Math.abs(Math.sin(this.t * 11)) * 0.07;
+      return;
+    }
+    this.g.rotation.y = angLerp(this.g.rotation.y, this.baseFace, Math.min(1, dt * 2));
     const w = this.wants;
     this.arm.rotation.z = w ? 2.6 + Math.sin(this.t * 10) * 0.45 : 0.08 + Math.sin(this.t * 1.5) * 0.05;
     this.g.position.y = this.pos.y + Math.abs(Math.sin(this.t * (w ? 6 : 1.4))) * (w ? 0.14 : 0.02);
@@ -2428,8 +2447,12 @@ function updateShip(dt) {
       ship.fixed = true;
       ship.mesh.geometry = shipGeo(false);
       ship.mesh.rotation.z = 0; ship.mesh.position.y = WATER - 0.2;
-      toast(`⚓ ${SHIP_NAME.replace('the ', 'The ')} floats again! ${CAPTAIN} has one more favour to ask.`, 'tip');
-      sfx.fanfare();
+      emit(ship.pos.x, 0.5, ship.pos.z, { c: [0xffffff, 0xbfe6ff], n: 60, size: 0.8, spd: 6, up: 6, grav: -15, life: 1.2 });
+      sfx.splash();
+      playCine([
+        narr('With a creak, a groan and a great deal of swearing, the Soggy Biscuit floated again.', { music: 'shanty', shot: view(() => ship.pos, { r: 26, h: 9, turn: 0.5, look: 3 }) }),
+        line('captain', 'She floats! Now then... one more teeny favour.'),
+      ]);
     }
   }
   if (ship.sailT >= 0) {
@@ -2458,9 +2481,423 @@ function grantShipReward() {
 /* --- The quests --- */
 const QUEST = {}, quests = [];
 function Q(def) { const q = { stage: 'locked', got: 0, ...def }; quests.push(q); QUEST[q.id] = q; if (q.giver) NPC[q.giver].quests.push(q); return q; }
-const SIDE = ['pantry', 'sheep', 'thirsty', 'workshop', 'nan', 'hat', 'cowschool'];
 const doneQ = id => QUEST[id].stage === 'done';
 const cname = () => esc(creature.name);
+
+/* --- Cinematics: letterboxed camera moves, subtitles, babbling voices and music --- */
+const VOICES = {
+  narrator: { f: 150, type: 'triangle', every: 3, name: 'THE NARRATOR', color: '#ffd23f' },
+  mabel: { f: 560, type: 'sine', color: '#e0b0ff' }, gary: { f: 130, type: 'square', color: '#d8c49a' }, pip: { f: 310, type: 'triangle', color: '#b5e07a' },
+  barry: { f: 200, type: 'sawtooth', color: '#ffb070' }, nan: { f: 660, type: 'sine', color: '#ffa8a8' }, dave: { f: 250, type: 'triangle', color: '#a8c8ff' },
+  prof: { f: 220, type: 'sine', color: '#e8e8e8' }, mayor: { f: 160, type: 'square', color: '#bdbdbd' }, captain: { f: 180, type: 'sawtooth', color: '#8fb8ff' },
+  brenda: { f: 430, type: 'triangle', name: 'BRENDA', color: '#d0d0d0' }, splinters: { f: 235, type: 'triangle', name: 'SPLINTERS McGEE', color: '#e0a060' },
+  crowd: { f: 340, type: 'triangle', name: 'A VILLAGER', color: '#ffffff' }, skeptic: { f: 300, type: 'square', name: 'A SKEPTIC', color: '#bdbdbd' },
+  dolly: { baa: true, name: 'DOLLY THE SHEEP', color: '#ffffff' }, cow: { moo: true, color: '#ff8ab0' },
+};
+const voiceName = who => who === 'cow' ? (creature.wild ? 'A WILD CREATURE' : creature.name.toUpperCase()) : VOICES[who]?.name || NPC[who]?.name.toUpperCase() || who.toUpperCase();
+const MOODS = {
+  intro: { bar: 2.6, chords: [[261.6, 329.6, 392], [220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7]], mel: [523.3, 587.3, 659.3, 784, 880] },
+  reveal: { bar: 2.8, chords: [[220, 261.6, 329.6], [174.6, 220, 261.6], [146.8, 174.6, 220], [164.8, 207.7, 246.9]], mel: [440, 493.9, 523.3, 659.3] },
+  happy: { bar: 1.9, chords: [[261.6, 329.6, 392], [349.2, 440, 523.3], [392, 493.9, 587.3], [261.6, 329.6, 392]], mel: [523.3, 659.3, 784, 1046.5] },
+  shanty: { bar: 1.7, chords: [[196, 246.9, 293.7], [261.6, 329.6, 392], [196, 246.9, 293.7], [293.7, 370, 440]], mel: [392, 440, 493.9, 523.3, 587.3] },
+  victory: { bar: 1.6, chords: [[261.6, 329.6, 392], [392, 493.9, 587.3], [349.2, 440, 523.3], [392, 493.9, 587.3]], mel: [784, 880, 1046.5, 1174.7, 1318.5] },
+};
+const music = {
+  mood: null, timer: null, n: 0,
+  play(m) {
+    if (m === this.mood) return;
+    this.stop();
+    this.mood = m;
+    if (!m || !actx) return;
+    const P = MOODS[m]; this.n = 0;
+    const bar = () => {
+      if (muted || !actx) return;
+      const t = actx.currentTime, ch = P.chords[this.n++ % P.chords.length];
+      for (const f of ch) {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.type = 'sine'; o.frequency.value = f / 2;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.03, t + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + P.bar + 0.3);
+        o.connect(g).connect(master); o.start(t); o.stop(t + P.bar + 0.4);
+      }
+      for (let i = 0; i < 2; i++) if (Math.random() < 0.8) blip({ f: pick(P.mel), d: 0.5, type: 'triangle', v: 0.035, delay: i * P.bar / 2 + 0.1 });
+    };
+    bar();
+    this.timer = setInterval(bar, P.bar * 1000);
+  },
+  stop() { clearInterval(this.timer); this.timer = null; this.mood = null; },
+};
+function babble(who, i) {
+  const v = VOICES[who] || VOICES.crowd;
+  if (v.baa) { if (i === 0) sfx.baa(); return; }
+  if (v.moo) { if (i === 0) sfx.moo(1.05); return; }
+  if (i % (v.every || 2)) return;
+  blip({ f: v.f * (0.85 + Math.random() * 0.35), f2: v.f * (0.8 + Math.random() * 0.3), d: 0.06, type: v.type, v: v.type === 'square' || v.type === 'sawtooth' ? 0.02 : 0.035 });
+}
+const tweens = [];
+function tween(dur, fn, done) { tweens.push({ t: 0, dur, fn, done }); }
+function updateTweens(dt) {
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const w = tweens[i]; w.t += dt;
+    const k = Math.min(1, w.t / w.dur); w.fn(k);
+    if (k >= 1) { tweens.splice(i, 1); w.done?.(); }
+  }
+}
+// Camera shots. An orbit circles a (possibly moving) point; a move glides between two poses.
+const ease = k => k * k * (3 - 2 * k);
+// Line of sight: try angles around the subject until nothing (houses, props, trees, hills) is in the way.
+function blockedAt(x, y, z) {
+  if (y < heightAt(x, z) + 0.3) return true;
+  for (const h of world.houses) if (Math.hypot(x - h.pos.x, z - h.pos.z) < (h.big ? 3.6 : 2.4) && y < h.pos.y + (h.big ? 6.5 : 4.2)) return true;
+  if (store.built && Math.hypot(x - store.pos.x, z - store.pos.z) < 3.9 && y < store.pos.y + 5) return true;
+  if (workshop.built && Math.hypot(x - workshop.pos.x, z - workshop.pos.z) < 3.5 && y < workshop.pos.y + 4) return true;
+  if (inTemple({ x, z }, 0.6) && y < temple.pos.y + 17) return true;
+  for (const p of props) if (Math.hypot(x - p.x, z - p.z) < p.r && y < heightAt(p.x, p.z) + 9) return true;
+  for (const b of world.buildings) if (Math.hypot(x - b.pos.x, z - b.pos.z) < b.w * 0.6 && y < b.pos.y + 8) return true;
+  for (const t of world.trees) if (t.state === 'planted' && Math.abs(t.pos.x - x) < 1.5 && Math.abs(t.pos.z - z) < 1.5 && y < t.pos.y + 4.2 * t.s) return true;
+  return false;
+}
+function sightClear(a, b) {
+  const n = Math.ceil(a.distanceTo(b) / 0.8);
+  for (let i = 1; i < n - 1; i++) { const k = i / n; if (blockedAt(lerp(a.x, b.x, k), lerp(a.y, b.y, k), lerp(a.z, b.z, k))) return false; }
+  return true;
+}
+function bestAngle(c, r, h, look, base) {
+  const cy = c.y ?? heightAt(c.x, c.z), tgt = new V3(c.x, cy + look, c.z);
+  for (const off of [0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.7, -1.7, 2.3, -2.3, 3.1]) {
+    const a = base + off, p = new V3(c.x + Math.sin(a) * r, cy + h, c.z + Math.cos(a) * r);
+    if (sightClear(p, tgt)) return a;
+  }
+  return base;
+}
+function face(key, o = {}) {
+  const n = NPC[key], f = n.baseFace ?? n.g.rotation.y;
+  n.side = -(n.side || 1);
+  const r = o.r ?? 6.4, a = bestAngle(n.pos, r, 2.5, 1.75, f + (o.side ?? n.side) * 0.5);
+  return { kind: 'orbit', at: () => n.pos, r: [r, r * 0.86], h: [2.5, 2.2], ang: [a, a - Math.sign(a - f || 1) * 0.14], look: 1.75, dur: 7, linear: true };
+}
+function view(at, o = {}) {
+  const r = o.r ?? 18, h = o.h ?? 9;
+  const a = bestAngle(at(), r, h, o.look ?? 1.5, o.ang ?? (Math.atan2(camera.position.x - at().x, camera.position.z - at().z) + (o.offset ?? 0)));
+  return { kind: 'orbit', at, r: [r, o.r2 ?? r * 0.88], h: [h, o.h2 ?? h], ang: [a, a + (o.turn ?? 0.3)], look: o.look ?? 1.5, dur: o.dur ?? 8, linear: true };
+}
+const pose = (pos, look) => ({ pos, look });
+const line = (key, text, x = {}) => ({ who: key, say: text, shot: face(key), ...x });
+const narr = (text, x = {}) => ({ who: 'narrator', say: text, ...x });
+const card = (title, sub, dur = 2.8) => ({ title, sub, wait: dur });
+
+let cine = null, cineHand = null;
+const cineQueue = [], camLook = new V3();
+let camBefore = null;
+function playCine(steps, onDone, opts = {}) {
+  if (cine) { cineQueue.push([steps, onDone, opts]); return; }
+  // If we were still gliding back from a previous scene, the place we were heading to is "where the player was".
+  if (!camBefore) camBefore = cam.fly ? { ...cam.fly } : { x: cam.tx, z: cam.tz, dist: cam.dist, pitch: cam.pitch, yaw: cam.yaw };
+  shake = 0;
+  if (held || heldFire) release();
+  mode = null; if (armed) setArmed(armed);
+  cine = { steps: steps.filter(Boolean), i: -1, onDone, opts, shot: null, say: null, waitT: 0, sayDone: true, choiceDone: true, speakers: [] };
+  state = 'cutscene';
+  document.body.classList.add('cine');
+  $('#hud').hidden = true; $('#tip').style.display = 'none';
+  camLook.set(cam.tx, cam.ty, cam.tz);
+  nextStep();
+}
+function setSpeaker(who) {
+  for (const n of npcs) n.talking = false;
+  if (NPC[who]) NPC[who].talking = true;
+}
+function nextStep() {
+  const c = cine; if (!c) return;
+  c.i++;
+  if (c.i >= c.steps.length) { endCine(); return; }
+  const s = c.steps[c.i];
+  if (s.music !== undefined) music.play(s.music);
+  if (s.do) s.do();
+  if (!cine) return;
+  if (s.shot) startShot(typeof s.shot === 'function' ? s.shot() : s.shot);
+  if (s.title) showCard(s.title, s.sub, s.wait ?? 2.8);
+  else if (!s.keepCard) $('#card').classList.remove('show');
+  c.waitT = s.wait ?? 0;
+  if (s.shotWait && c.shot) c.waitT = Math.max(c.waitT, c.shot.dur);
+  c.sayDone = !s.say; c.choiceDone = !s.choice;
+  const box = $('#sub');
+  $('#subChoices').replaceChildren();
+  if (s.say) {
+    const text = typeof s.say === 'function' ? s.say() : s.say;
+    c.say = { who: s.who, html: text, plain: text.replace(/<[^>]+>/g, ''), n: 0, typed: false, hold: 0 };
+    $('#subWho').textContent = voiceName(s.who);
+    $('#subWho').style.color = (VOICES[s.who] || VOICES.crowd).color;
+    $('#subText').textContent = '';
+    box.hidden = false;
+    setSpeaker(s.who);
+  } else { c.say = null; box.hidden = !s.choice; setSpeaker(null); }
+  if (s.choice) showChoices(s.choice, s.input);
+  $('#subHint').hidden = !!s.choice;
+}
+function showChoices(list, input) {
+  const wrap = $('#subChoices');
+  if (input) {
+    const i = document.createElement('input'); i.id = 'subInput'; i.maxLength = 18; i.value = input; i.spellcheck = false; i.autocomplete = 'off';
+    wrap.append(i);
+  }
+  list.forEach(([label, fn], k) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
+    b.style.setProperty('--c', k ? 'var(--ink)' : 'var(--gold)'); b.textContent = label;
+    b.onclick = e => { e.stopPropagation(); audio(); if (!cine || cine.choiceDone) return; const v = $('#subInput')?.value; cine.choiceDone = true; wrap.replaceChildren(); fn(v); };
+    wrap.append(b);
+  });
+  setTimeout(() => ($('#subInput') || wrap.querySelector('button'))?.focus(), 50);
+}
+// Insert steps right after the current one (used by choices).
+const cineThen = steps => { if (cine) cine.steps.splice(cine.i + 1, 0, ...steps.filter(Boolean)); };
+function startShot(sh) {
+  const s = { ...sh, t: 0 };
+  if (s.kind !== 'orbit') {
+    const from = s.from ? (typeof s.from === 'function' ? s.from() : s.from) : pose(camera.position.clone(), camLook.clone());
+    s.p0 = { pos: from.pos.clone(), look: from.look.clone() };
+  }
+  if (cine) cine.shot = s;
+}
+function applyShot(s, dt) {
+  s.t = Math.min(s.t + dt, s.dur);
+  const k = s.linear ? s.t / s.dur : ease(s.t / s.dur);
+  if (s.kind === 'orbit') {
+    // Follow the target smoothly, so a walking creature on bumpy ground doesn't jiggle the shot.
+    const raw = s.at(), ry = raw.y ?? heightAt(raw.x, raw.z);
+    if (!s.cs) s.cs = new V3(raw.x, ry, raw.z); else s.cs.lerp(tmpV.set(raw.x, ry, raw.z), Math.min(1, dt * 3));
+    const c = s.cs, a = lerp(s.ang[0], s.ang[1], k), r = lerp(s.r[0], s.r[1], k), h = lerp(s.h[0], s.h[1], k);
+    camera.position.set(c.x + Math.sin(a) * r, c.y + h, c.z + Math.cos(a) * r);
+    camLook.set(c.x, c.y + s.look, c.z);
+  } else {
+    const to = typeof s.to === 'function' ? s.to() : s.to;
+    camera.position.lerpVectors(s.p0.pos, to.pos, k);
+    camLook.lerpVectors(s.p0.look, to.look, k);
+  }
+  const floor = surf(camera.position.x, camera.position.z) + 1.2;
+  if (camera.position.y < floor) camera.position.y = floor;
+  camera.lookAt(camLook);
+}
+function updateCine(dt) {
+  const c = cine; if (!c) return;
+  if (c.shot) applyShot(c.shot, dt);
+  if (c.say) {
+    const S = c.say;
+    if (!S.typed) {
+      const before = Math.floor(S.n);
+      S.n += dt * 42;
+      for (let i = before; i < Math.min(Math.floor(S.n), S.plain.length); i++) if (/[a-z0-9]/i.test(S.plain[i])) babble(S.who, i);
+      if (S.n >= S.plain.length) { S.typed = true; $('#subText').innerHTML = S.html; }
+      else $('#subText').textContent = S.plain.slice(0, Math.floor(S.n));
+    } else if (!c.steps[c.i].choice) {
+      S.hold += dt;
+      if (S.hold > 1.8 + S.plain.length * 0.035) c.sayDone = true;
+    }
+  }
+  c.waitT -= dt;
+  if (c.sayDone && c.choiceDone && c.waitT <= 0 && (!c.say || c.say.typed)) nextStep();
+}
+function cineClick() {
+  const c = cine; if (!c) return;
+  if (c.say && !c.say.typed) { c.say.n = c.say.plain.length; c.say.typed = true; $('#subText').innerHTML = c.say.html; return; }
+  if (c.steps[c.i]?.choice && !c.choiceDone) return;
+  c.sayDone = true; c.waitT = Math.min(c.waitT, 0);
+}
+// Skipping still runs everything that matters (rewards, unlocks); only stops at choices.
+function skipCine() {
+  const c = cine; if (!c) return;
+  if (c.steps[c.i]?.choice && !c.choiceDone) return;
+  for (let i = c.i + 1; i < c.steps.length; i++) {
+    const s = c.steps[i];
+    if (s.choice) { c.i = i - 1; nextStep(); return; }
+    if (s.do && !s.fx) s.do();
+    if (!cine) return;
+  }
+  c.i = c.steps.length; endCine();
+}
+function endCine() {
+  const c = cine; if (!c) return;
+  cine = null; cineHand = null;
+  setSpeaker(null);
+  $('#sub').hidden = true; $('#card').classList.remove('show');
+  document.body.classList.remove('cine');
+  music.stop();
+  // Hand the camera back to the player exactly where the shot ended.
+  const d = camera.position.distanceTo(camLook);
+  cam.tx = camLook.x; cam.tz = camLook.z; cam.ty = surf(camLook.x, camLook.z);
+  cam.dist = clamp(d, 14, 280);
+  cam.yaw = Math.atan2(camera.position.x - camLook.x, camera.position.z - camLook.z);
+  cam.pitch = clamp(Math.asin(clamp((camera.position.y - camLook.y) / Math.max(d, 1), -1, 1)), 0.25, 1.4);
+  cam.fly = null;
+  state = 'play';
+  if (introDone) $('#hud').hidden = false;
+  hudT = 0;
+  c.onDone?.();
+  if (!cine && cineQueue.length) { const [s, d2, o2] = cineQueue.shift(); playCine(s, d2, o2); return; }
+  // Then glide back to where the player was looking before the scene (or wherever the scene says).
+  if (!cine) {
+    cam.fly = c.opts.returnTo ? c.opts.returnTo() : camBefore;
+    camBefore = null;
+  }
+}
+let cardT = null;
+function showCard(title, sub, dur) {
+  const el = $('#card');
+  $('#cardTitle').textContent = title; $('#cardSub').textContent = sub || '';
+  el.classList.add('show');
+  clearTimeout(cardT); cardT = setTimeout(() => el.classList.remove('show'), dur * 1000);
+}
+$('#sub').addEventListener('click', e => { if (e.target.closest('#subChoices')) return; audio(); cineClick(); });
+$('#cineSkip').onclick = e => { e.stopPropagation(); audio(); skipCine(); };
+
+/* --- Little set pieces used by the scripts --- */
+function gatherAt(p, secs = 30) {
+  world.villagers.filter(v => v.faction === 'mine' && v.alive && v.state === 'idle').forEach((v, i) => {
+    const a = -0.8 + (i % 6) * 0.32, r = 6 + Math.floor(i / 6) * 2.2, q = { x: p.x + Math.sin(a) * r, z: p.z + Math.cos(a) * r };
+    v.plan = [go(() => q, 0.4), act(secs, 'pray', null, (dt, e) => { e.heading = angLerp(e.heading, Math.atan2(p.x - e.pos.x, p.z - e.pos.z), dt * 4); })];
+    v.pos.set(q.x + rand(-3, 3), 0, q.z + rand(-3, 3)); v.pos.y = heightAt(v.pos.x, v.pos.z);
+  });
+}
+function cheer(p, words) {
+  for (let i = 0; i < 6; i++) setTimeout(() => floatText(p.x + rand(-6, 6), heightAt(p.x, p.z) + 3, p.z + rand(-6, 6), pick(words), '#ffffff'), i * 220);
+}
+function confetti(p, n = 60) { emit(p.x, p.y + 2, p.z, { c: [0xffd23f, 0xff5a8a, 0x6cc7ff, 0x9dff7a, 0xffffff], n, size: 0.45, spd: 6, up: 9, grav: -9, life: 1.8 }); }
+function growIn(obj, dur = 1.8) {
+  obj.visible = true; obj.scale.y = 0.02;
+  const p = obj.position;
+  tween(dur, k => { obj.scale.y = Math.max(0.02, ease(k)); if (Math.random() < 0.5) emit(p.x + rand(-3, 3), p.y + 0.5, p.z + rand(-3, 3), { c: [0xc8b48a, 0xb59a68], size: 0.9, spd: 2, up: 2, life: 0.8 }); }, () => { obj.scale.y = 1; sfx.thud(); });
+}
+function godRays(p, dur = 6) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(5, 12, 90, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff1a0, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+  m.position.set(p.x, p.y + 45, p.z); scene.add(m);
+  tween(dur, k => { m.material.opacity = Math.sin(k * Math.PI) * 0.12; m.rotation.y += 0.004; }, () => { scene.remove(m); m.geometry.dispose(); });
+}
+function fireworks(p, secs) {
+  let t = 0;
+  tween(secs, k => {
+    const now = k * secs;
+    if (now - t > 0.45) {
+      t = now;
+      const x = p.x + rand(-18, 18), y = PLAT + rand(22, 34), z = p.z + rand(-18, 18), c = pick([0xffd23f, 0xff5a8a, 0x6cc7ff, 0x9dff7a, 0xff8a3a]);
+      emit(x, y, z, { c: [c, 0xffffff], n: 50, size: 0.8, spd: 9, up: 2, grav: -5, life: 1.4 });
+      blip({ f: 90, f2: 40, d: 0.25, type: 'sine', v: 0.15 });
+    }
+  });
+}
+const above = (p, y = 0) => new V3(p.x, heightAt(p.x, p.z) + y, p.z);
+const creaturePos = () => creature.pos;
+function crane(fromAt, toAt, dur = 6) {
+  return () => {
+    const a = fromAt(), b = toAt();
+    const dir = new V3(b.x - a.x, 0, b.z - a.z).normalize();
+    return { kind: 'move', from: pose(new V3(a.x - dir.x * 14, heightAt(a.x, a.z) + 7, a.z - dir.z * 14), above(a, 2)), to: pose(new V3(b.x - dir.x * 24, (b.y ?? heightAt(b.x, b.z)) + 9, b.z - dir.z * 24), new V3(b.x, (b.y ?? heightAt(b.x, b.z)) + 1, b.z)), dur };
+  };
+}
+
+/* --- The story --- */
+function playIntro() {
+  const T = temple.pos, crowd = new V3(YARD_GATE.x, PLAT, YARD_GATE.z + 6), H = new V3(YARD_MID.x, PLAT + 17, YARD_MID.z);
+  const home = creature.home, away = Math.atan2(home.x - VILLAGE.x, home.z - VILLAGE.z);
+  playCine([
+    { music: 'intro', title: 'BLACK & WHITEISH', sub: 'a god game, give or take', wait: 4.5, shot: { kind: 'orbit', at: () => ({ x: 0, y: 0, z: 0 }), r: [250, 220], h: [170, 140], ang: [0.4, 0.75], look: 0, dur: 9, linear: true } },
+    narr('Once upon a time, on an island nobody had bothered to name...', { shot: view(() => above(LANDMARK.cape), { r: 70, h: 30, turn: 0.5, dur: 9 }) }),
+    narr('...the people of a tiny village prayed very, very hard for a god.', { do: () => gatherAt(crowd, 40), shot: view(() => crowd, { r: 34, h: 14, ang: away + Math.PI + 0.4, turn: 0.25 }) }),
+    narr('Day and night. Mostly day. They are not great at staying up.', { shot: view(() => crowd, { r: 15, h: 4, ang: away + Math.PI - 0.3, turn: 0.2, look: 1.2 }) }),
+    { do: () => {
+        cineHand = { pos: new V3(H.x, 95, H.z), scale: 6.5 };
+        tween(5.5, k => { cineHand.pos.y = lerp(95, H.y, ease(k)); }, () => { sfx.chime(); confetti(cineHand.pos, 50); });
+        godRays(new V3(H.x, PLAT, H.z), 10);
+      }, fx: true, wait: 2.2, shot: { kind: 'move', to: pose(new V3(crowd.x + 5, PLAT + 2, crowd.z + 17), new V3(H.x, H.y + 3, H.z)), dur: 4 } },
+    narr('And then, one morning, their prayers were answered.', { wait: 2.5 }),
+    { who: 'crowd', say: 'Is that... a HAND?', do: () => cheer(crowd, ['OOOH', 'A HAND!', 'ooh', 'is it?']), fx: true },
+    narr('They got <b>you</b>. A large, floating, slightly glowing hand.', { shot: () => ({ kind: 'orbit', at: () => cineHand ? cineHand.pos : H, r: [42, 36], h: [-6, 0], ang: [0.3, 0.9], look: 0, dur: 7, linear: true }) }),
+    { title: 'LAND 1', sub: 'LITTLE GULLIBLE', wait: 3.5, do: () => { cineHand = null; }, shot: view(() => above(VILLAGE), { r: 60, h: 34, turn: 0.35, dur: 10 }) },
+    line('mabel', 'Ooh, a god! Bit of a hand, isn\'t it? Lovely, though. Very clean nails.'),
+    { who: 'crowd', say: 'I was expecting more of a beard.', shot: view(() => crowd, { r: 12, h: 3, turn: -0.2 }) },
+    narr('Little Gullible had four houses, no store, no workshop, and one very nervous sheep.', { shot: view(() => above(VILLAGE), { r: 40, h: 20, turn: 0.3 }) }),
+    { who: 'dolly', say: 'baa?', shot: view(() => sheep.pos, { r: 9, h: 3, look: 1 }) },
+    { do: () => {
+        const a = away + rand(-0.4, 0.4); creature.abort();
+        creature.pos.set(home.x + Math.sin(a) * 26, 0, home.z + Math.cos(a) * 26); creature.pos.y = heightAt(creature.pos.x, creature.pos.z);
+        creature.action = 'wander'; creature.thought = 'Ooh. A village.';
+        creature.plan = [go(() => home, 2), act(4, 'graze'), call(e => e.finish('wander'))];
+      }, shot: view(() => above(home, 2), { r: 36, h: 12, ang: away + Math.PI, turn: 0.15, look: 3 }), wait: 0.6 },
+    narr('But what\'s this?', { do: () => sfx.thud(), fx: true }),
+    { who: 'cow', say: 'MOOOOOOOOO!', do: () => { sfx.thud(); emit(creature.pos.x, creature.pos.y + 3, creature.pos.z, { c: [0x4f9a3a, 0x63ad47, 0x8a5a33], n: 60, size: 0.7, spd: 7, up: 6, life: 1.2 }); }, fx: true, shot: () => ({ kind: 'orbit', at: creaturePos, r: [22, 17], h: [5, 6], ang: [away + Math.PI + 0.5, away + Math.PI + 0.2], look: 4, dur: 6, linear: true }) },
+    narr('A wild creature! Enormous. Lost. Chewing on a fence it brought from home.', { shot: () => ({ kind: 'orbit', at: creaturePos, r: [13, 11], h: [4, 4.5], ang: [away + Math.PI - 0.3, away + Math.PI - 0.6], look: 4, dur: 8, linear: true }) }),
+    line('mabel', 'Well, don\'t just float there, dearie. Go and make friends!'),
+    narr('Rub it <b>slowly</b> with your hand until it trusts you. Do <b>not</b> slap it. Yet.', { shot: () => ({ kind: 'orbit', at: creaturePos, r: [26, 24], h: [11, 12], ang: [away + Math.PI, away + Math.PI + 0.2], look: 3, dur: 8, linear: true }) }),
+  ], () => {
+    introDone = true;
+    for (const v of world.villagers) if (v.faction === 'mine') v.plan.length = 0;
+    $('#hud').hidden = false;
+    if (innerWidth < 760) {
+      $('#cpanel').classList.add('closed'); $('#cToggle').textContent = '▴';
+      $('#qlog').classList.add('closed'); $('#qToggle').textContent = '▴';
+    }
+  }, { returnTo: () => ({ x: creature.pos.x, z: creature.pos.z, dist: 70, pitch: 0.85 }) });
+}
+// Three gentle strokes and it's yours.
+function askName() {
+  const away = () => Math.atan2(creature.pos.x - VILLAGE.x, creature.pos.z - VILLAGE.z) + Math.PI;
+  playCine([
+    narr('It sniffs your hand. It sneezes. It has decided you are its mum now.', { music: 'happy', shot: () => ({ kind: 'orbit', at: creaturePos, r: [14, 11], h: [5, 4], ang: [away() + 0.6, away() + 0.2], look: 4, dur: 7, linear: true }), do: () => { const h = creature.headWorld(); emit(h.x, h.y + 1, h.z, { c: [0xff5a8a, 0xff8ab0], n: 30, size: 1, spd: 3, up: 4, grav: 0.5, life: 1.6 }); }, fx: true }),
+    { who: 'narrator', say: 'Every creature needs a name. What will you call it?', input: 'Sir Moosalot', choice: [['▶ THAT\'S ITS NAME', v => { creature.name = (v || '').trim().slice(0, 18) || 'Sir Moosalot'; }]] },
+    { do: () => creature.tame() },
+    { wait: 3, keepCard: true, do: () => showCard(creature.name.toUpperCase(), 'your creature', 3), fx: true, shot: () => ({ kind: 'orbit', at: creaturePos, r: [16, 18], h: [6, 8], ang: [away(), away() + 0.6], look: 4, dur: 9, linear: true }) },
+    narr('It will learn from everything you do. Stroke it when it\'s good. Slap it when it\'s not. It sleeps in the temple yard.'),
+    line('mabel', 'Lovely! Now, about my pantry, dearie...'),
+  ]);
+}
+function revealDoubtsby() {
+  revealed = true;
+  $('#goal').hidden = false;
+  doubtLabel.userData.hidden = false;
+  NPC.mayor.show();
+  if (ship) { ship.mesh.visible = true; NPC.captain.show(); }
+  const D = above(DOUBT, 0), mid = new V3((VILLAGE.x + DOUBT.x) / 2, 0, (VILLAGE.z + DOUBT.z) / 2);
+  const dir = new V3(DOUBT.x - VILLAGE.x, 0, DOUBT.z - VILLAGE.z).normalize();
+  playCine([
+    narr('Little Gullible was doing rather well. Which, of course, got noticed.', { music: 'reveal', shot: view(() => above(VILLAGE), { r: 50, h: 26, turn: 0.2, dur: 6 }) }),
+    { shot: { kind: 'move', from: pose(new V3(VILLAGE.x + dir.x * 20, 40, VILLAGE.z + dir.z * 20), new V3(mid.x, 30, mid.z)), to: pose(new V3(mid.x + dir.x * 30, 80, mid.z + dir.z * 30), new V3(DOUBT.x, 5, DOUBT.z)), dur: 7 }, shotWait: true, do: () => sfx.chime(), fx: true },
+    { title: 'DOUBTSBY', sub: 'population: unconvinced', wait: 3.2, shot: view(() => D, { r: 52, h: 26, turn: 0.3 }) },
+    { who: 'brenda', say: 'Who\'s that, then?', shot: view(() => D, { r: 16, h: 4, turn: 0.15, look: 1.5 }) },
+    { who: 'skeptic', say: 'Some hand.' },
+    line('mayor', 'Pfft.'),
+    narr('They have heard all about you. They are not impressed. Rude.', { shot: view(() => D, { r: 36, h: 16, turn: 0.3 }) }),
+    ship && { who: 'captain', say: 'AHOY! UP HERE! WELL, DOWN HERE! BY THE BOAT!', shot: view(() => ship.pos, { r: 30, h: 11, turn: 0.3, look: 2 }) },
+    ship && narr('And on the coast between the two towns, a ship called the <b>Soggy Biscuit</b> has run aground.'),
+    line('mayor', 'If you want something, you know where to find me. Not clapping.'),
+    narr('Talk to <b>Mayor Pfft</b>. Win Doubtsby over, and this whole land is yours.', { shot: view(() => D, { r: 70, h: 40, turn: 0.4 }) }),
+  ]);
+}
+function playLandComplete() {
+  const D = above(DOUBT, 0);
+  playCine([
+    narr('And then, quite suddenly, Doubtsby believed.', { music: 'victory', do: () => fireworks(DOUBT, 16), fx: true, shot: view(() => D, { r: 42, h: 18, turn: 0.4, dur: 10 }) }),
+    line('mayor', 'Fine. FINE. That was quite good, actually.'),
+    { who: 'brenda', say: 'I always believed.', shot: view(() => D, { r: 14, h: 4, turn: 0.2 }) },
+    line('mayor', 'No you didn\'t, Brenda.'),
+    narr('And so the whole island believed in you. Mostly.', { shot: { kind: 'orbit', at: () => ({ x: 0, y: 0, z: 0 }), r: [240, 230], h: [150, 160], ang: [1.2, 1.6], look: 0, dur: 10, linear: true } }),
+    { title: 'LAND 1 COMPLETE', sub: 'well done, Your Enormousness', wait: 4 },
+  ], () => endGame(true));
+}
+
+/* --- Quest scenes: how you get them, how you hand them in --- */
+function ask(q, text) {
+  return { who: q.giver, say: text, shot: face(q.giver), choice: [
+    ['▶ I\'LL DO IT', () => { q.stage = 'active'; q.onAccept?.(q); cineThen([{ title: '📜 NEW QUEST', sub: `${q.title} · ${q.objective(q).replace(/<[^>]+>/g, '')}`, wait: 3, do: () => sfx.chime(), fx: true }]); }],
+    ['MAYBE LATER', () => {}]] };
+}
+const prize = q => card('✅ QUEST COMPLETE', `${q.title}${q.prize ? ' · ' + q.prize : ''}`, 3.2);
+const finishStep = (q, x = {}) => ({ do: () => completeQuest(q), ...x });
+function openTalk(npc) {
+  if (state !== 'play' || !npc || npc.hidden) return;
+  const q = npc.quests.find(q => q.stage === 'turnin') || npc.quests.find(q => q.stage === 'offer') || npc.quests.find(q => q.stage === 'active');
+  if (!q) { playCine([line(npc.key, pick(npc.chat))]); return; }
+  if (q.stage === 'offer') playCine([...q.open(q), ask(q, q.ask)]);
+  else if (q.stage === 'active') playCine([line(npc.key, q.nag(q))]);
+  else playCine([...q.finish(q), prize(q)]);
+}
 
 function setupCampaign() {
   const A = (dx, dz) => at(dx, dz);
@@ -2486,81 +2923,199 @@ function setupCampaign() {
     objective: () => `Rub the wild creature slowly with your hand (${creature.tameN}/3)`,
     done: () => !creature.wild, auto: true, target: () => creature.pos });
 
-  Q({ id: 'pantry', giver: 'mabel', title: 'Granny Mabel\'s Pantry', requires: () => doneQ('tame'),
-    offer: () => `<p>Ooh! A god! Lovely, dearie. Sit down, have a biscuit. Oh, you're a hand. Never mind.</p><p>Listen: we've got nowhere to keep anything. Gary keeps his turnips in his hat. <b>Drop 30 wood on the store plot</b> and the lads will knock up a store. Uproot a few trees, they won't mind. Trees never mind.</p>`,
-    deliver: { kind: 'wood', need: 30, at: () => store.pos, r: 5.5 },
+  Q({ id: 'pantry', giver: 'mabel', title: 'Granny Mabel\'s Pantry', requires: () => doneQ('tame'), prize: '🍞 Food miracle unlocked',
+    deliver: { kind: 'wood', need: 30, at: () => store.pos, r: 5.5 }, target: () => store.pos,
     objective: q => `Drop wood on the store plot (${q.got}/30)`,
-    nag: () => '<p>Thirty wood, dearie. Trees are the tall green things. Pick one up and drop it on the plot.</p>',
-    thanks: () => '<p>A store! Gary, take the turnips out of your hat. GARY.</p><p>Here\'s a little something, the <b>Food miracle</b>: press <b>1</b>, click the ground, and bread falls out of the sky. Don\'t ask where it comes from.</p>',
+    open: () => [
+      line('mabel', 'Ooh! A god! Sit down, have a biscuit. Oh. You\'re a hand. Never mind.', { music: 'happy' }),
+      { who: 'mabel', say: 'See that patch of dirt with the sign? That\'s where our store is meant to go.', shot: view(() => above(store.pos), { r: 16, h: 8 }) },
+      { who: 'mabel', say: 'At the moment we keep everything in our pockets. Gary keeps his turnips in his hat.', shot: view(() => above(store.pos), { r: 12, h: 5, offset: 1.4 }) },
+      line('gary', 'They\'re very safe in there.'),
+      line('mabel', 'Drop <b>30 wood</b> on the plot and the lads will knock it up. Trees are the tall green things.'),
+    ],
+    ask: 'Will you help an old lady out, dearie?',
+    nag: () => 'Thirty wood, dearie. Pick up a tree and drop it on the plot. They come right out of the ground.',
+    finish: q => [
+      line('mabel', 'Thirty wood! Stand back, dearie, this is the exciting bit.', { music: 'happy' }),
+      finishStep(q, { shot: view(() => above(store.pos), { r: 19, h: 9, turn: 0.6 }), wait: 2.6 }),
+      narr('And lo, there was a store. It was mostly a shed. But it was <i>their</i> shed.'),
+      line('mabel', 'Gary, take the turnips out of your hat.'),
+      line('gary', 'No.'),
+      line('mabel', 'Here\'s a little something for you: the <b>Food miracle</b>. Press <b>1</b>, point, and bread falls out of the sky. Don\'t ask where from.'),
+    ],
     reward: () => { buildStore(); unlock('food', '🍞 the Food miracle (1)'); R.prayer = Math.min(PRAYER_MAX, R.prayer + 30); } });
 
-  Q({ id: 'sheep', giver: 'gary', title: 'Test Your Might', requires: () => doneQ('pantry'),
-    offer: () => '<p>Oi. You. Big hand. Everyone keeps SAYING you\'re a god. My cousin said he was a god once. Turned out he just had big hands.</p><p>See that island? That\'s <b>Dolly</b>, my sheep. <b>Hit her with a rock. Three times.</b> She won\'t mind, she\'s very fluffy. There are rocks by my feet.</p>',
+  Q({ id: 'sheep', giver: 'gary', title: 'Test Your Might', requires: () => doneQ('pantry'), prize: '🔥 Fireball miracle unlocked',
     objective: q => `Hit Dolly the sheep with a rock (${q.got}/3)`, done: q => q.got >= 3, target: () => sheep.pos,
-    nag: q => `<p>${q.got ? 'Lucky shot. Once is luck. Do it again.' : 'Pick up a rock. Fling it at Dolly. It\'s not hard. Well, it is a bit hard. It\'s a rock.'}</p>`,
-    thanks: () => '<p>Three hits! Dolly has never been so airborne. Alright, alright, you\'re a god.</p><p>Here, have the <b>Fireball miracle</b>. I found it in a volcano. Press <b>3</b>, grab it, throw it. Not at Dolly. She\'s been through enough.</p>',
+    open: () => [
+      line('gary', 'Oi. You. Big hand. Everyone keeps saying you\'re a god.'),
+      line('gary', 'My cousin said he was a god once. Turned out he just had very big hands.'),
+      { who: 'gary', say: 'See that island? That\'s Dolly. Best sheep I\'ve got. Only sheep I\'ve got.', shot: view(() => sheep.pos, { r: 12, h: 5, look: 1 }) },
+      { who: 'dolly', say: 'baa.', shot: view(() => sheep.pos, { r: 7, h: 2.5, look: 1 }) },
+      line('gary', 'Hit her with a rock. <b>Three times.</b> She won\'t mind. She\'s very fluffy.'),
+      { who: 'dolly', say: 'BAA?!', shot: view(() => sheep.pos, { r: 6, h: 2, look: 1, turn: -0.2 }) },
+    ],
+    ask: 'The rocks are by my feet. Well? Go on.',
+    nag: q => q.got ? 'Lucky shot. Once is luck. Do it again.' : 'Pick up a rock. Fling it at Dolly. It\'s not hard. Well. It is a bit hard. It\'s a rock.',
+    finish: q => [
+      line('gary', 'Three hits! She\'s never been so airborne in her life.'),
+      { who: 'dolly', say: '...baa.', shot: view(() => sheep.pos, { r: 7, h: 2.5, look: 1 }) },
+      narr('Dolly would later describe this as "a lot".'),
+      line('gary', 'Alright, alright. You\'re a god. Here, I found this in a volcano.'),
+      finishStep(q),
+      line('gary', 'That\'s the <b>Fireball miracle</b>. Press <b>3</b>, grab it, throw it. Not at Dolly. She\'s been through enough.'),
+    ],
     reward: () => { unlock('fire', '🔥 the Fireball miracle (3)'); R.prayer = Math.min(PRAYER_MAX, R.prayer + 45); } });
 
-  Q({ id: 'thirsty', giver: 'pip', title: 'Thirsty Turnips', requires: () => doneQ('sheep'),
-    offer: () => '<p>Howdy, sky person, welcome to Turnip End. The turnips are thirsty. I\'d water them myself, but the well\'s got Gary in it.</p><p>Here, I found a <b>rain dance</b> in a book. You do it: press <b>2</b> and <b>make it rain on my fields</b>, right here at Turnip End.</p>',
-    onAccept: () => { unlock('rain', '🌧️ the Rain miracle (2)'); R.prayer = Math.max(R.prayer, COST.rain + 5); },
+  Q({ id: 'thirsty', giver: 'pip', title: 'Thirsty Turnips', requires: () => doneQ('sheep'), prize: '+60 food',
     objective: () => 'Make it rain on Pip\'s fields at Turnip End', done: () => flags.rainedOnField, target: () => pipFields[0]?.pos,
-    nag: () => '<p>Press <b>2</b>, then click on the fields. Rain. On the turnips. Go on.</p>',
-    thanks: () => '<p>Look at \'em drink! I think one of them just said thank you. Turnips can\'t talk. That\'s how good the rain was.</p><p>Have <b>60 food</b>, on the house.</p>',
+    onAccept: () => { unlock('rain', '🌧️ the Rain miracle (2)'); R.prayer = Math.max(R.prayer, COST.rain + 5); },
+    open: () => [
+      { who: 'pip', say: 'Howdy, sky person. Welcome to Turnip End.', music: 'happy', shot: view(() => above(LANDMARK.farm), { r: 34, h: 15, turn: 0.45 }) },
+      { who: 'pip', say: 'The turnips are thirsty. Look at \'em. Parched.', shot: view(() => above(pipFields[0].pos), { r: 11, h: 4, look: 0.5 }), do: () => { for (const f of pipFields) floatText(f.pos.x, f.pos.y + 2, f.pos.z, pick(['water...', 'so thirsty', 'help']), '#ccc'); }, fx: true },
+      line('pip', 'I\'d water them myself, but the well\'s got Gary in it.'),
+      line('gary', 'It\'s nice down here.'),
+      line('pip', 'I found a <b>rain dance</b> in a book. You do it. Press <b>2</b> and make it rain on my fields.'),
+    ],
+    ask: 'Help a farmer out?',
+    nag: () => 'Press <b>2</b>, then click on my fields. Rain. On the turnips. Go on.',
+    finish: q => [
+      { who: 'pip', say: 'Look at \'em drink!', music: 'happy', shot: view(() => above(pipFields[0].pos), { r: 12, h: 5, look: 0.5 }),
+        do: () => { [523, 659, 784, 659, 880, 784, 1047].forEach((f, i) => blip({ f, d: 0.22, type: 'sine', v: 0.06, delay: i * 0.22 })); for (const f of pipFields) for (let i = 0; i < 4; i++) setTimeout(() => floatText(f.pos.x + rand(-3, 3), f.pos.y + 2, f.pos.z + rand(-2, 2), '♪', '#9dff7a'), i * 300); }, fx: true },
+      line('pip', 'I think one of them just said thank you. Turnips can\'t talk. That\'s how good the rain was.'),
+      finishStep(q),
+      line('pip', 'Have <b>60 food</b>. On the house. Well. On the barn.'),
+    ],
     reward: () => { R.food += 60; for (const f of [...world.fields, ...pipFields]) { f.crop = 30; f.refresh(); } } });
 
-  Q({ id: 'workshop', giver: 'barry', title: 'Barry\'s Big Idea', requires: () => doneQ('thirsty'),
-    offer: () => '<p>Alright, guv? Barry. Builder. I\'ve had an idea. It\'s called a <b>WORKSHOP</b>. It\'s like a house, but for making bits of house.</p><p>Bring <b>40 wood to the workshop plot</b>. You can grab wood straight out of the store now. Handy, that.</p>',
-    deliver: { kind: 'wood', need: 40, at: () => workshop.pos, r: 5 },
+  Q({ id: 'workshop', giver: 'barry', title: 'Barry\'s Big Idea', requires: () => doneQ('thirsty'), prize: '🏗️ scaffolds unlocked',
+    deliver: { kind: 'wood', need: 40, at: () => workshop.pos, r: 5 }, target: () => workshop.pos,
     objective: q => `Drop wood on the workshop plot (${q.got}/40)`,
-    nag: () => '<p>Forty wood, guv. Grab the store for a bundle, or yank up a tree.</p>',
-    thanks: () => '<p>Lovely job. Now, the workshop makes <b>scaffolds</b>, slowly, cos I\'m on my tea break a lot.</p><p>Grab one and drop it on flat ground: <b>that\'s a house plan</b>. Stack more scaffolds on the same plan for bigger stuff. Builders do the rest.</p>',
+    open: () => [
+      line('barry', 'Alright, guv? Barry. Builder.'),
+      line('barry', 'I\'ve had an idea. It\'s called a <b>WORKSHOP</b>.'),
+      narr('There was a long pause.', { wait: 0.6 }),
+      line('barry', 'It\'s like a house. But for making bits of house.'),
+      { who: 'barry', say: 'Forty wood on that plot there. Grab it out of the store, handy like that.', shot: view(() => above(workshop.pos), { r: 14, h: 7 }) },
+    ],
+    ask: 'Deal?',
+    nag: () => 'Forty wood, guv. Grab the store for a bundle, or yank up a tree.',
+    finish: q => [
+      line('barry', 'Lovely job. Watch this.', { music: 'happy' }),
+      finishStep(q, { shot: view(() => above(workshop.pos), { r: 17, h: 8, turn: 0.6 }), wait: 2.6 }),
+      line('barry', 'She makes <b>scaffolds</b>. Slowly, mind, on account of my tea breaks.'),
+      line('barry', 'Drop one on flat ground and that\'s a house plan. Stack \'em up on the same plan for bigger stuff.'),
+    ],
     reward: () => { buildWorkshop(); unlock('scaffolds', '🏗️ scaffolds from the workshop'); } });
 
-  Q({ id: 'nan', giver: 'nan', title: 'A Roof for Nan', requires: () => doneQ('hat'),
-    offer: () => `<p>${flags.smashed ? 'My house fell down. Somebody threw a rock at it. I\'m not saying it was you. It was you.' : 'My house blew away. Well. It was more of a tent. The tent was mostly a blanket. The blanket was mostly Gary\'s.'}</p><p><b>Build a house</b>: drop a scaffold from the workshop on some flat ground, and let the builders get on with it.</p>`,
-    onAccept: q => { q.base = flags.housesBuilt; },
-    objective: () => 'Build a house (drop a scaffold on flat ground)', done: q => flags.housesBuilt > (q.base ?? 0),
-    nag: () => '<p>A scaffold from the workshop, dropped on flat ground. The builders bring the wood.</p>',
-    thanks: () => `<p>A house! With walls! I've knitted ${cname()} a <b>jumper</b> to say thank you. It took eleven sheep. Don't tell Gary.</p>`,
-    reward: () => { creature.jumper.visible = true; R.prayer = Math.min(PRAYER_MAX, R.prayer + 30); } });
-
-  Q({ id: 'hat', giver: 'dave', title: 'Dave\'s Lucky Hat', requires: () => doneQ('workshop'),
-    offer: () => '<p>Hi. Dave. The wind took my lucky hat to the <b>top of Mount Grumble</b>. This is the path. It goes up. A lot. I\'m not lucky without it. Look at me. Look how unlucky I am. A bird just did something on me.</p><p>Could you <b>bring my hat back</b>? Just pick it up and drop it near me.</p>',
+  Q({ id: 'hat', giver: 'dave', title: 'Dave\'s Lucky Hat', requires: () => doneQ('workshop'), prize: '+50 prayer',
     objective: () => 'Fetch Dave\'s hat from the top of Mount Grumble', done: q => q.got >= 1, target: () => hatItem?.pos,
-    nag: () => '<p>It\'s the brown one. On the mountain. The very top. Of the mountain.</p>',
-    thanks: () => '<p>MY HAT! I can feel the luck coming back already. A coin! No, a beetle. Still. Lucky beetle.</p><p>Have <b>50 prayer</b>. I\'ve been saving it.</p>',
+    open: () => [
+      line('dave', 'Hi. Dave.'),
+      line('dave', 'The wind took my lucky hat.'),
+      narr('All the way to the very top of <b>Mount Grumble</b>.', { shot: crane(() => NPC.dave.pos, () => hatItem.pos, 6), shotWait: true, do: () => { const p = hatItem.pos; tween(4, () => { if (Math.random() < 0.3) emit(p.x, p.y + 1, p.z, { c: 0xffe27a, size: 0.6, spd: 1, up: 1, grav: 0, life: 0.6 }); }); }, fx: true }),
+      line('dave', 'I\'m not lucky without it. A bird just did something on me.'),
+      line('dave', '...see?', { do: () => { const p = NPC.dave.pos; emit(p.x, p.y + 3.4, p.z, { c: 0xffffff, n: 8, size: 0.35, spd: 0.5, up: -2, grav: -6, life: 0.6 }); blip({ f: 900, f2: 200, d: 0.2, type: 'sine', v: 0.08 }); }, fx: true }),
+    ],
+    ask: 'Could you bring it back? Just drop it near me.',
+    nag: () => 'It\'s the brown one. On the mountain. The very top. Of the mountain.',
+    finish: q => [
+      line('dave', 'MY HAT!', { music: 'happy', do: () => confetti(above(NPC.dave.pos, 1)), fx: true }),
+      line('dave', 'I can feel the luck coming back already. A coin! No. A beetle. Still. Lucky beetle.'),
+      finishStep(q),
+      line('dave', 'Have <b>50 prayer</b>. I\'ve been saving it in a sock.'),
+    ],
     reward: () => { R.prayer = Math.min(PRAYER_MAX, R.prayer + 50); } });
 
-  Q({ id: 'cowschool', giver: 'prof', title: 'Cow School', requires: () => doneQ('nan'),
-    offer: () => `<p>Ahem. Professor Hoofington, creature behaviourist and part-time druid. These stones help me think. ${cname()} has the manners of a goat. A very large goat.</p><p><b>Teach it to fetch wood</b>: when it carries a tree to the store, <b>stroke it</b>. Repeat until it understands. Creatures that carry logs are creatures that do not eat Dave.</p>`,
+  Q({ id: 'nan', giver: 'nan', title: 'A Roof for Nan', requires: () => doneQ('hat'), prize: '🧶 a jumper for your creature',
+    onAccept: q => { q.base = flags.housesBuilt; },
+    objective: () => 'Build a house (drop a scaffold on flat ground)', done: q => flags.housesBuilt > (q.base ?? 0), target: () => workshop.pos,
+    open: () => [
+      line('nan', flags.smashed ? 'My house fell down. Somebody threw a rock at it.' : 'My house blew away. Well. It was more of a tent.'),
+      line('nan', flags.smashed ? 'I\'m not saying it was you. It was you.' : 'The tent was mostly a blanket. The blanket was mostly Gary\'s.'),
+      line('gary', flags.smashed ? 'Not my blanket this time.' : 'I want it back.'),
+      line('nan', 'Build me a <b>house</b>, dear. A scaffold from the workshop, on some flat ground. The builders do the rest.'),
+    ],
+    ask: 'Would you, love?',
+    nag: () => 'A scaffold from the workshop, dropped on flat ground. The builders bring the wood. Lovely.',
+    finish: q => [
+      { who: 'nan', say: 'A house! With WALLS!', music: 'happy', shot: view(() => above(flags.lastHouse || NPC.nan.pos), { r: 16, h: 7, turn: 0.4 }) },
+      line('nan', 'I\'ve knitted your creature a <b>jumper</b> to say thank you.'),
+      finishStep(q, { who: 'cow', say: 'Moo!', shot: () => ({ kind: 'orbit', at: creaturePos, r: [14, 12], h: [5, 5], ang: [creature.heading + 0.8, creature.heading + 0.3], look: 4, dur: 6, linear: true }) }),
+      line('nan', 'It took eleven sheep.'),
+      line('gary', 'ELEVEN?!'),
+    ],
+    reward: () => { creature.jumper.visible = true; R.prayer = Math.min(PRAYER_MAX, R.prayer + 30); } });
+
+  Q({ id: 'cowschool', giver: 'prof', title: 'Cow School', requires: () => doneQ('nan'), prize: '🐄 your creature grew',
     onAccept: () => { creature.op.fetch = Math.max(creature.op.fetch, 0.2); creature.boredom = 1; },
     objective: () => `Stroke ${cname()} while it fetches wood (${Math.round(clamp((creature.op.fetch - 0.2) / 0.4, 0, 1) * 100)}%)`,
     done: () => creature.op.fetch >= 0.6, target: () => creature.pos,
-    nag: () => '<p>Wait until it picks up a tree and walks it to the store. THEN rub it gently. Timing is everything. Like comedy. Or bee keeping.</p>',
-    thanks: () => '<p>Splendid! It fetched, you stroked, it learned. Science! Here is its <b>diploma</b>. It ate the diploma. That also counts as learning.</p><p>Well-taught creatures <b>grow</b>, by the way.</p>',
-    reward: () => { creature.size = Math.min(2.4, creature.size + 0.3); } });
+    open: () => [
+      { who: 'prof', say: 'Ahem. Professor Hoofington. Creature behaviourist and part-time druid.', shot: view(() => above(LANDMARK.stones), { r: 26, h: 12, turn: 0.5 }) },
+      line('prof', 'These stones help me think. Mostly about lunch.'),
+      { who: 'prof', say: () => `Your ${cname()} has the manners of a goat. A very large goat.`, shot: () => ({ kind: 'orbit', at: creaturePos, r: [16, 14], h: [6, 6], ang: [creature.heading + 0.9, creature.heading + 0.5], look: 4, dur: 6, linear: true }) },
+      line('prof', 'Teach it to fetch wood. When it carries a tree to the store, <b>stroke it</b>. Repeat until it understands.'),
+      line('prof', 'Creatures that carry logs are creatures that do not eat Dave.'),
+      line('dave', 'Appreciated.'),
+    ],
+    ask: 'Shall we begin the lesson?',
+    nag: () => 'Wait until it carries a tree to the store, THEN rub it gently. Timing is everything. Like comedy. Or bee keeping.',
+    finish: q => [
+      line('prof', 'Splendid! It fetched, you stroked, it learned. Science!', { music: 'happy' }),
+      finishStep(q, { who: 'cow', say: 'MOO!', shot: () => ({ kind: 'orbit', at: creaturePos, r: [16, 18], h: [6, 7], ang: [creature.heading + 0.6, creature.heading + 1], look: 4, dur: 6, linear: true }) }),
+      line('prof', 'Here is its diploma.'),
+      narr('It ate the diploma.', { shot: () => ({ kind: 'orbit', at: creaturePos, r: [10, 9], h: [4, 4], ang: [creature.heading + 0.4, creature.heading + 0.2], look: 4.5, dur: 5, linear: true }), do: () => { creature.abort(); creature.plan = [act(2.5, 'chomp'), call(e => e.finish('graze'))]; creature.action = 'graze'; sfx.chomp(); }, fx: true }),
+      line('prof', 'That also counts as learning.'),
+    ],
+    reward: () => { const s0 = creature.size; tween(1.5, k => { creature.size = Math.min(2.4, s0 + 0.3 * ease(k)); }); } });
 
   Q({ id: 'convert', giver: 'mayor', title: 'Win Over Doubtsby', requires: () => revealed,
-    offer: () => '<p>Pfft. So you\'re the "god". We don\'t believe in gods in Doubtsby. We believe in Brenda. Brenda is very sensible.</p><p>If you want us, <b>impress us</b>: miracles, monsters, something shiny. We\'ll be over here. Not clapping.</p>',
-    objective: () => `Impress Doubtsby (${Math.floor(impress)}%)`, done: () => converted, auto: true,
-    nag: () => '<p>Still not clapping.</p>' });
+    objective: () => `Impress Doubtsby (${Math.floor(impress)}%)`, done: () => converted, auto: true, target: () => DOUBT,
+    open: () => [
+      line('mayor', 'Pfft. So you\'re the "god".'),
+      line('mayor', 'We don\'t believe in gods in Doubtsby. We believe in Brenda.'),
+      { who: 'brenda', say: 'Hi.', shot: view(() => above(DOUBT), { r: 12, h: 4 }) },
+      line('mayor', 'Brenda is very sensible.'),
+      line('mayor', 'If you want us, <b>impress us</b>. Miracles. Monsters. Something shiny.'),
+    ],
+    ask: 'We\'ll be over here. Not clapping.',
+    nag: () => 'Still not clapping.',
+    autoCine: () => playLandComplete() });
 
   if (ship) {
-    Q({ id: 'ship1', giver: 'captain', title: 'The Soggy Biscuit', requires: () => QUEST.convert.stage === 'active' || doneQ('convert'), song: SHANTY.intro,
-      offer: () => `<p>Ahoy, Your Enormousness! We ran ${SHIP_NAME} straight into your lovely beach. The hull has a hole you could drive a cow through.</p>`,
-      after: () => `<p>Fetch us <b>80 wood</b> and we'll patch her up. Drop trees or bundles of wood right on the ship.</p>`,
-      deliver: { kind: 'wood', need: 80, at: () => ship.pos, r: 7.5 }, auto: true, target: () => ship.pos,
+    const S = () => ship.pos;
+    Q({ id: 'ship1', giver: 'captain', title: 'The Soggy Biscuit', requires: () => QUEST.convert.stage === 'active' || doneQ('convert'),
+      deliver: { kind: 'wood', need: 80, at: S, r: 7.5 }, auto: true, target: S,
       objective: q => `Bring wood to the ship (${q.got}/80)`,
-      nag: () => '<p>Still need timber, matey! Drop it right on the ship.</p>',
-      reward: () => { ship.fixT = 18; toast(`🔨 That's enough wood! The crew of ${SHIP_NAME} gets hammering.`); } });
-    Q({ id: 'ship2', giver: 'captain', title: 'Biscuits for the Voyage', requires: () => doneQ('ship1') && ship.fixed, song: SHANTY.food,
-      offer: () => '<p>She floats! But a long voyage needs biscuits.</p>',
-      after: () => '<p>Bring us <b>60 food</b>: grab the sacks by your store, or drop bread from the sky right onto the ship. There\'s a reward in it!</p>',
-      deliver: { kind: 'food', need: 60, at: () => ship.pos, r: 7.5 }, target: () => ship.pos,
+      open: () => [
+        { who: 'captain', say: 'Ahoy, Your Enormousness!', shot: view(S, { r: 24, h: 9, turn: 0.5, look: 2 }) },
+        line('captain', 'We ran the Soggy Biscuit straight into your lovely beach.'),
+        { who: 'captain', say: 'There\'s a hole in her you could drive a cow through.', shot: view(S, { r: 9, h: 3, look: 1 }) },
+        ...SHANTY.intro.map((l, i) => ({ who: 'captain', say: '♪ ' + l, shot: i ? undefined : face('captain'), music: i ? undefined : 'shanty' })),
+        line('captain', 'Fetch us <b>80 wood</b> and we\'ll patch her up. Drop it right on the ship!'),
+      ],
+      ask: 'What d\'ye say?',
+      nag: () => 'Still need timber, matey! Drop it right on the ship.',
+      autoCine: () => playCine([{ who: 'captain', say: 'That\'s plenty! Lads, get hammering!', shot: view(S, { r: 22, h: 8, turn: 0.4, look: 2 }) }]),
+      reward: () => { ship.fixT = 18; } });
+    Q({ id: 'ship2', giver: 'captain', title: 'Biscuits for the Voyage', requires: () => doneQ('ship1') && ship.fixed, prize: '🪚 a carpenter · scaffolds twice as fast',
+      deliver: { kind: 'food', need: 60, at: S, r: 7.5 }, target: S,
       objective: q => `Bring food to the ship (${q.got}/60)`,
-      nag: () => '<p>The crew\'s tummies are rumbling. Crates of food, on the ship!</p>',
-      thanks: () => `<p>Ye've saved us! As thanks, our carpenter <b>${CARPENTER}</b> is staying on your island. He builds scaffolds <b>twice as fast</b>, and he's knocked together <b>two scaffolds</b> for you already.</p>`, thanksSong: SHANTY.bye,
+      open: () => [
+        line('captain', 'She floats! But a sailor needs his biscuits.'),
+        ...SHANTY.food.map((l, i) => ({ who: 'captain', say: '♪ ' + l, music: i ? undefined : 'shanty' })),
+        line('captain', '<b>60 food</b> for the voyage. Grab the sacks by your store, or drop bread from the sky right onto the ship.', { music: null }),
+      ],
+      ask: 'There\'s a reward in it!',
+      nag: () => 'The crew\'s tummies are rumbling. Crates of food, on the ship!',
+      finish: q => [
+        line('captain', 'Ye\'ve saved us, Your Enormousness!', { music: 'shanty' }),
+        line('captain', `Our carpenter, ${CARPENTER}, is staying with you. He builds scaffolds twice as fast.`),
+        finishStep(q, { who: 'splinters', say: 'Hello. I like wood.' }),
+        ...SHANTY.bye.map(l => ({ who: 'captain', say: '♪ ' + l })),
+        narr('And off they sailed, singing badly, into the sunset. It was eleven in the morning.', { shot: view(S, { r: 44, h: 16, turn: 0.6, dur: 10 }) }),
+      ],
       reward: grantShipReward });
   }
 }
@@ -2600,7 +3155,7 @@ function updateCampaign(dt) {
       if (q.giver) offerNote.push(NPC[q.giver].name);
     }
     if (q.stage === 'active' && (q.deliver ? q.got >= q.deliver.need : q.done(q))) {
-      if (q.auto || !q.giver) completeQuest(q);
+      if (q.auto || !q.giver) { completeQuest(q); q.autoCine?.(); }
       else { q.stage = 'turnin'; toast(`★ <b>${q.title}</b> done! Go back to <b>${NPC[q.giver].name}</b> for your reward.`, 'learn'); sfx.chime(); }
     }
   }
@@ -2614,116 +3169,7 @@ function updateCampaign(dt) {
   hatItem?.update(dt);
   updateShip(dt);
   // Once the village is on its feet, the wider world opens up.
-  if (!revealed && !cut && state === 'play' && doneQ('cowschool')) revealDoubtsby();
-}
-
-/* --- Cutscenes: the camera tours, a narrator talks --- */
-let cut = null;
-function cutscene(shots, done) {
-  if (held || heldFire) release();
-  mode = null; armed = null;
-  state = 'cutscene'; cut = { shots, i: -1, done };
-  $('#caption').hidden = false; $('#tip').style.display = 'none'; $('#hud').hidden = true;
-  $('#capSkip').textContent = introDone ? 'SKIP' : 'SKIP INTRO';
-  nextShot();
-}
-function nextShot() {
-  if (!cut) return;
-  cut.i++;
-  if (cut.i >= cut.shots.length) { endCut(); return; }
-  const s = cut.shots[cut.i], p = s.at();
-  cam.fly = { x: p.x, z: p.z, dist: s.dist, pitch: s.pitch, yaw: s.yaw };
-  $('#capText').innerHTML = s.text;
-  $('#capNext').textContent = cut.i === cut.shots.length - 1 ? '▶ LET\'S GO' : '▶ NEXT';
-  sfx.pop();
-}
-function endCut() {
-  if (!cut) return;
-  const d = cut.done; cut = null;
-  $('#caption').hidden = true;
-  state = 'play';
-  if (introDone) $('#hud').hidden = false;
-  d?.();
-  hudT = 0;
-}
-$('#capNext').onclick = e => { e.stopPropagation(); audio(); nextShot(); };
-$('#capSkip').onclick = e => { e.stopPropagation(); audio(); if (cut) { cut.i = cut.shots.length; endCut(); } };
-const housesCentre = () => { const hs = world.houses.filter(h => h.faction === 'mine'); return hs.reduce((a, h) => ({ x: a.x + h.pos.x / hs.length, z: a.z + h.pos.z / hs.length }), { x: 0, z: 0 }); };
-function playIntro() {
-  cutscene([
-    { at: () => ({ x: 0, z: 0 }), dist: 260, pitch: 0.95, text: 'Once upon a time, on an island nobody had bothered to name, some people prayed very hard for a god.' },
-    { at: () => VILLAGE, dist: 70, pitch: 0.85, text: 'They got <b>you</b>. Welcome to <b>Little Gullible</b>. Population: small. Expectations: smaller.' },
-    { at: () => temple.pos, dist: 42, pitch: 0.55, text: 'This is your <b>temple</b>. Worshippers pray here, which makes <b>prayer</b>. Prayer pays for miracles. Like money, but holier.' },
-    { at: housesCentre, dist: 38, pitch: 0.7, text: 'These are their <b>houses</b>. That\'s it. No store, no workshop, and Gary keeps his turnips in his hat.' },
-    { at: () => creature.pos, dist: 34, pitch: 0.6, yaw: Math.atan2(creature.pos.x - VILLAGE.x, creature.pos.z - VILLAGE.z), text: 'But what\'s this? A <b>wild creature</b>! Enormous, lost, and chewing on a fence it brought from home.' },
-    { at: () => creature.pos, dist: 24, pitch: 0.5, yaw: Math.atan2(creature.pos.x - VILLAGE.x, creature.pos.z - VILLAGE.z) + 0.4, text: 'Every god needs a pet. Go and make friends: <b>rub it slowly</b> with your hand until it trusts you. Do <b>not</b> slap it. Yet.' },
-  ], () => {
-    introDone = true;
-    $('#hud').hidden = false;
-    // Small screens start with the side panels folded up.
-    if (innerWidth < 760) {
-      $('#cpanel').classList.add('closed'); $('#cToggle').textContent = '▴';
-      $('#qlog').classList.add('closed'); $('#qToggle').textContent = '▴';
-    }
-    flyTo(creature.pos.x, creature.pos.z, 30);
-  });
-}
-function revealDoubtsby() {
-  revealed = true;
-  $('#goal').hidden = false;
-  doubtLabel.userData.hidden = false;
-  NPC.mayor.show();
-  if (ship) { ship.mesh.visible = true; NPC.captain.show(); }
-  const shots = [
-    { at: () => DOUBT, dist: 55, pitch: 0.7, text: 'Meanwhile, over the hill, lies <b>Doubtsby</b>. They have heard all about you. They are not impressed. Rude.' },
-  ];
-  if (ship) shots.push({ at: () => ship.pos, dist: 40, pitch: 0.6, text: 'And on the coast between the two towns, a ship has run aground. Somebody is waving. Probably at you.' });
-  shots.push({ at: () => NPC.mayor.pos, dist: 26, pitch: 0.55, text: 'Talk to <b>Mayor Pfft</b>. Win Doubtsby over with miracles and mischief, and this land is yours.' });
-  cutscene(shots, () => flyTo(VILLAGE.x, VILLAGE.z, 70));
-}
-
-/* --- Talking --- */
-function singShanty() { [392, 440, 494, 523, 494, 440, 392, 330, 392, 392, 440, 392, 330, 294, 330, 392].forEach((f, i) => blip({ f, d: 0.2, type: 'triangle', v: 0.06, delay: i * 0.21 })); }
-const verse = lines => `<div class="shanty">${lines.map(l => `♪ ${l}`).join('<br>')}</div>`;
-function showTalk(who, sub, body, btns) {
-  if (held || heldFire) release();
-  mode = null; state = 'talk';
-  $('#tip').style.display = 'none';
-  $('#talkWho').textContent = who.toUpperCase();
-  $('#talkSub').textContent = sub || '';
-  $('#talkBody').innerHTML = body;
-  $('#talkBtns').replaceChildren(...btns.map(([label, fn], i) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
-    b.style.setProperty('--c', i ? 'var(--ink)' : 'var(--gold)'); b.textContent = label; b.onclick = fn; return b;
-  }));
-  $('#talkScr').hidden = false;
-  ($('#talkBody input') || $('#talkBtns button'))?.focus();
-}
-function openTalk(npc) {
-  if (state !== 'play' || !npc || npc.hidden) return;
-  const q = npc.quests.find(q => q.stage === 'turnin') || npc.quests.find(q => q.stage === 'offer') || npc.quests.find(q => q.stage === 'active');
-  const bar = q => q.deliver ? `<div class="qbar"><u style="width:${q.got / q.deliver.need * 100}%"></u></div>` : '';
-  if (!q) { showTalk(npc.name, '', `<p>${pick(npc.chat)}</p>`, [['BYE', closeTalk]]); return; }
-  if (q.stage === 'offer') {
-    if (q.song) singShanty();
-    showTalk(npc.name, q.title, q.offer() + (q.song ? verse(q.song) : '') + (q.after?.() || ''), [
-      ['▶ I\'LL DO IT', () => { q.stage = 'active'; q.onAccept?.(q); closeTalk(); toast(`📜 <b>${q.title}</b>: ${q.objective(q)}`, 'tip'); }],
-      ['MAYBE LATER', closeTalk]]);
-  } else if (q.stage === 'active') {
-    showTalk(npc.name, q.title, q.nag(q) + bar(q), [['ON IT', closeTalk]]);
-  } else {
-    if (q.thanksSong) singShanty();
-    showTalk(npc.name, q.title, q.thanks() + (q.thanksSong ? verse(q.thanksSong) : ''), [['★ THANK YOU', () => { closeTalk(); completeQuest(q); }]]);
-  }
-}
-function closeTalk() {
-  if (state !== 'talk') return;
-  state = 'play'; $('#talkScr').hidden = true;
-}
-// Taming: three gentle strokes, then it needs a name.
-function askName() {
-  showTalk('A new friend', 'A Wild Creature Appears', '<p>It trusts you! It sniffs your hand, sneezes, and decides you are its mum now. What will you call it?</p><label class="name">ITS NAME<input id="petName" maxlength="18" value="Sir Moosalot" spellcheck="false" autocomplete="off"></label>', [
-    ['▶ THAT\'S ITS NAME', () => { creature.name = $('#petName').value.trim().slice(0, 18) || 'Sir Moosalot'; closeTalk(); creature.tame(); }]]);
+  if (!revealed && !cine && state === 'play' && doneQ('cowschool')) revealDoubtsby();
 }
 
 /* --- Quest markers (!, ★ and progress) and the quest log --- */
@@ -3071,8 +3517,9 @@ function dressIsland() {
 }
 function updateScenery(dt) {
   for (const f of animated) f(dt);
-  const show = cam.dist > 95 || state === 'title';
+  const show = (cam.dist > 95 && state === 'play') || state === 'title';
   for (const s of mapLabels) s.visible = show && !s.userData.hidden;
+  for (const s of plotSigns) s.visible = state !== 'cutscene';
 }
 
 let doubtLabel = null;
@@ -3107,7 +3554,7 @@ function setupWorld() {
   for (let i = 0; i < 5; i++) { const a = rand(6.28), r = rand(22, 26), x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r; if (!inTemple({ x, z }, 2)) new Rock(x, z); }
   const jobs = ['farmer', 'farmer', 'woodcutter', 'woodcutter', 'worshipper', 'worshipper', 'worshipper', 'builder'];
   jobs.forEach(j => { const a = rand(6.28), r = rand(2, 9); new Villager(VILLAGE.x + Math.cos(a) * r, VILLAGE.z + 6 + Math.sin(a) * r, 'mine', j); });
-  for (let i = 0; i < 6; i++) { const a = rand(6.28), r = rand(2, 8); new Villager(DOUBT.x + Math.cos(a) * r, DOUBT.z + Math.sin(a) * r, 'doubt', 'skeptic'); }
+  for (let i = 0; i < 6; i++) { const a = rand(6.28), r = rand(2, 8), v = new Villager(DOUBT.x + Math.cos(a) * r, DOUBT.z + Math.sin(a) * r, 'doubt', 'skeptic'); if (!i) v.name = 'Brenda (very sensible)'; }
   doubtLabel = mapLabel('DOUBTSBY', 'they do not believe in you', DOUBT.x, 20, DOUBT.z, true);
   creature = new Creature('Sir Moosalot');
   setupCampaign();
@@ -3271,7 +3718,7 @@ function release() {
 
 function onDown(e) {
   audio();
-  if (state === 'cutscene') { nextShot(); return; }
+  if (state === 'cutscene') { cineClick(); return; }
   if (state !== 'play') return;
   canvas.focus({ preventScroll: true });
   canvas.setPointerCapture(e.pointerId);
@@ -3394,11 +3841,10 @@ canvas.addEventListener('wheel', e => {
 
 const keys = new Set();
 addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') { if (e.key === 'Enter') $('#talkBtns button')?.click(); return; }
+  if (e.target.tagName === 'INPUT') { if (e.key === 'Enter') $('#subChoices button')?.click(); return; }
   const k = e.key.toLowerCase();
-  if (state === 'cutscene') { if (k === 'escape') $('#capSkip').click(); else if (k === ' ' || k === 'enter') { e.preventDefault(); nextShot(); } return; }
+  if (state === 'cutscene') { if (k === 'escape') skipCine(); else if (k === ' ' || k === 'enter') { e.preventDefault(); cineClick(); } return; }
   if (k === 'escape') {
-    if (state === 'talk') { if (!$('#talkBody input')) closeTalk(); return; }
     if (state === 'play' && armed) { setArmed(null); return; }
     if (state === 'play') pause(); else if (state === 'paused') resume();
     return;
@@ -3440,6 +3886,18 @@ function keyCamera(dt) {
 }
 
 function updateHand(dt) {
+  if (state === 'cutscene') {
+    ring.visible = false; $('#tip').style.display = 'none';
+    hand.g.visible = !!cineHand;
+    if (cineHand) {
+      hand.g.position.copy(cineHand.pos); hand.g.scale.setScalar(cineHand.scale);
+      hand.g.rotation.set(0.5, Math.atan2(camera.position.x - cineHand.pos.x, camera.position.z - cineHand.pos.z) + Math.PI, 0, 'YXZ');
+      hand.curl = lerp(hand.curl, 0.05, dt * 6);
+      hand.fingers.forEach(([r, j]) => { r.rotation.x = -hand.curl * 1.5; j.rotation.x = -hand.curl * 1.65; });
+      hand.m.emissive.setHex(0xffe9a0).multiplyScalar(0.6);
+    }
+    return;
+  }
   const show = state === 'play' && ptr.over && hasGround && mode !== 'rotate' && mode !== 'touch2';
   hand.g.visible = show;
   ring.visible = false;
@@ -3726,7 +4184,6 @@ function convertDoubtsby() {
   for (const h of world.houses) if (h.faction === 'doubt') h.faction = 'mine';
   emit(DOUBT.x, PLAT + 6, DOUBT.z, { c: [0xffe27a, 0xffffff], n: 120, size: 0.8, spd: 9, up: 8, grav: -5, life: 2 });
   sfx.fanfare();
-  setTimeout(() => endGame(true), 1800);
 }
 
 /* ============================================================
@@ -3848,7 +4305,8 @@ function frame(now) {
     for (const v of world.villagers) v.animate(dt);
     creature.animate(dt);
   }
-  applyCamera(dt);
+  updateTweens(dt);
+  if (state === 'cutscene' && cine) updateCine(dt); else applyCamera(dt);
   updateScenery(dt);
   updateHover();
   updateHand(dt);
@@ -3864,7 +4322,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.BW = { renderer, scene, LANDMARK, QUEST, NPC, unlocked, get revealed() { return revealed; }, get sheep() { return sheep; }, get hatItem() { return hatItem; }, get ship() { return ship; }, nextShot, openTalk, camera, tick, workshop, leash, setLeash, spotProblem, YARD_MID, inYard, get hover() { return hover; }, get mode() { return mode; }, get held() { return held; }, store, temple, get state() { return state; }, get align() { return align; }, R, world, get creature() { return creature; }, cam, hand, ptr, castMiracle, get impress() { return impress; }, set impress(v) { impress = v; } };
+window.BW = { renderer, scene, LANDMARK, QUEST, NPC, unlocked, get revealed() { return revealed; }, get sheep() { return sheep; }, get hatItem() { return hatItem; }, get ship() { return ship; }, cineClick, skipCine, get cine() { return cine; }, openTalk, camera, tick, workshop, leash, setLeash, spotProblem, YARD_MID, inYard, get hover() { return hover; }, get mode() { return mode; }, get held() { return held; }, store, temple, get state() { return state; }, get align() { return align; }, R, world, get creature() { return creature; }, cam, hand, ptr, castMiracle, get impress() { return impress; }, set impress(v) { impress = v; } };
 </script>
 </body>
 </html>

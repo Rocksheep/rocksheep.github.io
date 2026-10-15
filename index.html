@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rocksheep Arcade</title>
+<meta name="description" content="All of Rocksheep's browser games in one place. Pick a cartridge and press start.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'><rect width='16' height='16' fill='%23140b26'/><rect x='2' y='5' width='12' height='7' fill='%23ffd23f'/><rect x='4' y='8' width='3' height='1' fill='%23140b26'/><rect x='5' y='7' width='1' height='3' fill='%23140b26'/><rect x='10' y='7' width='1' height='1' fill='%23ff4fa3'/><rect x='12' y='9' width='1' height='1' fill='%23ff4fa3'/></svg>">
+<style>
+:root{
+  --bg:#0f0820; --bg-2:#1a0f33; --panel:#21143f; --panel-hi:#36246a; --line:#4b3590;
+  --ink:#efe6ff; --ink-dim:#a898cf;
+  --yellow:#ffd23f; --pink:#ff4fa3; --cyan:#3ff0ff; --green:#7dff6a; --orange:#ff8c3f; --violet:#b07bff;
+  --shadow:#05020c;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  margin:0;min-height:100vh;color:var(--ink);
+  font-family:'VT323',ui-monospace,Menlo,monospace;font-size:22px;line-height:1.25;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, #3a1d6e 0%, transparent 70%),
+    linear-gradient(var(--bg),var(--bg-2));
+  background-attachment:fixed;
+  padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0);
+}
+/* CRT scanlines + vignette over everything */
+body::before,body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50}
+body::before{background:repeating-linear-gradient(to bottom, rgba(0,0,0,.22) 0 1px, transparent 1px 3px)}
+body::after{background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%)}
+
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px 64px}
+
+/* ---------- header ---------- */
+header{text-align:center;padding:56px 0 28px;position:relative}
+.coin{
+  display:inline-block;font-family:'Press Start 2P',monospace;font-size:11px;letter-spacing:.12em;
+  color:var(--cyan);margin-bottom:22px;
+}
+h1{
+  font-family:'Press Start 2P',monospace;font-weight:400;margin:0;
+  font-size:clamp(28px,7vw,64px);line-height:1.1;letter-spacing:.02em;
+  color:var(--yellow);
+  text-shadow:4px 4px 0 var(--pink), 8px 8px 0 var(--shadow);
+}
+h1 span{display:block;font-size:.42em;color:var(--ink);text-shadow:3px 3px 0 var(--violet),5px 5px 0 var(--shadow);margin-top:16px;letter-spacing:.3em}
+.tagline{color:var(--ink-dim);margin:22px auto 0;max-width:36ch}
+.blink{animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* pixel skyline strip */
+.horizon{
+  height:10px;margin:28px auto 0;max-width:520px;
+  background:repeating-linear-gradient(90deg,var(--pink) 0 10px,var(--yellow) 10px 20px,var(--cyan) 20px 30px,var(--green) 30px 40px);
+  box-shadow:0 4px 0 var(--shadow);
+}
+
+/* ---------- controls ---------- */
+.controls{
+  position:sticky;top:0;z-index:20;
+  margin:32px -16px 28px;padding:14px 16px;
+  background:rgba(15,8,32,.92);backdrop-filter:blur(4px);
+  border-top:4px solid var(--line);border-bottom:4px solid var(--line);
+}
+.controls-inner{max-width:1088px;margin:0 auto;display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center}
+.search{flex:1 1 220px;display:flex;align-items:center;gap:8px;background:var(--shadow);border:3px solid var(--line);padding:2px 10px}
+.search:focus-within{border-color:var(--cyan)}
+.search label{color:var(--cyan);font-family:'Press Start 2P',monospace;font-size:10px}
+.search input{
+  flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--ink);
+  font:inherit;font-size:24px;padding:6px 0;caret-color:var(--yellow);
+}
+.search input::placeholder{color:#6d5ea0}
+.count{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--green);white-space:nowrap}
+
+.filters{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+.chip{
+  --c:var(--ink-dim);
+  font-family:'Press Start 2P',monospace;font-size:10px;line-height:1;letter-spacing:.04em;
+  background:transparent;color:var(--c);cursor:pointer;
+  border:3px solid var(--c);padding:8px 10px;
+  box-shadow:3px 3px 0 var(--shadow);
+  transition:transform .08s;
+}
+.chip:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--shadow)}
+.chip:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow)}
+.chip[aria-pressed="true"]{background:var(--c);color:var(--bg)}
+.chip:focus-visible,.tile:focus-visible,.tag:focus-visible{outline:3px dashed var(--yellow);outline-offset:3px}
+.chip .n{opacity:.7;margin-left:6px}
+
+/* ---------- grid + tiles ---------- */
+.grid{list-style:none;margin:0;padding:0;display:grid;gap:24px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.tile{
+  position:relative;display:flex;flex-direction:column;height:100%;
+  color:inherit;text-decoration:none;
+  background:var(--panel);
+  border:4px solid var(--line);
+  box-shadow:6px 6px 0 var(--shadow);
+  transition:transform .1s, box-shadow .1s, border-color .1s;
+}
+.tile:hover,.tile:focus-visible{transform:translate(-3px,-3px);box-shadow:9px 9px 0 var(--shadow);border-color:var(--accent)}
+.tile:active{transform:translate(2px,2px);box-shadow:3px 3px 0 var(--shadow)}
+
+.screen{
+  position:relative;aspect-ratio:16/10;overflow:hidden;
+  background:var(--art, linear-gradient(#25628f,#1b4b70));
+  border-bottom:4px solid var(--line);
+  image-rendering:pixelated;
+}
+.screen::after{ /* little CRT glare */
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(160deg,rgba(255,255,255,.14) 0 22%,transparent 22%);
+}
+.screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.screen .icon{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-size:64px;filter:drop-shadow(4px 4px 0 rgba(0,0,0,.45));
+}
+.screen .start{
+  position:absolute;left:0;right:0;bottom:12px;text-align:center;
+  font-family:'Press Start 2P',monospace;font-size:10px;color:#fff;text-shadow:2px 2px 0 #000;
+  opacity:0;transition:opacity .1s;
+}
+.tile:hover .start,.tile:focus-visible .start{opacity:1;animation:blink 1s steps(1) infinite}
+.new{
+  position:absolute;top:10px;left:10px;z-index:1;
+  font-family:'Press Start 2P',monospace;font-size:9px;
+  background:var(--pink);color:#fff;padding:5px 6px;box-shadow:2px 2px 0 var(--shadow);
+}
+
+.info{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
+.info h2{
+  margin:0;font-family:'Press Start 2P',monospace;font-weight:400;font-size:13px;line-height:1.5;
+  color:var(--yellow);
+}
+.info p{margin:0;color:var(--ink-dim);font-size:20px;flex:1}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.tag{
+  --c:var(--ink-dim);
+  font-family:'Press Start 2P',monospace;font-size:8px;line-height:1;
+  color:var(--c);border:2px solid var(--c);padding:5px 6px;background:transparent;cursor:pointer;
+}
+.tag:hover{background:var(--c);color:var(--bg)}
+
+.empty{
+  text-align:center;padding:56px 16px;border:4px dashed var(--line);
+  font-family:'Press Start 2P',monospace;font-size:12px;line-height:2;color:var(--ink-dim);
+}
+.empty b{display:block;color:var(--pink);font-size:18px;font-weight:400;margin-bottom:8px}
+
+footer{text-align:center;margin-top:56px;color:#6d5ea0;font-size:20px}
+footer .hi{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--ink-dim);display:block;margin-bottom:10px}
+
+@media (max-width:520px){
+  body{font-size:20px}
+  header{padding-top:40px}
+  .grid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  .blink,.tile:hover .start,.tile:focus-visible .start{animation:none}
+  .tile,.chip{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="coin"><span class="blink">INSERT COIN</span> &nbsp;·&nbsp; CREDIT 00</div>
+    <h1>ROCKSHEEP<span>ARCADE</span></h1>
+    <p class="tagline">Every game I've made, one tile each. Pick one and press start.</p>
+    <div class="horizon" aria-hidden="true"></div>
+  </header>
+
+  <section class="controls" aria-label="Filter games">
+    <div class="controls-inner">
+      <div class="search">
+        <label for="q">FIND&gt;</label>
+        <input id="q" type="search" placeholder="type a name…" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="count" id="count" aria-live="polite"></div>
+      <div class="filters" id="filters" role="group" aria-label="Game type"></div>
+    </div>
+  </section>
+
+  <main>
+    <ul class="grid" id="grid"></ul>
+    <div class="empty" id="empty" hidden>
+      <b>GAME OVER</b>
+      No games match that.<br>
+      <button class="chip" id="reset" type="button" style="--c:var(--cyan);margin-top:14px">CONTINUE?</button>
+    </div>
+  </main>
+
+  <footer>
+    <span class="hi">HI-SCORE 999999</span>
+    Made by Rocksheep · <span id="year"></span>
+  </footer>
+</div>
+
+<script>
+/*
+ * Add a game by adding an object to GAMES:
+ *   title  – shown on the tile
+ *   href   – path to the game file
+ *   tags   – game types; new tags get a filter button automatically
+ *   blurb  – one or two short sentences
+ *   image  – cover picture for the tile (optional)
+ *   icon   – emoji shown on the tile when there's no image
+ *   art    – CSS background behind the emoji (optional)
+ *   isNew  – show a NEW! badge (optional)
+ */
+const GAMES = [
+  {
+    title: 'Asphalt Tycoon: Island',
+    href: 'asphalt_tycoon.html',
+    tags: ['Tycoon', 'Simulation', 'Strategy'],
+    blurb: 'Buy land, lay roads and run factories on a little island. Keep the traffic flowing and the money coming in.',
+    image: 'assets/asphalt_tycoon.svg',
+    isNew: true,
+  },
+];
+
+// Fixed colours for known tags; anything else cycles through the palette.
+const TAG_COLORS = {
+  Tycoon: 'var(--yellow)', Simulation: 'var(--cyan)', Strategy: 'var(--violet)',
+  Puzzle: 'var(--green)', Arcade: 'var(--pink)', Action: 'var(--orange)',
+};
+const PALETTE = ['var(--pink)', 'var(--green)', 'var(--orange)', 'var(--cyan)', 'var(--violet)', 'var(--yellow)'];
+const allTags = [...new Set(GAMES.flatMap(g => g.tags))].sort();
+const tagColor = t => TAG_COLORS[t] || PALETTE[allTags.indexOf(t) % PALETTE.length];
+
+const $ = s => document.querySelector(s);
+const grid = $('#grid'), filters = $('#filters'), q = $('#q'), count = $('#count'), empty = $('#empty');
+let active = 'All';
+
+function el(tag, props = {}, ...kids) {
+  const n = Object.assign(document.createElement(tag), props);
+  for (const k of kids) n.append(k);
+  return n;
+}
+
+function renderFilters() {
+  filters.replaceChildren(...['All', ...allTags].map(t => {
+    const n = t === 'All' ? GAMES.length : GAMES.filter(g => g.tags.includes(t)).length;
+    const b = el('button', { type: 'button', className: 'chip' }, t.toUpperCase(), el('span', { className: 'n', textContent: n }));
+    b.style.setProperty('--c', t === 'All' ? 'var(--ink)' : tagColor(t));
+    b.setAttribute('aria-pressed', t === active);
+    b.onclick = () => setFilter(t === active ? 'All' : t);
+    return b;
+  }));
+}
+
+function renderGrid() {
+  const term = q.value.trim().toLowerCase();
+  const shown = GAMES.filter(g =>
+    (active === 'All' || g.tags.includes(active)) &&
+    (!term || g.title.toLowerCase().includes(term) || g.tags.some(t => t.toLowerCase().includes(term)))
+  );
+
+  grid.replaceChildren(...shown.map(g => {
+    const accent = tagColor(g.tags[0]);
+    const tile = el('a', { className: 'tile', href: g.href },
+      el('div', { className: 'screen' },
+        g.image
+          ? el('img', { src: g.image, alt: '', loading: 'lazy' })
+          : el('div', { className: 'icon', textContent: g.icon || '🕹️' }),
+        el('div', { className: 'start', textContent: '▶ PRESS START' })),
+      el('div', { className: 'info' },
+        el('h2', { textContent: g.title }),
+        el('p', { textContent: g.blurb || '' }),
+        el('ul', { className: 'tags' }, ...g.tags.map(t => {
+          const b = el('button', { type: 'button', className: 'tag', textContent: t.toUpperCase(), title: `Show all ${t} games` });
+          b.style.setProperty('--c', tagColor(t));
+          b.onclick = e => { e.preventDefault(); e.stopPropagation(); setFilter(t); };
+          return el('li', {}, b);
+        })))
+    );
+    tile.style.setProperty('--accent', accent);
+    if (g.art) tile.querySelector('.screen').style.setProperty('--art', g.art);
+    if (g.isNew) tile.prepend(el('span', { className: 'new', textContent: 'NEW!' }));
+    return el('li', {}, tile);
+  }));
+
+  empty.hidden = shown.length > 0;
+  count.textContent = `${shown.length} ${shown.length === 1 ? 'GAME' : 'GAMES'} LOADED`;
+}
+
+function setFilter(t) {
+  active = t;
+  renderFilters();
+  renderGrid();
+}
+
+q.addEventListener('input', renderGrid);
+$('#reset').onclick = () => { q.value = ''; setFilter('All'); q.focus(); };
+$('#year').textContent = new Date().getFullYear();
+setFilter('All');
+</script>
+</body>
+</html>

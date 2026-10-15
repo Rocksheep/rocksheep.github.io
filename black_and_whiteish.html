@@ -320,9 +320,25 @@ function fbm(x, y, oct = 4) {
   return s / n;
 }
 
-const SIZE = 220, SEG = 160, HALF = SIZE / 2, CELL = SIZE / SEG, N = SEG + 1;
+const SIZE = 460, SEG = 270, HALF = SIZE / 2, CELL = SIZE / SEG, N = SEG + 1;
 const WATER = 0, GRAV = 30, PLAT = 3.2;
-const VILLAGE = { x: -30, z: 16 }, DOUBT = { x: 40, z: -28 };
+const VILLAGE = { x: -95, z: 20 }, DOUBT = { x: 112, z: -48 };
+// The big features of the island: a mountain ridge down the middle, a river feeding a lake, deep woods.
+const RIDGE = [[-5, -150], [22, -85], [12, -25], [28, 35], [8, 100], [20, 150]];
+const RIVER = [[18, 62], [-8, 78], [-30, 92], [-52, 112], [-68, 140], [-74, 190]];
+const LAKE = { x: -32, z: 92, r: 15 }, WOODS = { x: -90, z: -78 };
+function pathDist(x, z, P) {
+  let best = 1e9, bestAt = 0, run = 0, total = 0;
+  for (let i = 1; i < P.length; i++) total += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
+  for (let i = 1; i < P.length; i++) {
+    const [ax, az] = P[i - 1], [bx, bz] = P[i], dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
+    const t = clamp(((x - ax) * dx + (z - az) * dz) / (L * L), 0, 1), d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+    if (d < best) { best = d; bestAt = (run + t * L) / total; }
+    run += L;
+  }
+  return { d: best, t: bestAt };
+}
+const woodsAt = (x, z) => fbm(x * 0.014 + 50, z * 0.014 + 50, 3) * 1.08 + 0.4 * Math.exp(-((x - WOODS.x) ** 2 + (z - WOODS.z) ** 2) / 2600);
 const SITES = [{ ...VILLAGE, r: 27 }, { ...DOUBT, r: 13 }];
 const at = (dx, dz) => ({ x: VILLAGE.x + dx, z: VILLAGE.z + dz });
 // The temple faces the village; its fenced front yard is where the creature sleeps.
@@ -333,17 +349,30 @@ const YARD_SCALE = 1.7;
 const inYard = (p, m = 0) => p.x > YARD.x0 - m && p.x < YARD.x1 + m && p.z > YARD.z0 - m && p.z < YARD.z1 + m;
 
 function rawHeight(x, z) {
-  const n = fbm(x * 0.014 + 3.1, z * 0.014 + 7.7, 4);
-  const d = Math.hypot(x * 0.95, z * 1.05) / 78 + (n - 0.5) * 0.55;
-  let h = (1 - d * d) * 10 - 1.6;
-  h += (fbm(x * 0.045 + 9, z * 0.045 + 1, 3) - 0.5) * 7;
-  h += 15 * Math.exp(-((x - 8) ** 2 + (z - 6) ** 2) / 240);
+  // A warped oval makes a ragged coastline full of bays and capes.
+  const wx = x + (fbm(x * 0.005 + 11, z * 0.005 + 3, 3) - 0.5) * 100;
+  const wz = z + (fbm(x * 0.005 + 41, z * 0.005 + 17, 3) - 0.5) * 100;
+  const d = Math.hypot(wx / 178, wz / 138);
+  let h = (1 - d * d) * 13 - 2;
+  h += (fbm(x * 0.02 + 9, z * 0.02 + 1, 4) - 0.5) * 11;
+  // Mount Grumble and its craggy ridge
+  // Separate peaks along the ridge with saddles between them; Mount Grumble is the tallest.
+  const rg = pathDist(x, z, RIDGE), crag = 1 - Math.abs(vnoise(x * 0.06, z * 0.06) * 2 - 1);
+  const peaks = Math.pow(Math.max(0, Math.sin(rg.t * Math.PI * 4.5 + 0.6) * 0.5 + 0.5), 1.6) * (0.55 + 0.45 * Math.sin(rg.t * 7.1 + 2)) + 0.12;
+  const width = 13 + 9 * peaks;
+  h += Math.exp(-((rg.d / width) ** 2)) * (8 + 44 * peaks + 5 * crag) * (d < 1 ? 1 : 0.25);
+  // The river runs down from the ridge into Lake Soggy and on to the sea, widening as it goes.
+  const rv = pathDist(x, z, RIVER), w = 2.5 + rv.t * 5;
+  h = Math.min(h, lerp(-1.8, h, smoothstep(w, w + 7, rv.d)));
+  const dl = Math.hypot(x - LAKE.x, z - LAKE.z);
+  h = Math.min(h, lerp(-3, h, smoothstep(LAKE.r - 3, LAKE.r + 8, dl)));
+  h -= smoothstep(195, 226, Math.max(Math.abs(x), Math.abs(z))) * 25;
   for (const s of SITES) {
     const w = 1 - smoothstep(s.r, s.r + 14, Math.hypot(x - s.x, z - s.z));
     h = lerp(h, PLAT, w);
   }
-  if (h < 0) h *= 1.7;
-  return Math.max(h, -16);
+  if (h < 0) h *= 1.5;
+  return Math.max(h, -18);
 }
 const HG = new Float32Array(N * N);
 for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) HG[i * N + j] = rawHeight(-HALF + j * CELL, -HALF + i * CELL);
@@ -351,7 +380,7 @@ for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) HG[i * N + j] = rawHeigh
 // Matches the triangle split of the terrain mesh exactly, so things sit on the ground.
 function heightAt(x, z) {
   const gx = (x + HALF) / CELL, gz = (z + HALF) / CELL;
-  if (gx < 0 || gz < 0 || gx >= SEG || gz >= SEG) return -16;
+  if (gx < 0 || gz < 0 || gx >= SEG || gz >= SEG) return -18;
   const j = Math.floor(gx), i = Math.floor(gz), fx = gx - j, fz = gz - i;
   const a = HG[i * N + j], b = HG[i * N + j + 1], c = HG[(i + 1) * N + j], d = HG[(i + 1) * N + j + 1];
   return fx + fz <= 1 ? a + (b - a) * fx + (c - a) * fz : d + (c - d) * (1 - fx) + (b - d) * (1 - fz);
@@ -362,8 +391,8 @@ const isLand = (x, z, min = 0.8) => heightAt(x, z) > min;
 const ISLE = (() => {
   const len = Math.hypot(VILLAGE.x, VILLAGE.z), dx = VILLAGE.x / len, dz = VILLAGE.z / len;
   let r = len + 10;
-  while (r < 100 && heightAt(dx * r, dz * r) > -0.6) r += 0.5;
-  const c = { x: dx * Math.min(r + 18, 98), z: dz * Math.min(r + 18, 98) };
+  while (r < HALF - 12 && heightAt(dx * r, dz * r) > -0.6) r += 0.5;
+  const c = { x: dx * Math.min(r + 18, HALF - 14), z: dz * Math.min(r + 18, HALF - 14) };
   for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
     const x = -HALF + j * CELL, z = -HALF + i * CELL, d = Math.hypot(x - c.x, z - c.z), k = i * N + j;
     if (d < 5) HG[k] = Math.max(HG[k], lerp(2.4, 0.6, (d / 5) ** 2));
@@ -390,7 +419,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const SKY_DAY = new THREE.Color(0x9fd3ee), SKY_NIGHT = new THREE.Color(0x1c2744), SKY_DUSK = new THREE.Color(0xf0a070);
 scene.background = SKY_DAY.clone();
-scene.fog = new THREE.Fog(SKY_DAY.clone(), 170, 480);
+scene.fog = new THREE.Fog(SKY_DAY.clone(), 260, 780);
 
 const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 1500);
 const hemi = new THREE.HemisphereLight(0xdff2ff, 0x5a7040, 1.3);
@@ -398,7 +427,7 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -115, right: 115, top: 115, bottom: -115, near: 10, far: 420 });
+Object.assign(sun.shadow.camera, { left: -125, right: 125, top: 125, bottom: -125, near: 10, far: 520 });
 sun.shadow.bias = -0.0005;
 sun.shadow.normalBias = 0.35;
 scene.add(sun, sun.target);
@@ -513,11 +542,12 @@ function terrainColor(c, h, slope, x, z) {
   const n = vnoise(x * 0.25, z * 0.25) * 0.5 + fbm(x * 0.05, z * 0.05, 2) * 0.5;
   if (h < -0.3) { c.setHex(0xd9c48f).multiplyScalar(clamp(1 + h * 0.05, 0.45, 1)); return; }
   if (h < 1.0) { c.setHex(n > 0.55 ? 0xe9dba6 : 0xe3d29a); return; }
-  if (h > 17 && slope < 0.5) { c.setHex(0xf3f3f0); return; }
-  if (slope > 0.3 || h > 12.5) { c.setHex(n > 0.5 ? 0x8f8b84 : 0x7d7a74); return; }
+  if (h > 36 && slope < 0.6) { c.setHex(0xf3f3f0); return; }
+  if (slope > 0.34 || h > 24) { c.setHex(n > 0.5 ? 0x8f8b84 : 0x7d7a74); if (h > 31) c.lerp(tmpC.setHex(0xe2e2de), 0.5); return; }
   for (const s of SITES) if (Math.hypot(x - s.x, z - s.z) < s.r - 3 && n > 0.6) { c.setHex(0xb59a68); return; }
   c.setHex(0x66a845).lerp(tmpC.setHex(0x3f7f34), n);
-  if (h > 8) c.lerp(tmpC.setHex(0x5b7f45), clamp((h - 8) / 5, 0, 1));
+  if (woodsAt(x, z) > 0.6) c.lerp(tmpC.setHex(0x2f5f2a), clamp((woodsAt(x, z) - 0.6) * 3, 0, 0.7));
+  if (h > 10) c.lerp(tmpC.setHex(0x5b7f45), clamp((h - 10) / 8, 0, 1));
 }
 {
   const tris = SEG * SEG * 2, pos = new Float32Array(tris * 9), col = new Float32Array(tris * 9);
@@ -542,7 +572,7 @@ function terrainColor(c, h, slope, x, z) {
   terrain.receiveShadow = true; terrain.castShadow = true;
   scene.add(terrain);
 }
-const waterGeo = new THREE.PlaneGeometry(720, 720, 96, 96).rotateX(-Math.PI / 2);
+const waterGeo = new THREE.PlaneGeometry(1500, 1500, 120, 120).rotateX(-Math.PI / 2);
 const waterBase = waterGeo.attributes.position.array.slice();
 const water = new THREE.Mesh(waterGeo, new THREE.MeshPhongMaterial({ color: 0x2f8fc0, transparent: true, opacity: 0.8, shininess: 90, specular: 0x99ccff, flatShading: true }));
 water.position.y = WATER - 0.12;
@@ -557,7 +587,7 @@ function updateWater(t) {
   waterGeo.attributes.position.needsUpdate = true;
 }
 const skyClouds = [];
-for (let i = 0; i < 9; i++) {
+for (let i = 0; i < 18; i++) {
   const g = new THREE.Group();
   for (let k = 0; k < 4; k++) {
     const m = new THREE.Mesh(GEO.blob, MAT.cloud);
@@ -565,7 +595,7 @@ for (let i = 0; i < 9; i++) {
     m.position.set(k * 5 - 7, rand(-1, 1), rand(-2, 2));
     g.add(m);
   }
-  g.position.set(rand(-160, 160), rand(48, 62), rand(-160, 160));
+  g.position.set(rand(-380, 380), rand(62, 80), rand(-380, 380));
   g.userData.v = rand(1, 2.5);
   scene.add(g); skyClouds.push(g);
 }
@@ -766,7 +796,7 @@ const PRAYER_MAX = 300;
 const COST = { food: 25, rain: 35, fire: 45 };
 const stats = { born: 0, lost: 0, eaten: 0, miracles: 0, thrown: 0, quests: 0 };
 let impress = 0, lastImpress = -99, converted = false, won = false, align = 0;
-const world = { villagers: [], trees: [], rocks: [], crates: [], houses: [], fields: [], clouds: [], fireballs: [], poops: [], scaffolds: [], sites: [], bundles: [], buildings: [] };
+const world = { critters: [], villagers: [], trees: [], rocks: [], crates: [], houses: [], fields: [], clouds: [], fireballs: [], poops: [], scaffolds: [], sites: [], bundles: [], buildings: [] };
 let creature = null;
 const NAMES = ['Barry', 'Gwen', 'Kev', 'Old Tom', 'Mabel', 'Sprout', 'Dougal', 'Hilda', 'Pip', 'Norbert', 'Agnes', 'Lenny', 'Ffion', 'Clive', 'Bertha', 'Gordo', 'Ida', 'Mungo', 'Petra', 'Wilf', 'Ottoline', 'Reg', 'Tilly', 'Bram', 'Dot', 'Ezra', 'Fen', 'Hob', 'Juno', 'Moss', 'Nigel', 'Brenda', 'Dave', 'Sue'];
 
@@ -893,7 +923,7 @@ class House {
 }
 
 class Field {
-  constructor(x, z) {
+  constructor(x, z, farm = false) {
     this.type = 'field'; this.info = true; this.kind = 'field'; this.alive = true;
     this.pos = new V3(x, heightAt(x, z), z); this.w = 7; this.d = 5.5; this.crop = rand(12, 26);
     this.pickR = 3.2; this.pickH = 0.3;
@@ -907,7 +937,7 @@ class Field {
     this.crops.castShadow = true;
     scene.add(dirt, this.crops);
     this.refresh();
-    world.fields.push(this);
+    if (!farm) world.fields.push(this);
   }
   canPick() { return true; }
   contains(x, z, pad = 1) { return Math.abs(x - this.pos.x) < this.w / 2 + pad && Math.abs(z - this.pos.z) < this.d / 2 + pad; }
@@ -1004,7 +1034,8 @@ function spotProblem(x, z, bp, ignore) {
   if (box(temple.pos.x, temple.pos.z, TEMPLE_W, TEMPLE_D) || box(YARD_MID.x, YARD_MID.z + 1.5, YARD.x1 - YARD.x0, YARD.z1 - YARD.z0 + 3)) return 'That is holy ground';
   if (box(store.pos.x, store.pos.z, 5.6, 5) || box(workshop.pos.x, workshop.pos.z, 5.5, 6)) return 'Something is in the way';
   for (const o of world.houses) if (box(o.pos.x, o.pos.z, 2.8, 2.8)) return 'A house is in the way';
-  for (const o of world.fields) if (box(o.pos.x, o.pos.z, o.w, o.d, 0.4)) return 'A field is in the way';
+  for (const o of [...world.fields, ...pipFields]) if (box(o.pos.x, o.pos.z, o.w, o.d, 0.4)) return 'A field is in the way';
+  for (const o of props) if (Math.hypot(x - o.x, z - o.z) < o.r + Math.max(bp.w, bp.d) / 2 + 0.5) return 'Something is in the way';
   for (const o of world.buildings) if (box(o.pos.x, o.pos.z, o.w, o.d)) return 'Something is in the way';
   for (const o of world.sites) if (o !== ignore && box(o.pos.x, o.pos.z, o.bp.w, o.bp.d)) return 'Another plan is in the way';
   return null;
@@ -1160,27 +1191,48 @@ class Bundle {
 const siteNear = p => world.sites.find(s => Math.abs(s.pos.x - p.x) < s.bp.w / 2 + 1.5 && Math.abs(s.pos.z - p.z) < s.bp.d / 2 + 1.5);
 
 /* ---------- Trees, rocks, crates ---------- */
+// Trees are drawn as instances (one draw call per tree shape), so the island can hold hundreds of them.
+const TREE_CAP = 1200, ZERO_M = new THREE.Matrix4().makeScale(0, 0, 0), WHITE = new THREE.Color(1, 1, 1), CHARRED = new THREE.Color(0.18, 0.15, 0.13);
+const treePools = TREE_GEO.map(geo => {
+  const im = new THREE.InstancedMesh(geo, VC, TREE_CAP);
+  im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
+  for (let i = 0; i < TREE_CAP; i++) { im.setMatrixAt(i, ZERO_M); im.setColorAt(i, WHITE); }
+  scene.add(im);
+  return { im, free: [...Array(TREE_CAP).keys()].reverse() };
+});
 class Tree {
   constructor(x, z, wood = rand(16, 30)) {
     this.type = 'tree'; this.wood = wood; this.burning = 0; this.state = 'planted'; this.vel = new V3(); this.bounces = 0;
     this.pos = new V3(x, heightAt(x, z), z);
-    this.mesh = new THREE.Mesh(pick(TREE_GEO.filter((_, i) => (i % 2 === 0) === (this.pos.y > 6 || Math.random() < 0.25))), VC);
-    this.mesh.castShadow = true;
+    const pine = this.pos.y > 8 || Math.random() < 0.25 || woodsAt(x, z) > 0.75;
+    const options = treePools.filter((p, i) => (i % 2 === 0) === pine && p.free.length);
+    this.pool = pick(options.length ? options : treePools.filter(p => p.free.length));
+    this.slot = this.pool.free.pop();
+    this.mesh = new THREE.Object3D();
     this.mesh.rotation.y = rand(6.28);
-    scene.add(this.mesh);
-    this.sync(); this.rescale();
+    this.rescale();
     world.trees.push(this);
   }
   get s() { return 0.45 + 0.75 * Math.sqrt(clamp(this.wood, 0, 40) / 30); }
   get pickR() { return 0.9 * this.s; }
   get pickH() { return 1.4 * this.s; }
   canPick() { return this.state === 'planted' || this.state === 'flying'; }
-  rescale() { this.mesh.scale.setScalar(this.s); }
-  sync() { this.mesh.position.copy(this.pos); }
+  rescale() { this.mesh.scale.setScalar(this.s); this.sync(); }
+  sync() {
+    if (this.removed) return;
+    this.mesh.position.copy(this.pos); this.mesh.updateMatrix();
+    this.pool.im.setMatrixAt(this.slot, this.mesh.matrix); this.pool.im.instanceMatrix.needsUpdate = true;
+  }
+  tint(c) { this.pool.im.setColorAt(this.slot, c); this.pool.im.instanceColor.needsUpdate = true; }
   chop(n) { const g = Math.min(n, Math.floor(this.wood)); this.wood -= g; if (this.wood < 2) this.remove(); else this.rescale(); return g; }
-  remove() { if (this.removed) return; this.removed = true; this.state = 'gone'; scene.remove(this.mesh); removeFrom(world.trees, this); }
-  ignite() { if (!this.burning && !this.removed) { this.burning = 0.001; this.mesh.material = VC_BURNT; } }
-  extinguish() { if (this.burning) { this.burning = 0; this.mesh.material = VC; emit(this.pos.x, this.pos.y + 2, this.pos.z, { c: 0xdddddd, n: 8, size: 0.8, up: 3, life: 1 }); } }
+  remove() {
+    if (this.removed) return;
+    this.tint(WHITE); this.pool.im.setMatrixAt(this.slot, ZERO_M); this.pool.im.instanceMatrix.needsUpdate = true;
+    this.pool.free.push(this.slot);
+    this.removed = true; this.state = 'gone'; removeFrom(world.trees, this);
+  }
+  ignite() { if (!this.burning && !this.removed) { this.burning = 0.001; this.tint(CHARRED); } }
+  extinguish() { if (this.burning) { this.burning = 0; this.tint(WHITE); emit(this.pos.x, this.pos.y + 2, this.pos.z, { c: 0xdddddd, n: 8, size: 0.8, up: 3, life: 1 }); } }
   land(speed) {
     this.mesh.rotation.x = this.mesh.rotation.z = 0;
     if (questTake(this)) return;
@@ -1199,7 +1251,7 @@ class Tree {
       sfx.thud(); this.remove(); if (this.byPlayer) { align = clamp(align + 0.01, -1, 1); quip('store'); }
       return;
     }
-    this.state = 'planted'; this.sync();
+    this.state = 'planted'; this.mesh.rotation.set(0, this.mesh.rotation.y, 0); this.sync();
     if (speed > 8) { sfx.thud(); emit(this.pos.x, this.pos.y + 0.3, this.pos.z, { c: 0xb59a68, n: 10, size: 0.6, spd: 4, up: 2, life: 0.7 }); }
     if (this.burning) igniteNear(this.pos, 3);
   }
@@ -1328,6 +1380,7 @@ function flyStep(e, dt) {
 }
 function landWater(e, speed) {
   if (questTake(e)) return;
+  if (e.type === 'critter') { e.state = 'idle'; floatText(e.pos.x, e.pos.y + 1.5, e.pos.z, 'baa (blub)', '#bfe6ff'); return; }
   if (e.type === 'hat') { e.home(); toast('🎩 The hat blew straight back up the mountain. Of course it did.'); return; }
   emit(e.pos.x, WATER + 0.2, e.pos.z, { c: [0xffffff, 0xbfe6ff], n: 24, size: 0.5, spd: 3, up: 7, grav: -20, life: 0.8 });
   sfx.splash();
@@ -1649,10 +1702,11 @@ class Cloud {
     if (this.life < 10.5 && this.life > 1) {
       for (let k = 0; k < 6; k++) emit(this.pos.x + rand(-5, 5), this.pos.y - 1, this.pos.z + rand(-6, 6), { c: 0x9fd0ff, size: 0.22, vy: -32, spd: 0, grav: -10, life: 0.5 });
       const R2 = 12;
-      for (const f of world.fields) if (flat(f.pos, this.pos) < R2) { f.crop = Math.min(30, f.crop + dt * 4); f.refresh(); flags.rainedOnField = true; }
+      for (const f of world.fields) if (flat(f.pos, this.pos) < R2) { f.crop = Math.min(30, f.crop + dt * 4); f.refresh(); }
+      for (const f of pipFields) if (flat(f.pos, this.pos) < R2 + 2) { f.crop = Math.min(30, f.crop + dt * 4); f.refresh(); flags.rainedOnField = true; }
       for (const t of world.trees) if (flat(t.pos, this.pos) < R2) { t.extinguish(); if (t.state === 'planted' && t.wood < 34) { t.wood += dt * 1.2; t.rescale(); } }
       for (const h of world.houses) if (flat(h.pos, this.pos) < R2) h.extinguish();
-      if (Math.random() < dt * 1.2 && world.trees.length < 260) {
+      if (Math.random() < dt * 1.2 && world.trees.length < TREE_CAP * 5) {
         const x = this.pos.x + rand(-9, 9), z = this.pos.z + rand(-9, 9);
         if (treeSpotOk(x, z)) { const t = new Tree(x, z, 3); emit(x, t.pos.y + 0.5, z, { c: 0x9dff7a, n: 6, size: 0.3, up: 2, life: 0.8 }); }
       }
@@ -1661,7 +1715,8 @@ class Cloud {
 }
 function treeSpotOk(x, z) {
   const h = heightAt(x, z);
-  if (h < 1.1 || h > 14 || slopeAt(x, z) > 2.2) return false;
+  if (h < 1.1 || h > 26 || slopeAt(x, z) > 2.2) return false;
+  if (blockedByProp(x, z, 1.2) || pipFields.some(f => f.contains(x, z, 1.5))) return false;
   if (flat({ x, z }, store.pos) < 6 || flat({ x, z }, workshop.pos) < 6 || inTemple({ x, z }, 2) || inYard({ x, z }, 2) || siteNear({ x, z })) return false;
   if (world.buildings.some(b => flat({ x, z }, b.pos) < b.w)) return false;
   if (world.fields.some(f => f.contains(x, z, 1.5))) return false;
@@ -2093,7 +2148,7 @@ class Creature {
       const c = this.carry;
       c.pos.copy(m);
       if (c.type === 'villager') { c.pos.y -= 0.6; c.heading = this.heading; }
-      if (c.type === 'tree') { c.pos.y -= 0.4; c.sync(); c.mesh.rotation.set(Math.PI / 2, this.heading, 0, 'YXZ'); }
+      if (c.type === 'tree') { c.pos.y -= 0.4; c.mesh.rotation.set(Math.PI / 2, this.heading, 0, 'YXZ'); c.sync(); }
       if (c.type === 'rock') c.sync();
     }
   }
@@ -2339,8 +2394,8 @@ function findShipSpot() {
     for (let a = 0; a < Math.PI * 2; a += 0.04) {
       const dx = Math.cos(a), dz = Math.sin(a);
       let r = 20;
-      while (r < 108 && heightAt(dx * r, dz * r) > 0.4) r += 0.5;
-      if (r >= 108) continue;
+      while (r < HALF - 4 && heightAt(dx * r, dz * r) > 0.4) r += 0.5;
+      if (r >= HALF - 4) continue;
       const beach = { x: dx * r, z: dz * r }, dv = flat(beach, VILLAGE), dd = flat(beach, DOUBT);
       if (dv < min || dd < min || flat(beach, ISLE) < 30) continue;
       if (heightAt(dx * (r - 4), dz * (r - 4)) < 0.8 || heightAt(dx * (r + 7), dz * (r + 7)) > -1.2) continue;
@@ -2411,10 +2466,10 @@ function setupCampaign() {
   const A = (dx, dz) => at(dx, dz);
   new Npc('mabel', 'Granny Mabel', A(-4, 1.5), { shirt: 0x9a6ab0, skin: 0, hat: 'bonnet', chat: ['Have you met Gary? Don\'t.', 'Lovely weather for miracles.', 'In my day gods were smaller.'] });
   new Npc('barry', 'Barry the Builder', A(-8, 10), { shirt: 0xe08a2a, skin: 2, hat: 'hard', chat: ['Measure twice, throw rocks once.', 'Tea break. Back in five. Hours.'] });
-  new Npc('pip', 'Farmer Pip', A(9.5, 4), { shirt: 0x6a8a3a, skin: 1, hat: 'straw', chat: ['Turnips. That\'s it. That\'s the whole thought.', 'The cow keeps looking at my turnips.'] });
+  new Npc('pip', 'Farmer Pip', { x: LANDMARK.farm.x + Math.sin(faceVillage(LANDMARK.farm.x, LANDMARK.farm.z)) * 3.5, z: LANDMARK.farm.z + Math.cos(faceVillage(LANDMARK.farm.x, LANDMARK.farm.z)) * 3.5 }, { shirt: 0x6a8a3a, skin: 1, hat: 'straw', chat: ['Turnips. That\'s it. That\'s the whole thought.', 'The cow keeps looking at my turnips.'] });
   new Npc('nan', 'Nan Ethel', A(-11.5, 15), { shirt: 0xc75a5a, skin: 0, hat: 'bonnet', chat: ['Knit one, purl one, smite one.', 'Your cow needs a scarf next.'] });
-  new Npc('dave', 'Dave', A(4, 11), { shirt: 0x5a7ab0, skin: 3, chat: ['Still lucky. Saw a cloud shaped like a cloud.', 'Hat-wise, I am thriving.'] });
-  new Npc('prof', 'Professor Hoofington', A(9.5, -4), { shirt: 0x4a4a5a, skin: 0, hat: 'top', beard: 0xeeeeee, chat: ['Fascinating creature. Smells like a barn.', 'Positive reinforcement! And the occasional slap.'] });
+  new Npc('dave', 'Dave', LANDMARK.trail, { shirt: 0x5a7ab0, skin: 3, chat: ['Still lucky. Saw a cloud shaped like a cloud.', 'Hat-wise, I am thriving.'] });
+  new Npc('prof', 'Professor Hoofington', { x: LANDMARK.stones.x, z: LANDMARK.stones.z + 2.5 }, { shirt: 0x4a4a5a, skin: 0, hat: 'top', beard: 0xeeeeee, chat: ['Fascinating creature. Smells like a barn.', 'Positive reinforcement! And the occasional slap.'] });
   new Npc('gary', 'Shepherd Gary', ISLE.coast, { shirt: 0x7a6a4a, skin: 1, hat: 'cap', crook: true, face: Math.atan2(ISLE.x - ISLE.coast.x, ISLE.z - ISLE.coast.z), chat: ['Dolly\'s seeing a therapist now.', 'That rock went right through my lunch.', 'Baa. Sorry. Habit.'] });
   new Npc('mayor', 'Mayor Pfft', { x: DOUBT.x + 3, z: DOUBT.z + 3 }, { shirt: 0x5f636c, skin: 0, hat: 'mayor', hidden: true, face: Math.atan2(VILLAGE.x - DOUBT.x, VILLAGE.z - DOUBT.z), chat: ['Pfft.', 'Brenda says hello. Brenda does not say hello.'] });
   setupShip();
@@ -2439,22 +2494,22 @@ function setupCampaign() {
     thanks: () => '<p>A store! Gary, take the turnips out of your hat. GARY.</p><p>Here\'s a little something, the <b>Food miracle</b>: press <b>1</b>, click the ground, and bread falls out of the sky. Don\'t ask where it comes from.</p>',
     reward: () => { buildStore(); unlock('food', '🍞 the Food miracle (1)'); R.prayer = Math.min(PRAYER_MAX, R.prayer + 30); } });
 
-  Q({ id: 'sheep', giver: 'gary', title: 'Test Your Might', requires: () => doneQ('tame'),
+  Q({ id: 'sheep', giver: 'gary', title: 'Test Your Might', requires: () => doneQ('pantry'),
     offer: () => '<p>Oi. You. Big hand. Everyone keeps SAYING you\'re a god. My cousin said he was a god once. Turned out he just had big hands.</p><p>See that island? That\'s <b>Dolly</b>, my sheep. <b>Hit her with a rock. Three times.</b> She won\'t mind, she\'s very fluffy. There are rocks by my feet.</p>',
     objective: q => `Hit Dolly the sheep with a rock (${q.got}/3)`, done: q => q.got >= 3, target: () => sheep.pos,
     nag: q => `<p>${q.got ? 'Lucky shot. Once is luck. Do it again.' : 'Pick up a rock. Fling it at Dolly. It\'s not hard. Well, it is a bit hard. It\'s a rock.'}</p>`,
     thanks: () => '<p>Three hits! Dolly has never been so airborne. Alright, alright, you\'re a god.</p><p>Here, have the <b>Fireball miracle</b>. I found it in a volcano. Press <b>3</b>, grab it, throw it. Not at Dolly. She\'s been through enough.</p>',
     reward: () => { unlock('fire', '🔥 the Fireball miracle (3)'); R.prayer = Math.min(PRAYER_MAX, R.prayer + 45); } });
 
-  Q({ id: 'thirsty', giver: 'pip', title: 'Thirsty Turnips', requires: () => doneQ('pantry'),
-    offer: () => '<p>Howdy, sky person. The turnips are thirsty. I\'d water them myself, but the well\'s got Gary in it.</p><p>Here, I found a <b>rain dance</b> in a book. You do it: press <b>2</b> and <b>make it rain on my fields</b>.</p>',
+  Q({ id: 'thirsty', giver: 'pip', title: 'Thirsty Turnips', requires: () => doneQ('sheep'),
+    offer: () => '<p>Howdy, sky person, welcome to Turnip End. The turnips are thirsty. I\'d water them myself, but the well\'s got Gary in it.</p><p>Here, I found a <b>rain dance</b> in a book. You do it: press <b>2</b> and <b>make it rain on my fields</b>, right here at Turnip End.</p>',
     onAccept: () => { unlock('rain', '🌧️ the Rain miracle (2)'); R.prayer = Math.max(R.prayer, COST.rain + 5); },
-    objective: () => 'Make it rain on Farmer Pip\'s fields', done: () => flags.rainedOnField, target: () => world.fields[0]?.pos,
+    objective: () => 'Make it rain on Pip\'s fields at Turnip End', done: () => flags.rainedOnField, target: () => pipFields[0]?.pos,
     nag: () => '<p>Press <b>2</b>, then click on the fields. Rain. On the turnips. Go on.</p>',
     thanks: () => '<p>Look at \'em drink! I think one of them just said thank you. Turnips can\'t talk. That\'s how good the rain was.</p><p>Have <b>60 food</b>, on the house.</p>',
-    reward: () => { R.food += 60; for (const f of world.fields) { f.crop = 30; f.refresh(); } } });
+    reward: () => { R.food += 60; for (const f of [...world.fields, ...pipFields]) { f.crop = 30; f.refresh(); } } });
 
-  Q({ id: 'workshop', giver: 'barry', title: 'Barry\'s Big Idea', requires: () => doneQ('pantry'),
+  Q({ id: 'workshop', giver: 'barry', title: 'Barry\'s Big Idea', requires: () => doneQ('thirsty'),
     offer: () => '<p>Alright, guv? Barry. Builder. I\'ve had an idea. It\'s called a <b>WORKSHOP</b>. It\'s like a house, but for making bits of house.</p><p>Bring <b>40 wood to the workshop plot</b>. You can grab wood straight out of the store now. Handy, that.</p>',
     deliver: { kind: 'wood', need: 40, at: () => workshop.pos, r: 5 },
     objective: q => `Drop wood on the workshop plot (${q.got}/40)`,
@@ -2462,7 +2517,7 @@ function setupCampaign() {
     thanks: () => '<p>Lovely job. Now, the workshop makes <b>scaffolds</b>, slowly, cos I\'m on my tea break a lot.</p><p>Grab one and drop it on flat ground: <b>that\'s a house plan</b>. Stack more scaffolds on the same plan for bigger stuff. Builders do the rest.</p>',
     reward: () => { buildWorkshop(); unlock('scaffolds', '🏗️ scaffolds from the workshop'); } });
 
-  Q({ id: 'nan', giver: 'nan', title: 'A Roof for Nan', requires: () => doneQ('workshop'),
+  Q({ id: 'nan', giver: 'nan', title: 'A Roof for Nan', requires: () => doneQ('hat'),
     offer: () => `<p>${flags.smashed ? 'My house fell down. Somebody threw a rock at it. I\'m not saying it was you. It was you.' : 'My house blew away. Well. It was more of a tent. The tent was mostly a blanket. The blanket was mostly Gary\'s.'}</p><p><b>Build a house</b>: drop a scaffold from the workshop on some flat ground, and let the builders get on with it.</p>`,
     onAccept: q => { q.base = flags.housesBuilt; },
     objective: () => 'Build a house (drop a scaffold on flat ground)', done: q => flags.housesBuilt > (q.base ?? 0),
@@ -2470,15 +2525,15 @@ function setupCampaign() {
     thanks: () => `<p>A house! With walls! I've knitted ${cname()} a <b>jumper</b> to say thank you. It took eleven sheep. Don't tell Gary.</p>`,
     reward: () => { creature.jumper.visible = true; R.prayer = Math.min(PRAYER_MAX, R.prayer + 30); } });
 
-  Q({ id: 'hat', giver: 'dave', title: 'Dave\'s Lucky Hat', requires: () => doneQ('pantry'),
-    offer: () => '<p>Hi. Dave. The wind took my lucky hat to the <b>top of the mountain</b>. I\'m not lucky without it. Look at me. Look how unlucky I am. A bird just did something on me.</p><p>Could you <b>bring my hat back</b>? Just pick it up and drop it near me.</p>',
-    objective: () => 'Fetch Dave\'s hat from the mountain top', done: q => q.got >= 1, target: () => hatItem?.pos,
+  Q({ id: 'hat', giver: 'dave', title: 'Dave\'s Lucky Hat', requires: () => doneQ('workshop'),
+    offer: () => '<p>Hi. Dave. The wind took my lucky hat to the <b>top of Mount Grumble</b>. This is the path. It goes up. A lot. I\'m not lucky without it. Look at me. Look how unlucky I am. A bird just did something on me.</p><p>Could you <b>bring my hat back</b>? Just pick it up and drop it near me.</p>',
+    objective: () => 'Fetch Dave\'s hat from the top of Mount Grumble', done: q => q.got >= 1, target: () => hatItem?.pos,
     nag: () => '<p>It\'s the brown one. On the mountain. The very top. Of the mountain.</p>',
     thanks: () => '<p>MY HAT! I can feel the luck coming back already. A coin! No, a beetle. Still. Lucky beetle.</p><p>Have <b>50 prayer</b>. I\'ve been saving it.</p>',
     reward: () => { R.prayer = Math.min(PRAYER_MAX, R.prayer + 50); } });
 
-  Q({ id: 'cowschool', giver: 'prof', title: 'Cow School', requires: () => doneQ('pantry'),
-    offer: () => `<p>Ahem. Professor Hoofington, creature behaviourist. ${cname()} has the manners of a goat. A very large goat.</p><p><b>Teach it to fetch wood</b>: when it carries a tree to the store, <b>stroke it</b>. Repeat until it understands. Creatures that carry logs are creatures that do not eat Dave.</p>`,
+  Q({ id: 'cowschool', giver: 'prof', title: 'Cow School', requires: () => doneQ('nan'),
+    offer: () => `<p>Ahem. Professor Hoofington, creature behaviourist and part-time druid. These stones help me think. ${cname()} has the manners of a goat. A very large goat.</p><p><b>Teach it to fetch wood</b>: when it carries a tree to the store, <b>stroke it</b>. Repeat until it understands. Creatures that carry logs are creatures that do not eat Dave.</p>`,
     onAccept: () => { creature.op.fetch = Math.max(creature.op.fetch, 0.2); creature.boredom = 1; },
     objective: () => `Stroke ${cname()} while it fetches wood (${Math.round(clamp((creature.op.fetch - 0.2) / 0.4, 0, 1) * 100)}%)`,
     done: () => creature.op.fetch >= 0.6, target: () => creature.pos,
@@ -2492,7 +2547,7 @@ function setupCampaign() {
     nag: () => '<p>Still not clapping.</p>' });
 
   if (ship) {
-    Q({ id: 'ship1', giver: 'captain', title: 'The Soggy Biscuit', requires: () => revealed, song: SHANTY.intro,
+    Q({ id: 'ship1', giver: 'captain', title: 'The Soggy Biscuit', requires: () => QUEST.convert.stage === 'active' || doneQ('convert'), song: SHANTY.intro,
       offer: () => `<p>Ahoy, Your Enormousness! We ran ${SHIP_NAME} straight into your lovely beach. The hull has a hole you could drive a cow through.</p>`,
       after: () => `<p>Fetch us <b>80 wood</b> and we'll patch her up. Drop trees or bundles of wood right on the ship.</p>`,
       deliver: { kind: 'wood', need: 80, at: () => ship.pos, r: 7.5 }, auto: true, target: () => ship.pos,
@@ -2559,7 +2614,7 @@ function updateCampaign(dt) {
   hatItem?.update(dt);
   updateShip(dt);
   // Once the village is on its feet, the wider world opens up.
-  if (!revealed && !cut && state === 'play' && SIDE.filter(doneQ).length >= 4) revealDoubtsby();
+  if (!revealed && !cut && state === 'play' && doneQ('cowschool')) revealDoubtsby();
 }
 
 /* --- Cutscenes: the camera tours, a narrator talks --- */
@@ -2596,7 +2651,7 @@ $('#capSkip').onclick = e => { e.stopPropagation(); audio(); if (cut) { cut.i = 
 const housesCentre = () => { const hs = world.houses.filter(h => h.faction === 'mine'); return hs.reduce((a, h) => ({ x: a.x + h.pos.x / hs.length, z: a.z + h.pos.z / hs.length }), { x: 0, z: 0 }); };
 function playIntro() {
   cutscene([
-    { at: () => ({ x: 0, z: 0 }), dist: 160, pitch: 0.95, text: 'Once upon a time, on an island nobody had bothered to name, some people prayed very hard for a god.' },
+    { at: () => ({ x: 0, z: 0 }), dist: 260, pitch: 0.95, text: 'Once upon a time, on an island nobody had bothered to name, some people prayed very hard for a god.' },
     { at: () => VILLAGE, dist: 70, pitch: 0.85, text: 'They got <b>you</b>. Welcome to <b>Little Gullible</b>. Population: small. Expectations: smaller.' },
     { at: () => temple.pos, dist: 42, pitch: 0.55, text: 'This is your <b>temple</b>. Worshippers pray here, which makes <b>prayer</b>. Prayer pays for miracles. Like money, but holier.' },
     { at: housesCentre, dist: 38, pitch: 0.7, text: 'These are their <b>houses</b>. That\'s it. No store, no workshop, and Gary keeps his turnips in his hat.' },
@@ -2616,7 +2671,7 @@ function playIntro() {
 function revealDoubtsby() {
   revealed = true;
   $('#goal').hidden = false;
-  doubtLabel.visible = true;
+  doubtLabel.userData.hidden = false;
   NPC.mayor.show();
   if (ship) { ship.mesh.visible = true; NPC.captain.show(); }
   const shots = [
@@ -2733,12 +2788,300 @@ $('#qToggle').onclick = () => { const p = $('#qlog'); p.classList.toggle('closed
 /* ============================================================
    World setup
    ============================================================ */
+/* ---------- Landmarks, scenery and wildlife ---------- */
+const props = [];                       // footprints that plans, trees and scenery keep clear of
+const blockedByProp = (x, z, pad = 0) => props.some(p => Math.hypot(x - p.x, z - p.z) < p.r + pad);
+const animated = [];                    // things that move on their own every frame
+const mapLabels = [];
+const pipFields = [];
+let nightness = 0;
+function mapLabel(text, sub, x, y, z, hidden = false) {
+  const s = textSprite(text, '#ffffff', sub);
+  s.scale.set(48, 12, 1); s.position.set(x, y, z); s.userData.hidden = hidden;
+  scene.add(s); mapLabels.push(s);
+  return s;
+}
+function placeProp(g, x, z, r, rotY = 0, y = heightAt(x, z)) {
+  g.position.set(x, y, z); g.rotation.y = rotY;
+  scene.add(addShadow(g)); props.push({ x, z, r });
+  return g;
+}
+const faceVillage = (x, z) => Math.atan2(VILLAGE.x - x, VILLAGE.z - z);
+// Search the terrain for a spot that fits; score() picks the best of the candidates.
+function findSpot(n, test, score) {
+  let best = null, bs = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const x = rand(-205, 205), z = rand(-205, 205);
+    if (!test(x, z)) continue;
+    const sc = score(x, z);
+    if (sc > bs) { bs = sc; best = { x, z }; }
+  }
+  return best;
+}
+const flatAround = (x, z, r) => { const h = heightAt(x, z); return Math.max(...[[-r, -r], [r, -r], [-r, r], [r, r], [0, r], [r, 0], [0, -r], [-r, 0]].map(([a, b]) => Math.abs(heightAt(x + a, z + b) - h))); };
+
+function windmill(x, z) {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(merge([
+    [new THREE.CylinderGeometry(1.5, 2.3, 7, 8).translate(0, 3.5, 0), 0xefe2c4], [new THREE.ConeGeometry(2.1, 2.2, 8).translate(0, 8.1, 0), 0xa8553a],
+    [Box(1, 1.8, 0.1).translate(0, 0.9, 2.12), 0x5a3a22], [Box(0.7, 0.7, 0.1).translate(0, 4.5, 1.86), 0x9fd3ee],
+  ]), VC));
+  const sails = new THREE.Group(); sails.position.set(0, 6.6, 2.2);
+  const arm = merge([[Box(0.3, 10, 0.2), 0x8a5a33], [Box(1.6, 4, 0.08).translate(0.95, 2.8, 0), 0xf4f1ea], [Box(1.6, 4, 0.08).translate(-0.95, -2.8, 0), 0xf4f1ea]]);
+  const a1 = new THREE.Mesh(arm, VC), a2 = new THREE.Mesh(arm, VC); a2.rotation.z = Math.PI / 2;
+  sails.add(a1, a2); g.add(sails);
+  animated.push(dt => { sails.rotation.z += dt * 0.8; });
+  placeProp(g, x, z, 3.2, faceVillage(x, z));
+}
+function lighthouse(x, z) {
+  const g = new THREE.Group(), parts = [[new THREE.CylinderGeometry(3, 3.4, 1.2, 10).translate(0, 0.6, 0), 0x8f8b84]];
+  for (let i = 0; i < 6; i++) parts.push([new THREE.CylinderGeometry(1.9 - i * 0.12, 2.0 - i * 0.12, 2, 10).translate(0, 2.2 + i * 2, 0), i % 2 ? 0xc0392b : 0xf4f1ea]);
+  parts.push([new THREE.CylinderGeometry(1.8, 1.8, 0.3, 10).translate(0, 13.3, 0), 0x2a2a2a], [new THREE.ConeGeometry(1.5, 1.6, 10).translate(0, 15.9, 0), 0xc0392b], [Box(0.8, 1.4, 0.1).translate(0, 1.9, 2.0), 0x5a3a22]);
+  g.add(new THREE.Mesh(merge(parts), VC));
+  const lamp = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 1.6, 10), new THREE.MeshBasicMaterial({ color: 0xfff1a0 })); lamp.position.y = 14.3;
+  const beam = new THREE.Mesh(new THREE.ConeGeometry(4, 40, 12, 1, true).rotateZ(Math.PI / 2).translate(20, 0, 0), new THREE.MeshBasicMaterial({ color: 0xfff1a0, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.y = 14.3;
+  g.add(lamp, beam);
+  placeProp(g, x, z, 3.5);
+  lamp.castShadow = beam.castShadow = false;
+  animated.push(dt => { beam.rotation.y += dt * 0.7; beam.material.opacity = 0.04 + nightness * 0.22; });
+}
+function stoneCircle(cx, cz) {
+  const g = new THREE.Group(), parts = [], cy = heightAt(cx, cz), stones = [];
+  for (let i = 0; i < 9; i++) {
+    const a = i / 9 * Math.PI * 2, x = Math.cos(a) * 7, z = Math.sin(a) * 7, h = rand(3.2, 4.6), y = heightAt(cx + x, cz + z) - cy;
+    stones.push({ x, z, y, h, a });
+    parts.push([Box(1.2, h, 0.8).rotateY(-(a + Math.PI / 2)).translate(x, y + h / 2 - 0.4, z), pick([0x9a958c, 0x8f8b84, 0xa39e94])]);
+  }
+  for (const i of [0, 3, 6]) {
+    const s1 = stones[i], s2 = stones[i + 1], a = (s1.a + s2.a) / 2, top = Math.min(s1.y + s1.h, s2.y + s2.h) - 0.3;
+    parts.push([Box(5.4, 0.7, 0.9).rotateY(-(a + Math.PI / 2)).translate((s1.x + s2.x) / 2, top + 0.35, (s1.z + s2.z) / 2), 0x8f8b84]);
+  }
+  parts.push([Box(2.6, 1, 1.6).translate(0, 0.3, 0), 0x7d7a74], [Box(2.8, 0.2, 1.8).translate(0, 0.9, 0), 0x8f8b84]);
+  g.add(new THREE.Mesh(merge(parts), VC));
+  placeProp(g, cx, cz, 9);
+}
+function ruinedTower(cx, cz) {
+  const g = new THREE.Group(), parts = [];
+  for (let i = 0; i < 14; i++) {
+    if (i === 3) continue;      // the doorway
+    const a = i / 14 * Math.PI * 2, h = rand(2, 9) * (i % 3 ? 1 : 0.5);
+    parts.push([Box(1.9, h, 1.2).rotateY(-(a + Math.PI / 2)).translate(Math.cos(a) * 4, h / 2 - 0.3, Math.sin(a) * 4), pick([0x8f8b84, 0x7d7a74, 0x9a958c])]);
+  }
+  for (let i = 0; i < 10; i++) parts.push([new THREE.DodecahedronGeometry(rand(0.4, 0.9), 0).translate(rand(-6, 6), 0.2, rand(-6, 6)), 0x8f8b84]);
+  parts.push([Box(3, 0.3, 0.4).translate(2.6, 6.2, 1.5).rotateY(0.5), 0x6e4a2c]);
+  g.add(new THREE.Mesh(merge(parts), VC));
+  placeProp(g, cx, cz, 6);
+}
+function pier(from, dir) {
+  const g = new THREE.Group(), parts = [];
+  for (let i = 0; i < 9; i++) parts.push([Box(2.4, 0.18, 1.1).translate(0, 1.2, i * 1.25), i % 2 ? 0xa8794a : 0x9a6a3a]);
+  for (let i = 0; i <= 3; i++) for (const x of [-1.1, 1.1]) parts.push([Box(0.25, 3.5, 0.25).translate(x, -0.4, i * 3.6), 0x6e4a2c]);
+  g.add(new THREE.Mesh(merge(parts), VC));
+  const boat = new THREE.Mesh(merge([[Box(1.5, 0.6, 3.4).translate(0, 0.3, 0), 0x7a4f2c], [Box(1.6, 0.12, 3.5).translate(0, 0.62, 0), 0xa8423a], [Box(1.3, 0.1, 0.4).translate(0, 0.5, 0.4), 0x9a6a3a]]), VC);
+  boat.position.set(2.4, 0, 8); g.add(boat);
+  placeProp(g, from.x, from.z, 2, Math.atan2(dir.x, dir.z), 0);
+  animated.push(() => { boat.position.y = -0.15 + Math.sin(performance.now() / 600) * 0.12; boat.rotation.z = Math.sin(performance.now() / 800) * 0.06; });
+}
+function smallProp(kind, x, z) {
+  const P = {
+    well: [[new THREE.CylinderGeometry(1, 1.1, 1, 10).translate(0, 0.5, 0), 0x8f8b84], [Box(0.15, 2, 0.15).translate(-0.9, 1.5, 0), 0x6e4a2c], [Box(0.15, 2, 0.15).translate(0.9, 1.5, 0), 0x6e4a2c], [new THREE.ConeGeometry(1.4, 0.8, 4).rotateY(Math.PI / 4).translate(0, 2.8, 0), 0xa8553a], [new THREE.CylinderGeometry(0.85, 0.85, 0.05, 10).translate(0, 0.95, 0), 0x2f6f9a]],
+    hay: [[new THREE.CylinderGeometry(1.2, 1.4, 1.4, 8).translate(0, 0.7, 0), 0xe8cf6a], [new THREE.ConeGeometry(1.2, 1, 8).translate(0, 1.9, 0), 0xd9b94e]],
+    cart: [[Box(1.6, 0.5, 2.6).translate(0, 0.9, 0), 0x9a6a3a], [new THREE.CylinderGeometry(0.6, 0.6, 0.15, 8).rotateZ(Math.PI / 2).translate(0.9, 0.6, 0.5), 0x5a3a22], [new THREE.CylinderGeometry(0.6, 0.6, 0.15, 8).rotateZ(Math.PI / 2).translate(-0.9, 0.6, 0.5), 0x5a3a22], [Box(0.12, 0.12, 2).translate(0, 0.8, 2.1), 0x6e4a2c], [Box(1.2, 0.5, 1.6).translate(0, 1.4, -0.2), 0xf2c64b]],
+    sign: [[Box(0.2, 2.6, 0.2).translate(0, 1.3, 0), 0x6e4a2c], [Box(2.2, 0.6, 0.1).translate(0.5, 2.2, 0), 0xe9d8b0], [Box(0.4, 0.4, 0.1).rotateZ(Math.PI / 4).translate(1.6, 2.2, 0), 0xe9d8b0]],
+    scarecrow: [[Box(0.18, 2.6, 0.18).translate(0, 1.3, 0), 0x6e4a2c], [Box(2.2, 0.14, 0.14).translate(0, 2, 0), 0x6e4a2c], [Box(0.7, 0.9, 0.4).translate(0, 1.85, 0), 0x6a8a3a], [new THREE.IcosahedronGeometry(0.35, 0).translate(0, 2.65, 0), 0xe8cf6a], [new THREE.CylinderGeometry(0.5, 0.5, 0.05, 8).translate(0, 2.95, 0), 0xd9b94e], [new THREE.CylinderGeometry(0.22, 0.25, 0.3, 8).translate(0, 3.1, 0), 0xd9b94e]],
+    barn: [[Box(5, 3.2, 4).translate(0, 1.6, 0), 0xa8423a], [new THREE.ConeGeometry(3.8, 2, 4).rotateY(Math.PI / 4).scale(1, 1, 0.8).translate(0, 4.1, 0), 0x6b3a2a], [Box(1.8, 2.2, 0.1).translate(0, 1.1, 2.02), 0xf0e6d0]],
+    farmhouse: null,
+  };
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(kind === 'farmhouse' ? HOUSE_GEO : merge(P[kind]), VC));
+  placeProp(g, x, z, { well: 1.6, hay: 1.6, cart: 1.8, sign: 1, scarecrow: 1, barn: 3.6, farmhouse: 2.2 }[kind], faceVillage(x, z) + rand(-0.3, 0.3));
+  return g;
+}
+
+/* --- Scenery scattered over the whole island: grass, bushes, flowers, pebbles --- */
+function scatterDecor() {
+  const flower = c => merge([[Box(0.06, 0.5, 0.06).translate(0, 0.25, 0), 0x3f7a35], [Box(0.28, 0.12, 0.28).translate(0, 0.52, 0), c], [Box(0.12, 0.14, 0.12).translate(0, 0.58, 0), 0xffe27a]]);
+  const kinds = [
+    { geo: merge([[new THREE.ConeGeometry(0.1, 0.7, 3).translate(0, 0.35, 0), 0x5e9e40], [new THREE.ConeGeometry(0.1, 0.55, 3).rotateZ(0.3).translate(0.12, 0.25, 0), 0x6fae4a], [new THREE.ConeGeometry(0.1, 0.6, 3).rotateZ(-0.3).translate(-0.12, 0.28, 0.05), 0x4f8f3a]]),
+      n: 3200, ok: (h, sl) => h > 1.2 && h < 22 && sl < 1.2, scale: [0.9, 1.8] },
+    { geo: merge([[new THREE.IcosahedronGeometry(0.75, 0).scale(1, 0.7, 1).translate(0, 0.4, 0), 0x3f7a35], [new THREE.IcosahedronGeometry(0.5, 0).translate(0.5, 0.55, 0.2), 0x4e8f3d]]),
+      n: 900, ok: (h, sl, w) => h > 1.5 && h < 18 && sl < 1.5 && w > 0.45, scale: [0.7, 1.7], shadow: true },
+    { geo: flower(0xe0505a), n: 500, ok: (h, sl, w) => h > 1.5 && h < 12 && sl < 0.8 && w < 0.55, scale: [0.9, 1.4], cluster: true },
+    { geo: flower(0xf4f1ea), n: 500, ok: (h, sl, w) => h > 1.5 && h < 12 && sl < 0.8 && w < 0.55, scale: [0.9, 1.4], cluster: true },
+    { geo: flower(0x9a6ad0), n: 400, ok: (h, sl, w) => h > 1.5 && h < 12 && sl < 0.8 && w < 0.55, scale: [0.9, 1.4], cluster: true },
+    { geo: merge([[new THREE.DodecahedronGeometry(0.3, 0).translate(0, 0.1, 0), 0x8f8b84]]), n: 600, ok: (h, sl) => h > 0.6 && (sl > 0.9 || h < 1.3 || h > 18), scale: [0.6, 2.2] },
+  ];
+  const d = new THREE.Object3D();
+  const clear = (x, z) => flat({ x, z }, VILLAGE) > 22 && flat({ x, z }, DOUBT) > 12 && !inTemple({ x, z }, 3) && !blockedByProp(x, z, 0.5) &&
+    ![...world.fields, ...pipFields].some(f => f.contains(x, z, 0.5));
+  for (const k of kinds) {
+    const im = new THREE.InstancedMesh(k.geo, VC, k.n);
+    im.receiveShadow = true; im.castShadow = !!k.shadow; im.frustumCulled = false;
+    let n = 0, cx = 0, cz = 0, left = 0;
+    for (let t = 0; t < k.n * 10 && n < k.n; t++) {
+      let x, z;
+      if (k.cluster && left > 0) { x = cx + rand(-2.5, 2.5); z = cz + rand(-2.5, 2.5); left--; }
+      else { x = rand(-210, 210); z = rand(-210, 210); if (k.cluster) { cx = x; cz = z; left = 10; } }
+      const h = heightAt(x, z);
+      if (!k.ok(h, slopeAt(x, z), woodsAt(x, z)) || !clear(x, z)) { if (k.cluster) left = 0; continue; }
+      d.position.set(x, h, z); d.rotation.set(0, rand(6.28), 0); d.scale.setScalar(rand(...k.scale)); d.updateMatrix();
+      im.setMatrixAt(n++, d.matrix);
+    }
+    im.count = n;
+    scene.add(im);
+  }
+}
+
+/* --- Wildlife: flocks of sheep you can pick up and throw, and gulls over the coast --- */
+function makeSheepMesh(scale = 1) {
+  const g = new THREE.Group(), inner = new THREE.Group(), wool = mat(0xf7f5ee), black = mat(0x1f1f1f);
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 1), wool); body.scale.set(1, 0.85, 1.3); body.position.y = 0.95;
+  const head = new THREE.Mesh(Box(0.42, 0.42, 0.5), black); head.position.set(0, 1.15, 0.95);
+  const ears = new THREE.Mesh(Box(0.8, 0.12, 0.16), black); ears.position.set(0, 1.28, 0.85);
+  const fluff = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0), wool); fluff.position.set(0, 1.42, 0.82);
+  inner.add(body, head, ears, fluff);
+  for (const [x, z] of [[0.35, 0.5], [-0.35, 0.5], [0.35, -0.5], [-0.35, -0.5]]) { const l = new THREE.Mesh(Box(0.14, 0.5, 0.14).translate(0, 0.25, 0), black); l.position.set(x, 0.1, z); inner.add(l); }
+  inner.scale.setScalar(scale); g.add(inner);
+  return addShadow(g);
+}
+class Critter {
+  constructor(home) {
+    this.type = 'critter'; this.state = 'idle'; this.vel = new V3(); this.bounces = 0; this.home = home; this.t = rand(10); this.heading = rand(6.28); this.target = null;
+    this.pos = new V3(home.x + rand(-5, 5), 0, home.z + rand(-5, 5)); this.pos.y = heightAt(this.pos.x, this.pos.z);
+    this.g = makeSheepMesh(0.75); scene.add(this.g);
+    world.critters.push(this);
+  }
+  get pickR() { return 0.9; }
+  get pickH() { return 0.6; }
+  canPick() { return this.state === 'idle' || this.state === 'flying'; }
+  sync() { this.g.position.copy(this.pos); }
+  remove() { this.removed = true; scene.remove(this.g); removeFrom(world.critters, this); }
+  land(speed) {
+    this.state = 'idle'; this.target = null;
+    floatText(this.pos.x, this.pos.y + 2, this.pos.z, speed > 16 ? pick(['BAAA!', 'MEHH!', 'baa?!']) : 'baa', '#fff');
+    if (speed > 16) { sfx.baa(); emit(this.pos.x, this.pos.y + 0.8, this.pos.z, { c: 0xffffff, n: 10, size: 0.5, spd: 3, up: 3, life: 0.8 }); }
+  }
+  update(dt) {
+    this.t += dt;
+    if (this.state === 'flying') { flyStep(this, dt); this.g.rotation.x += dt * 7; this.sync(); return; }
+    if (this.state !== 'idle') { this.g.rotation.z = Math.sin(this.t * 14) * 0.4; this.sync(); return; }
+    if (this.target) {
+      const dx = this.target.x - this.pos.x, dz = this.target.z - this.pos.z, d = Math.hypot(dx, dz);
+      if (d < 0.4) this.target = null;
+      else {
+        const sp = (heightAt(this.pos.x, this.pos.z) < WATER - 0.3 ? 0.6 : 1.3) * dt;
+        this.pos.x += dx / d * sp; this.pos.z += dz / d * sp;
+        this.heading = angLerp(this.heading, Math.atan2(dx, dz), dt * 4);
+      }
+    } else if (Math.random() < dt * 0.35) {
+      const a = rand(6.28), r = rand(0, 8);
+      this.target = { x: this.home.x + Math.cos(a) * r, z: this.home.z + Math.sin(a) * r };
+    }
+    const g = heightAt(this.pos.x, this.pos.z);
+    this.pos.y = Math.max(g, WATER - 0.55);
+    this.g.position.copy(this.pos);
+    this.g.position.y += this.target ? Math.abs(Math.sin(this.t * 9)) * 0.06 : 0;
+    this.g.rotation.set(0, this.heading, 0);
+    if (Math.random() < dt * 0.02 && flat(this.pos, camera.position) < 70) floatText(this.pos.x, this.pos.y + 1.8, this.pos.z, 'baa', '#ffffff');
+  }
+}
+function coastPoint(a) {
+  const dx = Math.cos(a), dz = Math.sin(a);
+  let r = 30;
+  while (r < HALF - 4 && heightAt(dx * r, dz * r) > 0.3) r += 1;
+  return { x: dx * r, z: dz * r, r, dx, dz };
+}
+function addGulls(n) {
+  const wingGeo = Box(1.4, 0.05, 0.45).translate(0.7, 0, 0), white = mat(0xffffff), grey = mat(0xb8bcc4);
+  for (let i = 0; i < n; i++) {
+    const c = coastPoint(rand(6.28)), g = new THREE.Group();
+    const body = new THREE.Mesh(Box(0.35, 0.3, 1.1), white), head = new THREE.Mesh(Box(0.25, 0.25, 0.3), white); head.position.set(0, 0.1, 0.6);
+    const beak = new THREE.Mesh(Box(0.08, 0.08, 0.2), mat(0xffb030)); beak.position.set(0, 0.08, 0.82);
+    const L = new THREE.Mesh(wingGeo, grey), R = new THREE.Mesh(wingGeo, grey); R.rotation.y = Math.PI;
+    g.add(body, head, beak, L, R); g.scale.setScalar(1.3);
+    scene.add(g);
+    const st = { a: rand(6.28), r: rand(10, 26), y: rand(14, 26), w: rand(0.25, 0.45) * (Math.random() < 0.5 ? 1 : -1), t: rand(10) };
+    animated.push(dt => {
+      st.a += st.w * dt; st.t += dt;
+      g.position.set(c.x + Math.cos(st.a) * st.r, st.y + Math.sin(st.a * 2) * 1.5, c.z + Math.sin(st.a) * st.r);
+      g.rotation.y = Math.atan2(-Math.sin(st.a) * Math.sign(st.w), Math.cos(st.a) * Math.sign(st.w));
+      const f = Math.sin(st.t * 9) * 0.55;
+      L.rotation.z = f; R.rotation.z = -f;
+    });
+  }
+}
+
+/* --- Putting the island together --- */
+const LANDMARK = {};
+function dressIsland() {
+  const A = (dx, dz) => at(dx, dz);
+  // Little Gullible itself
+  windmill(A(25, 4).x, A(25, 4).z);
+  smallProp('well', A(-1.5, 12.5).x, A(-1.5, 12.5).z);
+  smallProp('hay', A(21, -4).x, A(21, -4).z); smallProp('hay', A(22, 13).x, A(22, 13).z);
+  smallProp('cart', A(7, 15.5).x, A(7, 15.5).z);
+  // Pip's farm, Turnip End: flat land a short walk out, clear of the river and the woods
+  const farm = findSpot(4000, (x, z) => { const h = heightAt(x, z), dv = flat({ x, z }, VILLAGE); return h > 2 && h < 9 && dv > 50 && dv < 85 && pathDist(x, z, RIVER).d > 16 && flat({ x, z }, LAKE) > 26 && woodsAt(x, z) < 0.55 && flatAround(x, z, 7) < 2 && flat({ x, z }, DOUBT) > 60 && flat({ x, z }, ISLE) > 30; },
+    (x, z) => -Math.abs(flat({ x, z }, VILLAGE) - 62) - flatAround(x, z, 7) * 4) || A(55, 30);
+  LANDMARK.farm = farm;
+  const rot = faceVillage(farm.x, farm.z), fx = Math.cos(rot), fz = -Math.sin(rot);   // a sideways direction
+  smallProp('farmhouse', farm.x, farm.z);
+  smallProp('barn', farm.x + fx * 7, farm.z + fz * 7);
+  for (const k of [-1, 1]) pipFields.push(new Field(farm.x - fx * 10 * k + Math.sin(rot) * 9, farm.z - fz * 10 * k + Math.cos(rot) * 9, true));
+  smallProp('scarecrow', farm.x + Math.sin(rot) * 9, farm.z + Math.cos(rot) * 9);
+  smallProp('hay', farm.x - fx * 6, farm.z - fz * 6);
+  // The Standing Stones, on a flat-topped hill
+  LANDMARK.stones = findSpot(5000, (x, z) => { const h = heightAt(x, z), dv = flat({ x, z }, VILLAGE); return h > 8 && h < 20 && dv > 45 && dv < 100 && flatAround(x, z, 8) < 2.6 && pathDist(x, z, RIDGE).d > 28 && flat({ x, z }, farm) > 35 && flat({ x, z }, DOUBT) > 50; },
+    (x, z) => heightAt(x, z) - flatAround(x, z, 8) * 2) || A(40, -50);
+  stoneCircle(LANDMARK.stones.x, LANDMARK.stones.z);
+  // Cape Blinky: the lighthouse on the island's furthest point
+  let cape = null;
+  for (let a = 0; a < Math.PI * 2; a += 0.02) { const c = coastPoint(a); if (heightAt(c.dx * (c.r - 6), c.dz * (c.r - 6)) > 1.5 && (!cape || c.r > cape.r) && flat(c, ISLE) > 40) cape = c; }
+  LANDMARK.cape = { x: cape.dx * (cape.r - 6), z: cape.dz * (cape.r - 6) };
+  lighthouse(LANDMARK.cape.x, LANDMARK.cape.z);
+  // A ruined tower deep in the Whispering Woods
+  LANDMARK.ruin = findSpot(3000, (x, z) => { const h = heightAt(x, z); return h > 2 && h < 14 && flat({ x, z }, WOODS) < 28 && flatAround(x, z, 5) < 2.5 && flat({ x, z }, VILLAGE) > 40; }, (x, z) => -flat({ x, z }, WOODS)) || WOODS;
+  ruinedTower(LANDMARK.ruin.x, LANDMARK.ruin.z);
+  // Gary's pier looking out at Dolly's island
+  pier({ x: ISLE.coast.x + ISLE.dir.x * 1.5, z: ISLE.coast.z + ISLE.dir.z * 1.5 }, ISLE.dir);
+  // The path up Mount Grumble starts where the land begins to climb
+  let t = 0; const dx = PEAK.x - VILLAGE.x, dz = PEAK.z - VILLAGE.z, L = Math.hypot(dx, dz);
+  while (t < L && heightAt(VILLAGE.x + dx / L * t, VILLAGE.z + dz / L * t) < 9) t += 1;
+  t = Math.max(30, t - 4);
+  LANDMARK.trail = { x: VILLAGE.x + dx / L * t, z: VILLAGE.z + dz / L * t };
+  smallProp('sign', LANDMARK.trail.x + 2, LANDMARK.trail.z + 1);
+
+  scatterDecor();
+  // Flocks in the open meadows
+  for (let f = 0; f < 4; f++) {
+    const home = findSpot(1500, (x, z) => { const h = heightAt(x, z); return h > 2 && h < 10 && woodsAt(x, z) < 0.5 && slopeAt(x, z) < 0.8 && flat({ x, z }, VILLAGE) > 35 && flat({ x, z }, DOUBT) > 25 && !blockedByProp(x, z, 8); }, () => Math.random());
+    if (home) for (let i = 0; i < 5; i++) new Critter(home);
+  }
+  addGulls(14);
+
+  mapLabel('LITTLE GULLIBLE', 'your village', VILLAGE.x, 32, VILLAGE.z - 10);
+  mapLabel('MOUNT GRUMBLE', 'mind the hat', PEAK.x, heightAt(PEAK.x, PEAK.z) + 16, PEAK.z);
+  mapLabel('LAKE SOGGY', 'do not drink', LAKE.x, 14, LAKE.z);
+  mapLabel('WHISPERING WOODS', 'it whispers rude things', WOODS.x, 30, WOODS.z);
+  mapLabel('TURNIP END', "Farmer Pip's place", farm.x, heightAt(farm.x, farm.z) + 16, farm.z);
+  mapLabel('THE STANDING STONES', 'ancient, probably', LANDMARK.stones.x, heightAt(LANDMARK.stones.x, LANDMARK.stones.z) + 16, LANDMARK.stones.z);
+  mapLabel("DOLLY'S ROCK", 'one sheep, no regrets', ISLE.x, 14, ISLE.z);
+  mapLabel('CAPE BLINKY', 'the lighthouse', LANDMARK.cape.x, heightAt(LANDMARK.cape.x, LANDMARK.cape.z) + 26, LANDMARK.cape.z);
+}
+function updateScenery(dt) {
+  for (const f of animated) f(dt);
+  const show = cam.dist > 95 || state === 'title';
+  for (const s of mapLabels) s.visible = show && !s.userData.hidden;
+}
+
 let doubtLabel = null;
 function setupWorld() {
   const V = (dx, dz) => [VILLAGE.x + dx, VILLAGE.z + dz];
   for (const [dx, dz] of [[-14, -6], [-17, 12], [-7, 15], [11, -9]]) new House(...V(dx, dz));
   for (const [dx, dz] of [[-6, 0], [5, 4], [0, -6], [3, -5], [-4, 6]]) new House(DOUBT.x + dx, DOUBT.z + dz, 'doubt');
   for (const [dx, dz] of [[14, 0], [14, 7.5]]) new Field(...V(dx, dz));
+  dressIsland();
   // A ring of forest close to the village so the woodcutters have something to do from minute one.
   let tries = 0;
   while (world.trees.length < 30 && tries++ < 500) {
@@ -2746,24 +3089,26 @@ function setupWorld() {
     if (treeSpotOk(x, z) && !inTemple({ x, z }, 3)) new Tree(x, z);
   }
   tries = 0;
-  while (world.trees.length < 190 && tries++ < 6000) {
-    const x = rand(-95, 95), z = rand(-95, 95);
-    if (fbm(x * 0.03 + 50, z * 0.03 + 50, 3) < 0.48) continue;
+  // Woods where the woods map says so, plus the odd lonely tree everywhere else.
+  while (world.trees.length < 950 && tries++ < 50000) {
+    const x = rand(-210, 210), z = rand(-210, 210), w = woodsAt(x, z);
+    if (w < 0.5 && Math.random() > 0.035) continue;
+    if (w >= 0.5 && Math.random() > smoothstep(0.48, 0.72, w)) continue;
     if (flat({ x, z }, DOUBT) < 15 || flat({ x, z }, VILLAGE) < 27) continue;
     if (treeSpotOk(x, z)) new Tree(x, z);
   }
   tries = 0;
-  while (world.rocks.length < 34 && tries++ < 3000) {
-    const x = rand(-90, 90), z = rand(-90, 90), h = heightAt(x, z);
-    if (h < 1 || flat({ x, z }, VILLAGE) < 26 || flat({ x, z }, DOUBT) < 11) continue;
+  while (world.rocks.length < 120 && tries++ < 8000) {
+    const x = rand(-210, 210), z = rand(-210, 210), h = heightAt(x, z);
+    if (h < 1 || flat({ x, z }, VILLAGE) < 26 || flat({ x, z }, DOUBT) < 11 || blockedByProp(x, z, 1)) continue;
+    if (h < 12 && slopeAt(x, z) < 1 && Math.random() < 0.5) continue;   // rocks like hills and mountainsides
     new Rock(x, z);
   }
   for (let i = 0; i < 5; i++) { const a = rand(6.28), r = rand(22, 26), x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r; if (!inTemple({ x, z }, 2)) new Rock(x, z); }
   const jobs = ['farmer', 'farmer', 'woodcutter', 'woodcutter', 'worshipper', 'worshipper', 'worshipper', 'builder'];
   jobs.forEach(j => { const a = rand(6.28), r = rand(2, 9); new Villager(VILLAGE.x + Math.cos(a) * r, VILLAGE.z + 6 + Math.sin(a) * r, 'mine', j); });
   for (let i = 0; i < 6; i++) { const a = rand(6.28), r = rand(2, 8); new Villager(DOUBT.x + Math.cos(a) * r, DOUBT.z + Math.sin(a) * r, 'doubt', 'skeptic'); }
-  const s1 = textSprite('LITTLE GULLIBLE', '#ffffff', 'your village'); s1.position.set(VILLAGE.x, 30, VILLAGE.z - 12); scene.add(s1);
-  doubtLabel = textSprite('DOUBTSBY', '#cfcfcf', 'they do not believe in you'); doubtLabel.position.set(DOUBT.x, 18, DOUBT.z); doubtLabel.visible = false; scene.add(doubtLabel);
+  doubtLabel = mapLabel('DOUBTSBY', 'they do not believe in you', DOUBT.x, 20, DOUBT.z, true);
   creature = new Creature('Sir Moosalot');
   setupCampaign();
 }
@@ -2771,7 +3116,7 @@ function setupWorld() {
 /* ============================================================
    Camera
    ============================================================ */
-const cam = { tx: 0, tz: 0, ty: 3, yaw: 0.7, pitch: 0.62, dist: 165, fly: null };
+const cam = { tx: 0, tz: 0, ty: 3, yaw: 0.7, pitch: 0.62, dist: 270, fly: null };
 let shake = 0;
 function applyCamera(dt) {
   if (cam.fly) {
@@ -2782,9 +3127,9 @@ function applyCamera(dt) {
     if (cam.fly.yaw !== undefined) cam.yaw = angLerp(cam.yaw, cam.fly.yaw, k);
     if (Math.hypot(cam.tx - cam.fly.x, cam.tz - cam.fly.z) < 0.3 && (!cam.fly.dist || Math.abs(cam.dist - cam.fly.dist) < 0.5)) cam.fly = null;
   }
-  cam.dist = clamp(cam.dist, 12, 170);
+  cam.dist = clamp(cam.dist, 12, 280);
   cam.pitch = clamp(cam.pitch, 0.2, 1.45);
-  const r = Math.hypot(cam.tx, cam.tz); if (r > 105) { cam.tx *= 105 / r; cam.tz *= 105 / r; }
+  const r = Math.hypot(cam.tx, cam.tz); if (r > 215) { cam.tx *= 215 / r; cam.tz *= 215 / r; }
   cam.ty = lerp(cam.ty, surf(cam.tx, cam.tz), Math.min(1, dt * 2));
   const cp = Math.cos(cam.pitch);
   camera.position.set(cam.tx + Math.sin(cam.yaw) * cp * cam.dist, cam.ty + Math.sin(cam.pitch) * cam.dist, cam.tz + Math.cos(cam.yaw) * cp * cam.dist);
@@ -2880,12 +3225,12 @@ function pickEntity(r, maxT) {
   for (const n of npcs) test(n);
   test(sheep);
   if (hatItem) test(hatItem);
-  for (const l of [world.villagers, world.trees, world.rocks, world.crates, world.scaffolds, world.bundles]) for (const e of l) test(e);
+  for (const l of [world.villagers, world.trees, world.rocks, world.crates, world.scaffolds, world.bundles, world.critters]) for (const e of l) test(e);
   if (!best) test(storeFood, true);
   if (!best) { if (store.built) test(store, true); test(temple, true); if (workshop.built) test(workshop, true); if (ship?.mesh.visible) test(ship, true); for (const l of [world.houses, world.fields, world.sites, world.buildings]) for (const e of l) test(e, true); }
   return best;
 }
-const grabbable = e => e && ['villager', 'tree', 'rock', 'crate', 'scaffold', 'bundle', 'hat'].includes(e.type);
+const grabbable = e => e && ['villager', 'tree', 'rock', 'crate', 'scaffold', 'bundle', 'hat', 'critter'].includes(e.type);
 
 function updateHover() {
   if (!ptr.over || state !== 'play') { hover = null; hasGround = false; return; }
@@ -3108,7 +3453,7 @@ function updateHand(dt) {
     const target = tmpV.set(groundHit.x, groundHit.y + lift, groundHit.z);
     carried.pos.copy(target);
     if (carried.type === 'villager') carried.heading = cam.yaw + Math.PI;
-    if (carried.type === 'tree') { carried.sync(); carried.mesh.rotation.set(0.35, 0, Math.sin(simTime * 3) * 0.1); }
+    if (carried.type === 'tree') { carried.mesh.rotation.set(0.35, 0, Math.sin(simTime * 3) * 0.1); carried.sync(); }
     if (carried.sync && carried.type !== 'tree') carried.sync();
     heldHist.push({ t: performance.now(), p: carried.pos.clone() });
     while (heldHist.length > 12) heldHist.shift();
@@ -3201,6 +3546,7 @@ function infoFor(e) {
     case 'npc': { const q = e.quests.find(q => q.stage === 'offer' || q.stage === 'turnin'); return `<b>${e.name}</b> · <i>${q ? (q.stage === 'offer' ? 'has a quest! Click to talk' : 'quest done! Click for your reward') : 'click to talk'}</i>`; }
     case 'sheep': return '<b>Dolly</b> · a sheep with a target on her back. Rocks only.';
     case 'hat': return 'Dave\'s lucky hat';
+    case 'critter': return 'A sheep · it will forgive you. Probably.';
     case 'foodpile': return `Food sacks · <i>${Math.floor(R.food)}</i> food · grab to take some`;
     case 'bundle': return `Wood · ${e.amount} · drop on a plan or the store`;
     case 'site': { const b = e.bp, nx = BLUEPRINTS[e.n + 1]; return `Plan: <i>${b.label}</i> · wood ${Math.floor(e.wood)}/${b.wood} · built ${Math.floor(e.progress * 100)}%${nx && e.progress < 0.02 ? ` · +1 scaffold makes a ${nx.label}` : ''}`; }
@@ -3354,7 +3700,7 @@ function updateVillage(dt) {
   treeT -= dt;
   if (treeT <= 0) {
     treeT = 5;
-    if (world.trees.length < 230 && world.trees.length) {
+    if (world.trees.length < 900 && world.trees.length) {
       const t = pick(world.trees), x = t.pos.x + rand(-5, 5), z = t.pos.z + rand(-5, 5);
       if (treeSpotOk(x, z) && !world.trees.some(o => flat(o.pos, { x, z }) < 1.5)) new Tree(x, z, 3);
     }
@@ -3390,7 +3736,9 @@ function updateSky(t) {
   const th = (t / 360 + 0.08) * Math.PI * 2;
   const e = Math.sin(th);
   const day = smoothstep(-0.2, 0.3, e), dusk = (1 - Math.abs(day * 2 - 1)) * 0.55;
-  sun.position.set(Math.cos(th) * 120, 60 + 90 * Math.abs(e), 50);
+  nightness = 1 - day;
+  sun.target.position.set(cam.tx, 0, cam.tz);
+  sun.position.set(cam.tx + Math.cos(th) * 150, 80 + 110 * Math.abs(e), cam.tz + 60);
   sun.color.setHex(0x8fa8ff).lerp(tmpC.setHex(0xfff1d6), day).lerp(tmpC.setHex(0xffb070), dusk * 0.6);
   sun.intensity = lerp(0.8, 2.4, day);
   hemi.intensity = lerp(0.65, 1.3, day);
@@ -3399,7 +3747,7 @@ function updateSky(t) {
   temple.orb.rotation.y = t * 1.2;
   temple.orb.position.y = temple.orbY + Math.sin(t * 2) * 0.35;
   temple.orb.scale.setScalar(0.6 + R.prayer / PRAYER_MAX * 0.9);
-  for (const c of skyClouds) { c.position.x += c.userData.v * 0.016; if (c.position.x > 200) c.position.x = -200; }
+  for (const c of skyClouds) { c.position.x += c.userData.v * 0.016; if (c.position.x > 400) c.position.x = -400; }
 }
 
 /* ============================================================
@@ -3478,7 +3826,7 @@ function tick(dt) {
   simTime += dt;
   for (const v of [...world.villagers]) v.update(dt);
   creature.update(dt);
-  for (const l of [world.trees, world.rocks, world.crates, world.fireballs, world.clouds, world.houses, world.scaffolds, world.bundles]) for (const e of [...l]) e.update(dt);
+  for (const l of [world.trees, world.rocks, world.crates, world.fireballs, world.clouds, world.houses, world.scaffolds, world.bundles, world.critters]) for (const e of [...l]) e.update(dt);
   updateVillage(dt);
   updateCampaign(dt);
   refreshStore();
@@ -3501,6 +3849,7 @@ function frame(now) {
     creature.animate(dt);
   }
   applyCamera(dt);
+  updateScenery(dt);
   updateHover();
   updateHand(dt);
   updateLeash();
@@ -3515,7 +3864,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.BW = { QUEST, NPC, unlocked, get revealed() { return revealed; }, get sheep() { return sheep; }, get hatItem() { return hatItem; }, get ship() { return ship; }, nextShot, openTalk, camera, tick, workshop, leash, setLeash, spotProblem, YARD_MID, inYard, get hover() { return hover; }, get mode() { return mode; }, get held() { return held; }, store, temple, get state() { return state; }, get align() { return align; }, R, world, get creature() { return creature; }, cam, hand, ptr, castMiracle, get impress() { return impress; }, set impress(v) { impress = v; } };
+window.BW = { renderer, scene, LANDMARK, QUEST, NPC, unlocked, get revealed() { return revealed; }, get sheep() { return sheep; }, get hatItem() { return hatItem; }, get ship() { return ship; }, nextShot, openTalk, camera, tick, workshop, leash, setLeash, spotProblem, YARD_MID, inYard, get hover() { return hover; }, get mode() { return mode; }, get held() { return held; }, store, temple, get state() { return state; }, get align() { return align; }, R, world, get creature() { return creature; }, cam, hand, ptr, castMiracle, get impress() { return impress; }, set impress(v) { impress = v; } };
 </script>
 </body>
 </html>

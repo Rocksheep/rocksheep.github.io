@@ -2538,8 +2538,9 @@ function tween(dur, fn, done) { tweens.push({ t: 0, dur, fn, done }); }
 function updateTweens(dt) {
   for (let i = tweens.length - 1; i >= 0; i--) {
     const w = tweens[i]; w.t += dt;
-    const k = Math.min(1, w.t / w.dur); w.fn(k);
-    if (k >= 1) { tweens.splice(i, 1); w.done?.(); }
+    const k = Math.min(1, w.t / w.dur);
+    try { w.fn(k); if (k >= 1) { tweens.splice(i, 1); w.done?.(); } }
+    catch (err) { tweens.splice(i, 1); console.error(err); }
   }
 }
 // Camera shots. An orbit circles a (possibly moving) point; a move glides between two poses.
@@ -2588,10 +2589,12 @@ const card = (title, sub, dur = 2.8) => ({ title, sub, wait: dur });
 let cine = null, cineHand = null;
 const cineQueue = [], camLook = new V3();
 let camBefore = null;
+const templeView = () => ({ x: temple.pos.x, z: temple.pos.z + 16, dist: 75, pitch: 0.9, yaw: 0.35 });
 function playCine(steps, onDone, opts = {}) {
   if (cine) { cineQueue.push([steps, onDone, opts]); return; }
   // If we were still gliding back from a previous scene, the place we were heading to is "where the player was".
-  if (!camBefore) camBefore = cam.fly ? { ...cam.fly } : { x: cam.tx, z: cam.tz, dist: cam.dist, pitch: cam.pitch, yaw: cam.yaw };
+  // Coming from the title screen there is no such place, so use the default spot above the temple.
+  if (!camBefore) camBefore = state === 'title' ? templeView() : cam.fly ? { ...cam.fly } : { x: cam.tx, z: cam.tz, dist: cam.dist, pitch: cam.pitch, yaw: cam.yaw };
   shake = 0;
   if (held || heldFire) release();
   mode = null; if (armed) setArmed(armed);
@@ -2735,7 +2738,8 @@ function endCine() {
   if (!cine && cineQueue.length) { const [s, d2, o2] = cineQueue.shift(); playCine(s, d2, o2); return; }
   // Then glide back to where the player was looking before the scene (or wherever the scene says).
   if (!cine) {
-    cam.fly = c.opts.returnTo ? c.opts.returnTo() : camBefore;
+    const back = c.opts.returnTo ? c.opts.returnTo() : camBefore;
+    cam.fly = back && Number.isFinite(back.x) && Number.isFinite(back.z) ? back : templeView();
     camBefore = null;
   }
 }
@@ -2803,8 +2807,8 @@ function playIntro() {
     narr('...the people of a tiny village prayed very, very hard for a god.', { do: () => gatherAt(crowd, 40), shot: view(() => crowd, { r: 34, h: 14, ang: away + Math.PI + 0.4, turn: 0.25 }) }),
     narr('Day and night. Mostly day. They are not great at staying up.', { shot: view(() => crowd, { r: 15, h: 4, ang: away + Math.PI - 0.3, turn: 0.2, look: 1.2 }) }),
     { do: () => {
-        cineHand = { pos: new V3(H.x, 95, H.z), scale: 6.5 };
-        tween(5.5, k => { cineHand.pos.y = lerp(95, H.y, ease(k)); }, () => { sfx.chime(); confetti(cineHand.pos, 50); });
+        const g = cineHand = { pos: new V3(H.x, 95, H.z), scale: 6.5 };
+        tween(5.5, k => { g.pos.y = lerp(95, H.y, ease(k)); }, () => { if (cineHand === g) { sfx.chime(); confetti(g.pos, 50); } });
         godRays(new V3(H.x, PLAT, H.z), 10);
       }, fx: true, wait: 2.2, shot: { kind: 'move', to: pose(new V3(crowd.x + 5, PLAT + 2, crowd.z + 17), new V3(H.x, H.y + 3, H.z)), dur: 4 } },
     narr('And then, one morning, their prayers were answered.', { wait: 2.5 }),
@@ -2834,7 +2838,7 @@ function playIntro() {
       $('#cpanel').classList.add('closed'); $('#cToggle').textContent = '▴';
       $('#qlog').classList.add('closed'); $('#qToggle').textContent = '▴';
     }
-  }, { returnTo: () => ({ x: creature.pos.x, z: creature.pos.z, dist: 70, pitch: 0.85 }) });
+  });
 }
 // Three gentle strokes and it's yours.
 function askName() {
@@ -4291,8 +4295,12 @@ function tick(dt) {
 }
 let last = performance.now(), titleT = 0;
 function frame(now) {
+  requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  try { step(now, dt); } catch (err) { console.error(err); }
+}
+function step(now, dt) {
   if (state === 'title') {
     titleT += dt;
     cam.tx = lerp(cam.tx, 0, dt); cam.tz = lerp(cam.tz, 0, dt);
@@ -4319,7 +4327,6 @@ function frame(now) {
   updateThought();
   updateMarks();
   renderer.render(scene, camera);
-  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 window.BW = { renderer, scene, LANDMARK, QUEST, NPC, unlocked, get revealed() { return revealed; }, get sheep() { return sheep; }, get hatItem() { return hatItem; }, get ship() { return ship; }, cineClick, skipCine, get cine() { return cine; }, openTalk, camera, tick, workshop, leash, setLeash, spotProblem, YARD_MID, inYard, get hover() { return hover; }, get mode() { return mode; }, get held() { return held; }, store, temple, get state() { return state; }, get align() { return align; }, R, world, get creature() { return creature; }, cam, hand, ptr, castMiracle, get impress() { return impress; }, set impress(v) { impress = v; } };

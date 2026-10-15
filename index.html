@@ -132,10 +132,29 @@ h1 span{display:block;font-size:.42em;color:var(--ink);text-shadow:3px 3px 0 var
 }
 
 .info{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
-.info h2{
+.info h3{
   margin:0;font-family:'Press Start 2P',monospace;font-weight:400;font-size:13px;line-height:1.5;
   color:var(--yellow);
 }
+.info .by{margin:-6px 0 0;color:var(--cyan);font-size:19px}
+
+/* games by friends: dashed cyan frame + badge so they never pass for mine */
+.tile.friend{border-style:dashed;border-color:var(--cyan);background:#1a1838}
+.tile.friend .screen{border-bottom-style:dashed;border-bottom-color:var(--cyan)}
+.friend-badge{
+  position:absolute;top:10px;right:10px;z-index:1;
+  font-family:'Press Start 2P',monospace;font-size:8px;line-height:1;
+  background:var(--cyan);color:var(--bg);padding:6px 7px;box-shadow:2px 2px 0 var(--shadow);
+}
+
+.shelf + .shelf{margin-top:44px}
+.shelf-title{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:0 0 16px;
+  font-family:'Press Start 2P',monospace;font-weight:400;font-size:13px;color:var(--yellow);
+}
+.shelf-title small{font-family:'VT323',monospace;font-size:20px;color:var(--ink-dim)}
+.shelf.friends .shelf-title{color:var(--cyan)}
+.filters .sep{width:3px;align-self:stretch;background:var(--line);margin:0 4px}
 .info p{margin:0;color:var(--ink-dim);font-size:20px;flex:1}
 .tags{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
 .tag{
@@ -159,6 +178,14 @@ footer .hi{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--ink
   header{padding-top:40px}
   .grid{grid-template-columns:1fr}
 }
+/* small screens: chips become one swipeable row so the bar doesn't swallow the games */
+@media (max-width:760px){
+  .filters{flex-wrap:nowrap;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}
+  .chip{flex:0 0 auto}
+}
+@media (max-height:760px){
+  .controls{position:static}
+}
 @media (prefers-reduced-motion:reduce){
   .blink,.tile:hover .start,.tile:focus-visible .start{animation:none}
   .tile,.chip{transition:none}
@@ -170,7 +197,7 @@ footer .hi{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--ink
   <header>
     <div class="coin"><span class="blink">INSERT COIN</span> &nbsp;·&nbsp; CREDIT 00</div>
     <h1>ROCKSHEEP<span>ARCADE</span></h1>
-    <p class="tagline">Every game I've made, one tile each. Pick one and press start.</p>
+    <p class="tagline">Every game I've made, one tile each, plus a shelf of games made by friends. Pick one and press start.</p>
     <div class="horizon" aria-hidden="true"></div>
   </header>
 
@@ -186,7 +213,7 @@ footer .hi{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--ink
   </section>
 
   <main>
-    <ul class="grid" id="grid"></ul>
+    <div id="shelves"></div>
     <div class="empty" id="empty" hidden>
       <b>GAME OVER</b>
       No games match that.<br>
@@ -211,6 +238,8 @@ footer .hi{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--ink
  *   icon   – emoji shown on the tile when there's no image
  *   art    – CSS background behind the emoji (optional)
  *   isNew  – show a NEW! badge (optional)
+ *   by     – set this for a game a friend made: their name, shown on the tile.
+ *            Friends' games sit on their own shelf and open in a new tab.
  */
 const GAMES = [
   {
@@ -237,20 +266,37 @@ const GAMES = [
     image: 'assets/asphalt_tycoon.svg',
     isNew: true,
   },
+  {
+    title: 'Klapstuk',
+    href: 'https://srijsbergen.github.io/klapstuk/',
+    by: 'srijsbergen',
+    tags: ['Fighting', 'Multiplayer', 'Action'],
+    blurb: 'A platform fighter for 2 to 4 players with thirteen fighters. Every hit raises your damage %, so knock rivals off the screen. In Dutch.',
+    image: 'assets/klapstuk.svg',
+  },
+  {
+    title: 'Underlord',
+    href: 'https://pjotrvdh.github.io/Underlord/',
+    by: 'pjotrvdh',
+    tags: ['Strategy', 'Simulation'],
+    blurb: 'Dig into the dark, build rooms and attract creatures, then defend your Dungeon Heart against six waves of heroes.',
+    image: 'assets/underlord.svg',
+  },
 ];
 
 // Fixed colours for known tags; anything else cycles through the palette.
 const TAG_COLORS = {
   Tycoon: 'var(--yellow)', Simulation: 'var(--cyan)', Strategy: 'var(--violet)',
-  Puzzle: 'var(--green)', Arcade: 'var(--pink)', Action: 'var(--orange)', Multiplayer: 'var(--pink)',
+  Puzzle: 'var(--green)', Arcade: 'var(--pink)', Action: 'var(--orange)', Multiplayer: 'var(--pink)', Fighting: 'var(--orange)',
 };
 const PALETTE = ['var(--pink)', 'var(--green)', 'var(--orange)', 'var(--cyan)', 'var(--violet)', 'var(--yellow)'];
 const allTags = [...new Set(GAMES.flatMap(g => g.tags))].sort();
 const tagColor = t => TAG_COLORS[t] || PALETTE[allTags.indexOf(t) % PALETTE.length];
 
 const $ = s => document.querySelector(s);
-const grid = $('#grid'), filters = $('#filters'), q = $('#q'), count = $('#count'), empty = $('#empty');
-let active = 'All';
+const shelves = $('#shelves'), filters = $('#filters'), q = $('#q'), count = $('#count'), empty = $('#empty');
+let active = 'All', who = 'all';   // who: 'all' | 'mine' | 'friends'
+const isFriend = g => !!g.by;
 
 function el(tag, props = {}, ...kids) {
   const n = Object.assign(document.createElement(tag), props);
@@ -259,33 +305,55 @@ function el(tag, props = {}, ...kids) {
 }
 
 function renderFilters() {
-  filters.replaceChildren(...['All', ...allTags].map(t => {
+  const whoChips = [['mine', 'MY GAMES', 'var(--yellow)'], ['friends', "FRIENDS'", 'var(--cyan)']].map(([k, label, c]) => {
+    const n = GAMES.filter(g => (k === 'friends') === isFriend(g)).length;
+    const b = el('button', { type: 'button', className: 'chip' }, label, el('span', { className: 'n', textContent: n }));
+    b.style.setProperty('--c', c);
+    b.setAttribute('aria-pressed', who === k);
+    b.onclick = () => { who = who === k ? 'all' : k; renderFilters(); renderGrid(); };
+    return b;
+  });
+  const tagChips = ['All', ...allTags].map(t => {
     const n = t === 'All' ? GAMES.length : GAMES.filter(g => g.tags.includes(t)).length;
     const b = el('button', { type: 'button', className: 'chip' }, t.toUpperCase(), el('span', { className: 'n', textContent: n }));
     b.style.setProperty('--c', t === 'All' ? 'var(--ink)' : tagColor(t));
     b.setAttribute('aria-pressed', t === active);
     b.onclick = () => setFilter(t === active ? 'All' : t);
     return b;
-  }));
+  });
+  filters.replaceChildren(...whoChips, el('span', { className: 'sep', ariaHidden: 'true' }), ...tagChips);
 }
 
 function renderGrid() {
   const term = q.value.trim().toLowerCase();
   const shown = GAMES.filter(g =>
     (active === 'All' || g.tags.includes(active)) &&
-    (!term || g.title.toLowerCase().includes(term) || g.tags.some(t => t.toLowerCase().includes(term)))
+    (who === 'all' || (who === 'friends') === isFriend(g)) &&
+    (!term || g.title.toLowerCase().includes(term) || (g.by || '').toLowerCase().includes(term) || g.tags.some(t => t.toLowerCase().includes(term)))
   );
+  const shelf = (games, cls, title, note) => !games.length ? [] : [el('section', { className: 'shelf ' + cls },
+    el('h2', { className: 'shelf-title' }, title, el('small', { textContent: note })),
+    el('ul', { className: 'grid' }, ...games.map(tileFor)))];
+  shelves.replaceChildren(
+    ...shelf(shown.filter(g => !isFriend(g)), 'mine', 'MY GAMES', 'made by Rocksheep'),
+    ...shelf(shown.filter(isFriend), 'friends', 'FROM FRIENDS', 'not made by me · they open on the maker\'s own site'));
 
-  grid.replaceChildren(...shown.map(g => {
-    const accent = tagColor(g.tags[0]);
-    const tile = el('a', { className: 'tile', href: g.href },
+  empty.hidden = shown.length > 0;
+  count.textContent = `${shown.length} ${shown.length === 1 ? 'GAME' : 'GAMES'} LOADED`;
+}
+
+function tileFor(g) {
+    const friend = isFriend(g);
+    const accent = friend ? 'var(--cyan)' : tagColor(g.tags[0]);
+    const tile = el('a', { className: 'tile' + (friend ? ' friend' : ''), href: g.href },
       el('div', { className: 'screen' },
         g.image
           ? el('img', { src: g.image, alt: '', loading: 'lazy' })
           : el('div', { className: 'icon', textContent: g.icon || '🕹️' }),
-        el('div', { className: 'start', textContent: '▶ PRESS START' })),
+        el('div', { className: 'start', textContent: friend ? '▶ PLAY ON THEIR SITE' : '▶ PRESS START' })),
       el('div', { className: 'info' },
-        el('h2', { textContent: g.title }),
+        el('h3', { textContent: g.title }),
+        ...(friend ? [el('p', { className: 'by', textContent: `by ${g.by} · opens in a new tab` })] : []),
         el('p', { textContent: g.blurb || '' }),
         el('ul', { className: 'tags' }, ...g.tags.map(t => {
           const b = el('button', { type: 'button', className: 'tag', textContent: t.toUpperCase(), title: `Show all ${t} games` });
@@ -295,13 +363,14 @@ function renderGrid() {
         })))
     );
     tile.style.setProperty('--accent', accent);
+    if (friend) {
+      tile.target = '_blank'; tile.rel = 'noopener';
+      tile.setAttribute('aria-label', `${g.title}, a game by ${g.by} (opens their site in a new tab)`);
+      tile.prepend(el('span', { className: 'friend-badge', textContent: "FRIEND'S GAME" }));
+    }
     if (g.art) tile.querySelector('.screen').style.setProperty('--art', g.art);
     if (g.isNew) tile.prepend(el('span', { className: 'new', textContent: 'NEW!' }));
     return el('li', {}, tile);
-  }));
-
-  empty.hidden = shown.length > 0;
-  count.textContent = `${shown.length} ${shown.length === 1 ? 'GAME' : 'GAMES'} LOADED`;
 }
 
 function setFilter(t) {
@@ -311,7 +380,7 @@ function setFilter(t) {
 }
 
 q.addEventListener('input', renderGrid);
-$('#reset').onclick = () => { q.value = ''; setFilter('All'); q.focus(); };
+$('#reset').onclick = () => { q.value = ''; who = 'all'; setFilter('All'); q.focus(); };
 $('#year').textContent = new Date().getFullYear();
 setFilter('All');
 </script>

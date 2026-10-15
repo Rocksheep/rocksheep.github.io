@@ -172,6 +172,7 @@ h2{font-family:'Press Start 2P',monospace;font-weight:400;text-align:center;font
         <button class="btn" type="button" id="slapBtn" style="--c:var(--red)" title="Punish whatever it is doing (or just did)">👋 SLAP</button>
         <button class="btn" type="button" id="strokeBtn" style="--c:var(--green)" title="Reward whatever it is doing (or just did)">💗 STROKE</button>
       </div>
+      <button class="btn" type="button" id="leashBtn" style="--c:var(--gold);width:100%;margin-top:8px" title="Put your creature on a leash (L)">🪢 LEASH</button>
     </div>
   </section>
   <div id="toasts" aria-live="polite"></div>
@@ -264,7 +265,14 @@ function fbm(x, y, oct = 4) {
 const SIZE = 220, SEG = 160, HALF = SIZE / 2, CELL = SIZE / SEG, N = SEG + 1;
 const WATER = 0, GRAV = 30, PLAT = 3.2;
 const VILLAGE = { x: -30, z: 16 }, DOUBT = { x: 40, z: -28 };
-const SITES = [{ ...VILLAGE, r: 18 }, { ...DOUBT, r: 13 }];
+const SITES = [{ ...VILLAGE, r: 27 }, { ...DOUBT, r: 13 }];
+const at = (dx, dz) => ({ x: VILLAGE.x + dx, z: VILLAGE.z + dz });
+// The temple faces the village; its fenced front yard is where the creature sleeps.
+const TEMPLE_AT = at(0, -22), TEMPLE_W = 18, TEMPLE_D = 14;
+const YARD = { x0: VILLAGE.x - 6.5, x1: VILLAGE.x + 6.5, z0: VILLAGE.z - 15, z1: VILLAGE.z - 2 };
+const YARD_MID = { x: VILLAGE.x, z: (YARD.z0 + YARD.z1) / 2 }, YARD_GATE = { x: VILLAGE.x, z: YARD.z1 + 2.5 };
+const YARD_SCALE = 1.7;
+const inYard = (p, m = 0) => p.x > YARD.x0 - m && p.x < YARD.x1 + m && p.z > YARD.z0 - m && p.z < YARD.z1 + m;
 
 function rawHeight(x, z) {
   const n = fbm(x * 0.014 + 3.1, z * 0.014 + 7.7, 4);
@@ -672,11 +680,11 @@ const sfx = {
    ============================================================ */
 let state = 'title', simTime = 0;
 const R = { food: 60, wood: 20, prayer: 60 };
-const PRAYER_MAX = 300, HOUSE_COST = 30, BUILD_TIME = 26;
+const PRAYER_MAX = 300;
 const COST = { food: 25, rain: 35, fire: 45 };
 const stats = { born: 0, lost: 0, eaten: 0, miracles: 0, thrown: 0 };
 let impress = 0, lastImpress = -99, converted = false, won = false, align = 0;
-const world = { villagers: [], trees: [], rocks: [], crates: [], houses: [], fields: [], clouds: [], fireballs: [], poops: [] };
+const world = { villagers: [], trees: [], rocks: [], crates: [], houses: [], fields: [], clouds: [], fireballs: [], poops: [], scaffolds: [], sites: [], bundles: [], buildings: [] };
 let creature = null;
 const NAMES = ['Barry', 'Gwen', 'Kev', 'Old Tom', 'Mabel', 'Sprout', 'Dougal', 'Hilda', 'Pip', 'Norbert', 'Agnes', 'Lenny', 'Ffion', 'Clive', 'Bertha', 'Gordo', 'Ida', 'Mungo', 'Petra', 'Wilf', 'Ottoline', 'Reg', 'Tilly', 'Bram', 'Dot', 'Ezra', 'Fen', 'Hob', 'Juno', 'Moss', 'Nigel', 'Brenda', 'Dave', 'Sue'];
 
@@ -684,7 +692,7 @@ function removeFrom(list, e) { const i = list.indexOf(e); if (i >= 0) list.splic
 function addShadow(o) { o.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); return o; }
 
 /* ---------- Store, temple, houses, fields ---------- */
-const store = { type: 'store', info: true, pos: new V3(VILLAGE.x, PLAT, VILLAGE.z), pickR: 3.2, pickH: 1.5, canPick: () => true };
+const store = { type: 'store', info: true, pos: new V3(VILLAGE.x, PLAT, VILLAGE.z + 5), pickR: 3.2, pickH: 1.5, foot: 3.5, canPick: () => true };
 {
   const g = new THREE.Group();
   g.add(new THREE.Mesh(merge([
@@ -714,21 +722,55 @@ function refreshStore() {
   store.logs.forEach((l, i) => l.visible = i < nw);
 }
 
-const temple = { type: 'temple', info: true, pos: new V3(VILLAGE.x - 3, PLAT, VILLAGE.z - 11), pickR: 4, pickH: 2.5, canPick: () => true };
+const temple = { type: 'temple', info: true, pos: new V3(TEMPLE_AT.x, PLAT, TEMPLE_AT.z), pickR: 9, pickH: 4, canPick: () => true };
 {
+  const W = TEMPLE_W, D = TEMPLE_D;
   const parts = [
-    [Box(7.5, 1, 7.5).translate(0, 0.5, 0), 0xdedad0], [Box(5.6, 1, 5.6).translate(0, 1.5, 0), 0xe9e6dc], [Box(3.8, 1, 3.8).translate(0, 2.5, 0), 0xf4f1ea],
-    [Box(1.4, 0.6, 3).translate(0, 0.3, 4.6), 0xdedad0],
+    [Box(W + 0.6, 4, D + 0.6).translate(0, -2, 0), 0xc9c4b8],
+    [Box(W, 1.4, D).translate(0, 0.7, 0), 0xdedad0], [Box(W - 3, 1.4, D - 2.5).translate(0, 2.1, -0.4), 0xe9e6dc], [Box(W - 6, 1.4, D - 5).translate(0, 3.5, -0.8), 0xf4f1ea],
   ];
-  for (const [x, z] of [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5]]) parts.push([new THREE.CylinderGeometry(0.22, 0.26, 2.4, 6).translate(x, 4.2, z), 0xf4f1ea]);
-  parts.push([Box(4, 0.4, 4).translate(0, 5.5, 0), 0x2a2a2a], [new THREE.ConeGeometry(2.6, 1.2, 4).rotateY(Math.PI / 4).translate(0, 6.3, 0), 0xf4f1ea]);
+  // Front stairs down into the yard
+  for (let i = 0; i < 4; i++) parts.push([Box(5, 1.05 * (i + 1), 1.1).translate(0, 0.525 * (i + 1), D / 2 + 0.55 + (3 - i) * 1.1 - 1.1 * 3 + 0.0), 0xe9e6dc]);
+  // Colonnade and sanctum on top
+  const top = 4.2;
+  for (const x of [-5, -2.5, 0, 2.5, 5]) for (const z of [-4, 2.6]) parts.push([new THREE.CylinderGeometry(0.42, 0.5, 5.4, 8).translate(x, top + 2.7, z - 0.8), 0xf4f1ea]);
+  parts.push(
+    [Box(8, 4.8, 4.6).translate(0, top + 2.4, -1.5), 0xe2ddd2],
+    [Box(2, 3.2, 0.12).translate(0, top + 1.6, 0.82), 0x3a2e28],
+    [Box(12.6, 0.9, 8.4).translate(0, top + 5.85, -0.8), 0x2a2a2a],
+    [new THREE.ConeGeometry(8.6, 3.6, 4).rotateY(Math.PI / 4).scale(1, 1, 0.72).translate(0, top + 8.1, -0.8), 0xf4f1ea],
+    [Box(3.2, 0.5, 0.3).translate(0, top + 5.85, 3.5), 0xffd23f],
+  );
   const g = new THREE.Group();
   g.add(new THREE.Mesh(merge(parts), VC));
-  temple.orb = new THREE.Mesh(new THREE.OctahedronGeometry(0.8, 0), MAT.orb);
-  temple.orb.position.y = 4.2;
+  temple.orb = new THREE.Mesh(new THREE.OctahedronGeometry(1.4, 0), MAT.orb);
+  temple.orb.position.set(0, 15.5, -0.8);
+  temple.orbY = 15.5;
   g.add(temple.orb);
   g.position.copy(temple.pos);
   scene.add(addShadow(g));
+}
+// The yard: a low fence with a gate facing the village, and a bed of straw.
+{
+  const parts = [], post = (x, z) => parts.push([Box(0.3, 1.5, 0.3).translate(x, 0.75, z), 0x8a5a33]);
+  const rail = (x0, z0, x1, z1) => { const len = Math.hypot(x1 - x0, z1 - z0), g = Box(len, 0.16, 0.12).rotateY(-Math.atan2(z1 - z0, x1 - x0)); for (const y of [0.55, 1.15]) parts.push([g.clone().translate((x0 + x1) / 2, y, (z0 + z1) / 2), 0xa8794a]); };
+  const X0 = YARD.x0 - VILLAGE.x, X1 = YARD.x1 - VILLAGE.x, Z0 = YARD.z0 - VILLAGE.z, Z1 = YARD.z1 - VILLAGE.z;
+  for (const [a, b] of [[[X0, Z0 + 1], [X0, Z1]], [[X1, Z0 + 1], [X1, Z1]], [[X0, Z1], [-2.2, Z1]], [[2.2, Z1], [X1, Z1]]]) {
+    const n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 2.2));
+    for (let i = 0; i <= n; i++) post(lerp(a[0], b[0], i / n), lerp(a[1], b[1], i / n));
+    rail(a[0], a[1], b[0], b[1]);
+  }
+  parts.push([Box(7, 0.12, 5.5).translate(0, 0.06, (Z0 + Z1) / 2 + 0.5), 0xe8cf6a], [Box(5.5, 0.14, 4).translate(0.4, 0.1, (Z0 + Z1) / 2 + 0.2), 0xd9b94e]);
+  const yard = new THREE.Mesh(merge(parts), VC);
+  yard.position.set(VILLAGE.x, PLAT, VILLAGE.z);
+  scene.add(addShadow(yard));
+}
+const inTemple = (p, m = 0) => Math.abs(p.x - temple.pos.x) < TEMPLE_W / 2 + m && Math.abs(p.z - temple.pos.z) < TEMPLE_D / 2 + m;
+// Keep walkers out of the temple: slide them to the nearest edge.
+function pushOutOfTemple(p, m) {
+  if (!inTemple(p, m)) return;
+  const dx = p.x - temple.pos.x, dz = p.z - temple.pos.z, ox = TEMPLE_W / 2 + m - Math.abs(dx), oz = TEMPLE_D / 2 + m - Math.abs(dz);
+  if (ox < oz) p.x += Math.sign(dx || 1) * ox; else p.z += Math.sign(dz || 1) * oz;
 }
 
 class House {
@@ -741,28 +783,12 @@ class House {
     this.mesh.rotation.y = Math.atan2((faction === 'mine' ? VILLAGE : DOUBT).x - x, (faction === 'mine' ? VILLAGE : DOUBT).z - z);
     addShadow(this.mesh);
     scene.add(this.mesh);
-    if (progress < 1) {
-      this.frame = new THREE.Mesh(merge([[Box(0.15, 2.8, 0.15).translate(-1.3, 1.4, -1.2), 0x8a5a33], [Box(0.15, 2.8, 0.15).translate(1.3, 1.4, -1.2), 0x8a5a33], [Box(0.15, 2.8, 0.15).translate(-1.3, 1.4, 1.2), 0x8a5a33], [Box(0.15, 2.8, 0.15).translate(1.3, 1.4, 1.2), 0x8a5a33], [Box(2.8, 0.15, 2.6).translate(0, 2.8, 0), 0x8a5a33]]), VC);
-      this.frame.position.copy(this.pos); this.frame.rotation.y = this.mesh.rotation.y;
-      scene.add(this.frame);
-    }
     this.refresh();
     world.houses.push(this);
   }
   get done() { return this.progress >= 1; }
   canPick() { return !this.dead; }
   refresh() { this.mesh.scale.set(1, Math.max(0.05, this.progress), 1); }
-  build(dt) {
-    if (this.done) return;
-    this.progress = Math.min(1, this.progress + dt / BUILD_TIME);
-    this.refresh();
-    if (Math.random() < dt * 3) emit(this.pos.x + rand(-1, 1), this.pos.y + 2, this.pos.z + rand(-1, 1), { c: 0xc8b48a, n: 2, size: 0.4, life: 0.6 });
-    if (this.done) {
-      if (this.frame) { scene.remove(this.frame); this.frame = null; }
-      floatText(this.pos.x, this.pos.y + 4, this.pos.z, 'NEW HOUSE! +3 room', '#9dff7a', true);
-      sfx.chime();
-    }
-  }
   ignite() { if (!this.dead && !this.burning) { this.burning = 0.001; } }
   update(dt) {
     if (!this.burning) return;
@@ -772,7 +798,7 @@ class House {
     if (Math.random() < 0.2) emit(this.pos.x, this.pos.y + 3.5, this.pos.z, { c: 0x444444, size: 1.6, up: 3, spd: 0.5, grav: 1, life: 2.5, grow: 1.5 });
     if (this.burning > 14) {
       this.dead = true;
-      scene.remove(this.mesh); if (this.frame) scene.remove(this.frame);
+      scene.remove(this.mesh);
       removeFrom(world.houses, this);
       emit(this.pos.x, this.pos.y + 1, this.pos.z, { c: 0x333333, n: 30, size: 1.4, spd: 3, up: 3, life: 1.6, grow: 1 });
       if (this.faction === 'mine') toast('🔥 A house burned down. That is three fewer beds.', 'bad');
@@ -809,6 +835,242 @@ class Field {
   }
 }
 
+/* ---------- Workshop, scaffolds and building sites ---------- */
+// Scaffolds come from the workshop. Drop one on open ground to plan a house; drop more on the same plan to grow it.
+const BLUEPRINTS = [null,
+  { key: 'house', label: 'House', wood: 30, time: 18, w: 2.8, d: 2.8, desc: 'room for 3 more villagers' },
+  { key: 'farm', label: 'Farm', wood: 25, time: 14, w: 7, d: 5.5, desc: 'a field of crops' },
+  { key: 'shrine', label: 'Shrine', wood: 60, time: 28, w: 4.2, d: 4.2, desc: '+1 prayer every second' },
+  { key: 'wonder', label: 'Cow Wonder', wood: 150, time: 55, w: 6.5, d: 6.5, desc: 'a golden cow statue that keeps impressing Doubtsby' },
+];
+const SCAFFOLD_GEO = (() => {
+  const S = 1.6, h = S / 2, t = 0.14, parts = [];
+  for (const x of [-h, h]) for (const z of [-h, h]) parts.push([Box(t, S, t).translate(x, h, z), 0x9a6a3a]);
+  for (const y of [0.07, S]) {
+    for (const z of [-h, h]) parts.push([Box(S, t, t).translate(0, y, z), 0xc0925a]);
+    for (const x of [-h, h]) parts.push([Box(t, t, S).translate(x, y, 0), 0xc0925a]);
+  }
+  for (const z of [-h, h]) parts.push([Box(S * 1.41, t * 0.8, t * 0.8).rotateZ(z > 0 ? Math.PI / 4 : -Math.PI / 4).translate(0, h, z), 0x8a5a33]);
+  return merge(parts);
+})();
+const BP_GEO = {
+  house: HOUSE_GEO,
+  farm: merge([[Box(7, 0.25, 5.5).translate(0, 0.12, 0), 0x7a5a36], ...[...Array(24)].map((_, i) => [Box(0.45, 1, 0.45).translate(-2.8 + (i % 6) * 1.12, 0.5, -1.8 + Math.floor(i / 6) * 1.2), 0x8fbf45])]),
+  shrine: merge([
+    [Box(4.2, 0.6, 4.2).translate(0, 0.3, 0), 0xdedad0], [Box(3.2, 0.5, 3.2).translate(0, 0.85, 0), 0xe9e6dc],
+    [new THREE.CylinderGeometry(0.45, 0.85, 5, 4).rotateY(Math.PI / 4).translate(0, 3.6, 0), 0xf4f1ea],
+    [new THREE.ConeGeometry(0.62, 1.1, 4).rotateY(Math.PI / 4).translate(0, 6.65, 0), 0xffd23f],
+    ...[[-1.4, -1.4], [1.4, -1.4], [-1.4, 1.4], [1.4, 1.4]].map(([x, z]) => [Box(0.35, 1.6, 0.35).translate(x, 1.9, z), 0xf4f1ea]),
+  ]),
+  wonder: (() => {
+    const G = 0xffd23f, G2 = 0xe8b830, parts = [[Box(6.5, 1.6, 6.5).translate(0, 0.8, 0), 0xe9e6dc], [Box(5.5, 0.5, 5.5).translate(0, 1.85, 0), 0xdedad0], [Box(2.4, 0.6, 0.15).translate(0, 1, 3.3), G]];
+    const c = (w, h, d, x, y, z, col = G) => parts.push([Box(w * 1.3, h * 1.3, d * 1.3).translate(x * 1.3, 2.1 + y * 1.3, z * 1.3), col]);
+    c(2.3, 1.7, 3.6, 0, 2.25, 0); c(1.25, 1.15, 1.4, 0, 3.0, 2.2); c(1.05, 0.55, 0.45, 0, 2.65, 3.0, G2);
+    for (const [x, z] of [[0.75, 1.25], [-0.75, 1.25], [0.75, -1.25], [-0.75, -1.25]]) c(0.55, 1.4, 0.55, x, 0.7, z, G2);
+    c(0.14, 1.2, 0.14, 0, 2.4, -1.85, G2); c(0.15, 0.5, 0.15, 0.5, 3.8, 2.0, 0xfff1a0); c(0.15, 0.5, 0.15, -0.5, 3.8, 2.0, 0xfff1a0);
+    return merge(parts);
+  })(),
+};
+const GHOST_MAT = new THREE.MeshLambertMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.28, depthWrite: false, vertexColors: true });
+
+const workshop = { type: 'workshop', info: true, pos: new V3(at(-12, 6).x, PLAT, at(-12, 6).z), pickR: 3, pickH: 1.5, canPick: () => true, stock: [], timer: 6 };
+{
+  const W = 0x8a5a33, L = 0xb98a52;
+  const g = workshop.g = new THREE.Group();
+  g.add(new THREE.Mesh(merge([
+    [Box(5, 0.3, 4.4).translate(0, 0.15, 0), 0x6e4a2c],
+    [Box(5, 2.8, 0.25).translate(0, 1.55, -2.1), W], [Box(0.25, 2.8, 4.4).translate(-2.4, 1.55, 0), W], [Box(0.25, 2.8, 2).translate(2.4, 1.55, -1.2), W],
+    [Box(0.3, 2.9, 0.3).translate(2.35, 1.5, 2.05), L], [Box(0.3, 2.9, 0.3).translate(-2.35, 1.5, 2.05), L],
+    [Box(5.8, 0.25, 5.2).rotateX(0.16).translate(0, 3.2, 0), 0x6b3a2a],
+    [Box(2.2, 0.15, 0.9).translate(0.6, 1, -1.2), L], [Box(0.15, 0.9, 0.8).translate(-0.4, 0.5, -1.2), W], [Box(0.15, 0.9, 0.8).translate(1.6, 0.5, -1.2), W],
+    [Box(1.6, 0.6, 0.12).translate(0, 2.5, 2.25), 0xffd23f],
+  ]), VC));
+  g.position.copy(workshop.pos);
+  g.rotation.y = Math.atan2(VILLAGE.x - workshop.pos.x, VILLAGE.z + 6 - workshop.pos.z);
+  scene.add(addShadow(g));
+  workshop.slot = i => g.localToWorld(new V3(-1.9 + i * 1.25, 0, 3.4)).setY(PLAT);
+  workshop.layout = () => workshop.stock.forEach((sc, i) => { sc.pos.copy(workshop.slot(i)); sc.mesh.scale.setScalar(0.72); sc.sync(); });
+  workshop.restock = sc => {
+    if (workshop.stock.length >= 4) return false;
+    sc.state = 'stock'; workshop.stock.push(sc); workshop.layout(); return true;
+  };
+  workshop.update = dt => {
+    workshop.timer -= dt;
+    if (workshop.timer > 0) return;
+    workshop.timer = 12;
+    if (workshop.stock.length < 4 && R.wood >= 10) {
+      R.wood -= 10;
+      workshop.restock(new Scaffold(workshop.pos));
+      floatText(workshop.pos.x, workshop.pos.y + 4, workshop.pos.z, '+1 scaffold (-10 wood)', '#e0a060');
+    }
+  };
+}
+
+function spotProblem(x, z, bp, ignore) {
+  const h = heightAt(x, z);
+  if (h < 0.8) return 'Too wet to build here';
+  const hw = bp.w / 2, hd = bp.d / 2;
+  for (const [dx, dz] of [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd]]) { const hh = heightAt(x + dx, z + dz); if (hh < 0.6 || Math.abs(hh - h) > 1.3) return 'Too steep here'; }
+  if (Math.hypot(x - DOUBT.x, z - DOUBT.z) < 18) return 'Doubtsby will not let you build there';
+  const box = (cx, cz, w, d, pad = 0.8) => Math.abs(x - cx) < (w + bp.w) / 2 + pad && Math.abs(z - cz) < (d + bp.d) / 2 + pad;
+  if (box(temple.pos.x, temple.pos.z, TEMPLE_W, TEMPLE_D) || box(YARD_MID.x, YARD_MID.z + 1.5, YARD.x1 - YARD.x0, YARD.z1 - YARD.z0 + 3)) return 'That is holy ground';
+  if (box(store.pos.x, store.pos.z, 5.6, 5) || box(workshop.pos.x, workshop.pos.z, 5.5, 6)) return 'Something is in the way';
+  for (const o of world.houses) if (box(o.pos.x, o.pos.z, 2.8, 2.8)) return 'A house is in the way';
+  for (const o of world.fields) if (box(o.pos.x, o.pos.z, o.w, o.d, 0.4)) return 'A field is in the way';
+  for (const o of world.buildings) if (box(o.pos.x, o.pos.z, o.w, o.d)) return 'Something is in the way';
+  for (const o of world.sites) if (o !== ignore && box(o.pos.x, o.pos.z, o.bp.w, o.bp.d)) return 'Another plan is in the way';
+  return null;
+}
+
+class Scaffold {
+  constructor(p) {
+    this.type = 'scaffold'; this.state = 'idle'; this.vel = new V3(); this.bounces = 0;
+    this.pos = p.clone();
+    this.mesh = new THREE.Mesh(SCAFFOLD_GEO, VC); addShadow(this.mesh); scene.add(this.mesh);
+    world.scaffolds.push(this); this.sync();
+  }
+  get pickR() { return 1; }
+  get pickH() { return 0.8; }
+  canPick() { return this.state === 'stock' || this.state === 'idle' || this.state === 'flying'; }
+  sync() { this.mesh.position.copy(this.pos); }
+  remove() { this.removed = true; this.state = 'gone'; scene.remove(this.mesh); removeFrom(world.scaffolds, this); }
+  land(speed) {
+    this.state = 'idle'; this.mesh.rotation.set(0, 0, 0); this.mesh.scale.setScalar(1); this.sync();
+    const { x, z } = this.pos;
+    if (flat(this.pos, workshop.pos) < 4.5) { if (workshop.restock(this)) sfx.drop(); return; }
+    const site = world.sites.find(s => Math.abs(s.pos.x - x) < s.bp.w / 2 + 1.5 && Math.abs(s.pos.z - z) < s.bp.d / 2 + 1.5);
+    if (site) {
+      const err = site.addScaffold();
+      if (err) floatText(x, this.pos.y + 2.5, z, err, '#ff8a8a');
+      else this.remove();
+      return;
+    }
+    if (speed > 14 && !this.gentle) { sfx.thud(); return; }
+    const err = spotProblem(x, z, BLUEPRINTS[1]);
+    if (err) { floatText(x, this.pos.y + 2.5, z, err, '#ff8a8a'); sfx.no(); return; }
+    new Site(x, z);
+    this.remove();
+  }
+  update(dt) { if (this.state === 'flying') { flyStep(this, dt); this.mesh.rotation.x += dt * 4; } if (!this.removed && this.state !== 'stock') this.sync(); }
+}
+
+class Site {
+  constructor(x, z) {
+    this.type = 'site'; this.info = true; this.n = 1; this.wood = 0; this.progress = 0;
+    this.pos = new V3(x, heightAt(x, z), z);
+    this.g = new THREE.Group(); this.g.position.copy(this.pos); scene.add(this.g);
+    this.rot = Math.round(Math.atan2(VILLAGE.x - x, VILLAGE.z - z) / (Math.PI / 2)) * (Math.PI / 2);
+    world.sites.push(this);
+    this.rebuild();
+    floatText(x, this.pos.y + 3, z, 'NEW PLAN: HOUSE', '#6cc7ff', true);
+    sfx.chime();
+    const builders = world.villagers.filter(v => v.faction === 'mine' && v.alive && v.job === 'builder').length;
+    if (!builders) toast('🔨 Nobody is building yet. Drop a villager on the workshop or the plan to make them a builder.', 'tip');
+  }
+  get bp() { return BLUEPRINTS[this.n]; }
+  get pickR() { return Math.max(1.8, Math.max(this.bp.w, this.bp.d) * 0.55); }
+  get pickH() { return 0.8; }
+  canPick() { return !this.removed; }
+  rebuild() {
+    this.g.clear();
+    const bp = this.bp, geo = BP_GEO[bp.key];
+    this.g.rotation.y = bp.key === 'farm' ? 0 : this.rot;
+    this.ghost = new THREE.Mesh(geo, GHOST_MAT);
+    this.real = new THREE.Mesh(geo, VC); this.real.castShadow = true;
+    this.g.add(this.ghost, this.real);
+    const hw = bp.w / 2 + 0.3, hd = bp.d / 2 + 0.3;
+    [[-hw, -hd], [hw, hd], [hw, -hd], [-hw, hd]].slice(0, this.n).forEach(([x, z]) => {
+      const m = new THREE.Mesh(SCAFFOLD_GEO, VC); m.position.set(x, 0, z); m.castShadow = true; this.g.add(m);
+    });
+    for (const t of [...world.trees]) if (Math.abs(t.pos.x - this.pos.x) < bp.w / 2 + 1 && Math.abs(t.pos.z - this.pos.z) < bp.d / 2 + 1) t.remove();
+    for (const r of [...world.rocks]) if (r.state === 'idle' && Math.abs(r.pos.x - this.pos.x) < bp.w / 2 + 1 && Math.abs(r.pos.z - this.pos.z) < bp.d / 2 + 1) r.remove();
+    if (this.wood > bp.wood) { R.wood += this.wood - bp.wood; this.wood = bp.wood; }
+    this.refresh();
+  }
+  refresh() { this.real.scale.set(1, Math.max(0.02, this.progress), 1); this.real.visible = this.progress > 0.01; }
+  addScaffold() {
+    if (this.n >= 4) return 'This plan is as big as it gets';
+    if (this.progress > 0.02) return 'Too late, they already started building';
+    const err = spotProblem(this.pos.x, this.pos.z, BLUEPRINTS[this.n + 1], this);
+    if (err) return `No room for a ${BLUEPRINTS[this.n + 1].label.toLowerCase()} here`;
+    this.n++;
+    this.rebuild();
+    floatText(this.pos.x, this.pos.y + 3.5, this.pos.z, `PLAN: ${this.bp.label.toUpperCase()}`, '#6cc7ff', true);
+    sfx.chime();
+    return null;
+  }
+  takeScaffold() {
+    if (this.progress > 0.02) return false;
+    this.n--;
+    if (this.n === 0) { R.wood += this.wood; this.remove(); }
+    else { this.rebuild(); floatText(this.pos.x, this.pos.y + 3.5, this.pos.z, `PLAN: ${this.bp.label.toUpperCase()}`, '#6cc7ff'); }
+    return true;
+  }
+  deliver(n) {
+    const got = Math.min(n, this.bp.wood - this.wood);
+    if (got > 0) { this.wood += got; floatText(this.pos.x, this.pos.y + 3, this.pos.z, `+${Math.floor(got)} wood`, '#e0a060'); }
+    return n - got;
+  }
+  build(dt) {
+    const cap = this.wood / this.bp.wood;
+    if (this.progress >= cap) return false;
+    this.progress = Math.min(cap, this.progress + dt / this.bp.time);
+    this.refresh();
+    if (Math.random() < dt * 3) emit(this.pos.x + rand(-1, 1), this.pos.y + 1.5, this.pos.z + rand(-1, 1), { c: 0xc8b48a, n: 2, size: 0.4, life: 0.6 });
+    if (this.progress >= 1) this.complete();
+    return true;
+  }
+  complete() {
+    this.remove();
+    const { x, z } = this.pos, key = this.bp.key;
+    if (key === 'house') new House(x, z, 'mine').mesh.rotation.y = this.rot;
+    else if (key === 'farm') { const f = new Field(x, z); f.crop = 5; f.refresh(); }
+    else new Building(key, x, z, this.rot);
+    floatText(x, this.pos.y + 5, z, `${this.bp.label.toUpperCase()} BUILT!`, '#9dff7a', true);
+    toast(`🏗️ Your builders finished a <b>${this.bp.label.toUpperCase()}</b>: ${this.bp.desc}.`, 'learn');
+    sfx.fanfare();
+    emit(x, this.pos.y + 2, z, { c: [0xffe27a, 0xffffff], n: 40, size: 0.6, spd: 5, up: 6, life: 1.2 });
+  }
+  remove() { this.removed = true; scene.remove(this.g); removeFrom(world.sites, this); }
+}
+
+class Building {
+  constructor(key, x, z, rot = 0) {
+    this.type = key; this.info = true;
+    const bp = BLUEPRINTS.find(b => b && b.key === key);
+    this.label = bp.label; this.w = bp.w; this.d = bp.d;
+    this.pos = new V3(x, heightAt(x, z), z);
+    this.mesh = new THREE.Mesh(BP_GEO[key], VC); this.mesh.position.copy(this.pos); this.mesh.rotation.y = rot;
+    addShadow(this.mesh); scene.add(this.mesh);
+    this.pickR = bp.w * 0.55; this.pickH = 2;
+    world.buildings.push(this);
+  }
+  canPick() { return true; }
+}
+
+const BUNDLE_GEO = merge([0, 1, 2].map(i => [new THREE.CylinderGeometry(0.2, 0.2, 1.6, 6).rotateZ(Math.PI / 2).translate(0, 0.2 + (i === 2 ? 0.34 : 0), i === 2 ? 0 : (i - 0.5) * 0.42), 0x8a5a33]));
+class Bundle {
+  constructor(p, amount) {
+    this.type = 'bundle'; this.state = 'idle'; this.vel = new V3(); this.bounces = 0; this.amount = amount;
+    this.pos = p.clone();
+    this.mesh = new THREE.Mesh(BUNDLE_GEO, VC); addShadow(this.mesh); scene.add(this.mesh);
+    world.bundles.push(this); this.sync();
+  }
+  get pickR() { return 0.8; }
+  get pickH() { return 0.4; }
+  canPick() { return this.state === 'idle' || this.state === 'flying'; }
+  sync() { this.mesh.position.copy(this.pos); }
+  remove() { this.removed = true; this.state = 'gone'; scene.remove(this.mesh); removeFrom(world.bundles, this); }
+  land() {
+    this.state = 'idle'; this.mesh.rotation.set(0, 0, 0); this.sync();
+    const site = siteNear(this.pos);
+    if (site) { this.amount = site.deliver(this.amount); if (this.amount <= 0) this.remove(); return; }
+    if (flat(this.pos, store.pos) < 5.5) { R.wood += this.amount; floatText(store.pos.x, store.pos.y + 4, store.pos.z, `+${this.amount} wood`, '#e0a060'); this.remove(); }
+  }
+  update(dt) { if (this.state === 'flying') { flyStep(this, dt); this.mesh.rotation.y += dt * 5; } if (!this.removed) this.sync(); }
+}
+const siteNear = p => world.sites.find(s => Math.abs(s.pos.x - p.x) < s.bp.w / 2 + 1.5 && Math.abs(s.pos.z - p.z) < s.bp.d / 2 + 1.5);
+
 /* ---------- Trees, rocks, crates ---------- */
 class Tree {
   constructor(x, z, wood = rand(16, 30)) {
@@ -833,6 +1095,14 @@ class Tree {
   extinguish() { if (this.burning) { this.burning = 0; this.mesh.material = VC; emit(this.pos.x, this.pos.y + 2, this.pos.z, { c: 0xdddddd, n: 8, size: 0.8, up: 3, life: 1 }); } }
   land(speed) {
     this.mesh.rotation.x = this.mesh.rotation.z = 0;
+    const site = siteNear(this.pos);
+    if (site) {
+      const left = site.deliver(Math.floor(this.wood));
+      if (left > 0) { R.wood += left; floatText(store.pos.x, store.pos.y + 4, store.pos.z, `+${left} wood`, '#e0a060'); }
+      emit(this.pos.x, this.pos.y + 1, this.pos.z, { c: 0x8a5a33, n: 14, size: 0.5, spd: 4, up: 5, life: 0.8 });
+      sfx.thud(); this.remove(); if (this.byPlayer) align = clamp(align + 0.01, -1, 1);
+      return;
+    }
     if (flat(this.pos, store.pos) < 5.5) {
       const w = Math.floor(this.wood);
       R.wood += w; floatText(store.pos.x, store.pos.y + 4, store.pos.z, `+${w} wood`, '#e0a060', true);
@@ -883,7 +1153,7 @@ class Rock {
   update(dt) {
     if (this.state === 'flying') {
       flyStep(this, dt); this.mesh.rotation.x += dt * 6;
-      if (creature && this.thrower !== 'creature' && this.pos.distanceTo(creature.center) < 2.4 * creature.size) creature.bonk(this);
+      if (creature && this.thrower !== 'creature' && this.pos.distanceTo(creature.center) < 2.4 * creature.scale) creature.bonk(this);
     }
     this.sync();
   }
@@ -951,6 +1221,7 @@ function runPlan(e, dt) {
     if (d <= s.r) { e.plan.shift(); e.anim = 'idle'; return; }
     const m = Math.min(e.speed() * dt, d);
     e.pos.x += dx / d * m; e.pos.z += dz / d * m;
+    pushOutOfTemple(e.pos, e.type === 'creature' ? 1.2 * e.scale : 0.4);
     e.heading = angLerp(e.heading, Math.atan2(dx, dz), Math.min(1, dt * 8));
     e.anim = 'walk';
   } else if (s.k === 'do') {
@@ -1069,16 +1340,29 @@ class Villager {
         go(() => store.pos, 3), call(e => e.deposit()),
       ];
     } else if (this.job === 'worshipper') {
-      const a = this.id * 2.399, p = { x: temple.pos.x + Math.cos(a) * 5.2, z: temple.pos.z + Math.sin(a) * 5.2 };
+      const a = TEMPLE_W / 2 + 1.6, b = TEMPLE_D / 2 + 1.6, u = (this.id * 7.31) % (2 * (b + 4) + 2 * a);
+      const p = u < b + 4 ? { x: temple.pos.x - a, z: temple.pos.z + 4 - u }
+        : u < b + 4 + 2 * a ? { x: temple.pos.x - a + (u - b - 4), z: temple.pos.z - b }
+        : { x: temple.pos.x + a, z: temple.pos.z - b + (u - b - 4 - 2 * a) };
       this.plan = [go(() => p, 0.4), act(rand(18, 26), 'pray', null, (dt, e) => {
         R.prayer = Math.min(PRAYER_MAX, R.prayer + 0.6 * dt);
         e.heading = angLerp(e.heading, Math.atan2(temple.pos.x - e.pos.x, temple.pos.z - e.pos.z), dt * 4);
         if (Math.random() < dt * 0.6) emit(e.pos.x, e.pos.y + 1.4, e.pos.z, { c: 0xffe27a, size: 0.25, up: 2, spd: 0.2, grav: 1, life: 1.2 });
       })];
     } else {
-      const site = world.houses.find(h => !h.done && !h.dead);
-      if (site) this.plan = [go(() => site.dead ? null : site.pos, 2.4), act(6, 'build', null, (dt) => site.build(dt))];
-      else this.plan = home();
+      const site = nearest(world.sites, () => true, this.pos);
+      const near = () => site.removed ? null : site.pos, r = Math.max(site?.bp.w ?? 2, site?.bp.d ?? 2) / 2 + 1.2;
+      if (!site) {
+        const p = workshop.slot(rand(-1, 4));
+        this.plan = [go(() => p, 1), act(rand(3, 6), 'build')];
+      } else if (site.wood < site.bp.wood && site.progress >= site.wood / site.bp.wood - 0.001) {
+        if (R.wood < 1) { this.plan = [go(near, r), act(4, 'idle')]; return; }
+        this.plan = [go(() => store.pos, 3), call(e => {
+          const take = Math.min(15, Math.floor(R.wood), Math.ceil(site.bp.wood - site.wood));
+          if (take <= 0 || site.removed) return false;
+          R.wood -= take; e.setCarry('wood', take);
+        }), go(near, r), call(e => { const left = site.deliver(e.carryAmt); e.setCarry(left > 0 ? 'wood' : null, left); })];
+      } else this.plan = [go(near, r), act(6, 'build', e => { if (site.removed) return false; }, dt => site.build(dt))];
     }
   }
   update(dt) {
@@ -1171,9 +1455,9 @@ function killVillager(v, cause, by) {
 
 function siteAt(x, z) {
   const p = { x, z };
-  if (flat(p, temple.pos) < 6.5) return 'worshipper';
+  if (inTemple(p, 2)) return 'worshipper';
   if (world.fields.some(f => f.contains(x, z))) return 'farmer';
-  if (flat(p, store.pos) < 5 || world.houses.some(h => !h.done && flat(p, h.pos) < 4)) return 'builder';
+  if (flat(p, workshop.pos) < 5 || flat(p, store.pos) < 5 || siteNear(p)) return 'builder';
   if (world.trees.some(t => t.state === 'planted' && flat(p, t.pos) < 3.5)) return 'woodcutter';
   return null;
 }
@@ -1237,7 +1521,8 @@ class Cloud {
 function treeSpotOk(x, z) {
   const h = heightAt(x, z);
   if (h < 1.1 || h > 14 || slopeAt(x, z) > 2.2) return false;
-  if (flat({ x, z }, store.pos) < 6 || flat({ x, z }, temple.pos) < 7) return false;
+  if (flat({ x, z }, store.pos) < 6 || flat({ x, z }, workshop.pos) < 6 || inTemple({ x, z }, 2) || inYard({ x, z }, 2) || siteNear({ x, z })) return false;
+  if (world.buildings.some(b => flat({ x, z }, b.pos) < b.w)) return false;
   if (world.fields.some(f => f.contains(x, z, 1.5))) return false;
   if (world.houses.some(hh => flat({ x, z }, hh.pos) < 3)) return false;
   return true;
@@ -1274,7 +1559,7 @@ function explode(p, by) {
   igniteNear(p, 7.5);
   for (const f of world.fields) if (flat(f.pos, p) < 8) { f.crop = 0; f.refresh(); }
   for (const c of [...world.crates]) if (flat(c.pos, p) < 5) c.remove();
-  if (creature && flat(creature.pos, p) < 6 + 2 * creature.size) creature.bonk(null, 'OW! HOT!');
+  if (creature && flat(creature.pos, p) < 6 + 2 * creature.scale) creature.bonk(null, 'OW! HOT!');
   impressAt(p.x, p.z, 14, 'fear');
   if (by === 'player') { align = clamp(align - 0.06, -1, 1); quip('fire'); }
   learnFrom('fire', p.x, p.z, by);
@@ -1315,7 +1600,7 @@ class Creature {
   constructor(name) {
     this.type = 'creature'; this.name = name;
     this.pos = new V3(VILLAGE.x + 12, 0, VILLAGE.z - 14); this.pos.y = heightAt(this.pos.x, this.pos.z);
-    this.heading = 0.4; this.size = 1.4; this.anim = 'idle'; this.animT = 0;
+    this.heading = 0.4; this.size = 1.4; this.scale = 1.4; this.pulled = false; this.anim = 'idle'; this.animT = 0;
     this.hunger = 0.25; this.boredom = 0.5; this.energy = 0.9; this.bowel = 0.2;
     this.plan = []; this.action = null; this.last = null; this.thinkT = 2; this.stun = 0; this.recoil = 0;
     this.align = 0; this.carry = null; this.thought = 'Hello! I am enormous.'; this.zzzT = 0;
@@ -1324,10 +1609,10 @@ class Creature {
     this.center = new V3();
     this.build();
   }
-  get pickR() { return 2.6 * this.size; }
-  get pickH() { return 2.4 * this.size; }
+  get pickR() { return 2.6 * this.scale; }
+  get pickH() { return 2.4 * this.scale; }
   canPick() { return true; }
-  speed() { return (2.4 + this.size * 0.7) * (heightAt(this.pos.x, this.pos.z) < WATER - 0.6 ? 0.6 : 1); }
+  speed() { return (2.4 + this.scale * 0.7) * (heightAt(this.pos.x, this.pos.z) < WATER - 0.6 ? 0.6 : 1); }
   build() {
     const root = this.g = new THREE.Group(), inner = this.inner = new THREE.Group();
     root.add(inner);
@@ -1371,7 +1656,7 @@ class Creature {
   }
   bonk(rock, msg = 'OW!') {
     this.recoil = 1;
-    floatText(this.pos.x, this.pos.y + 6 * this.size, this.pos.z, msg, '#ff8a8a', true);
+    floatText(this.pos.x, this.pos.y + 6 * this.scale, this.pos.z, msg, '#ff8a8a', true);
     sfx.moo(1.3);
     if (rock) { rock.vel.multiplyScalar(-0.3); rock.vel.y = 6; }
   }
@@ -1424,17 +1709,17 @@ class Creature {
   }
   headWorld() { return this.head.getWorldPosition(tmpV2); }
   choose() {
-    const U = {}, f = k => Math.max(0.03, 1 + 1.6 * this.op[k]);
-    const prey = world.villagers.some(v => v.alive && v.state !== 'held');
+    const U = {}, f = k => Math.max(0.03, 1 + 1.6 * this.op[k]), ok = leashOk;
+    const prey = world.villagers.some(v => v.alive && v.state !== 'held' && ok(v.pos));
     if (this.energy < 0.3) U.sleep = (1 - this.energy) * 2.2;
     U.graze = this.hunger * 0.9 * f('graze');
     if (prey) U.eatVillager = this.hunger * 0.95 * f('eatVillager');
-    if (R.food > 15) U.raid = this.hunger * 0.8 * f('raid');
-    if (world.trees.some(t => t.state === 'planted' && !t.burning)) U.fetch = this.boredom * 0.85 * f('fetch');
-    if (world.rocks.some(r => r.state === 'idle' && flat(r.pos, this.pos) < 45)) U.rock = this.boredom * 0.75 * f('rock');
-    U.dance = this.boredom * 0.75 * f('dance');
-    if (!converted) U.show = this.boredom * 0.7 * f('show');
-    if (this.learned.food && this.energy > 0.35) U.castFood = (clamp(1 - R.food / 60, 0, 1) * 1.1 + this.boredom * 0.2) * f('castFood');
+    if (R.food > 15 && ok(store.pos)) U.raid = this.hunger * 0.8 * f('raid');
+    if (ok(store.pos) && world.trees.some(t => t.state === 'planted' && !t.burning && ok(t.pos))) U.fetch = this.boredom * 0.85 * f('fetch');
+    if (world.rocks.some(r => r.state === 'idle' && flat(r.pos, this.pos) < 45 && ok(r.pos))) U.rock = this.boredom * 0.75 * f('rock');
+    if (ok(YARD_MID)) U.dance = this.boredom * 0.75 * f('dance');
+    if (!converted && ok(DOUBT)) U.show = this.boredom * 0.7 * f('show');
+    if (this.learned.food && this.energy > 0.35 && ok(store.pos)) U.castFood = (clamp(1 - R.food / 60, 0, 1) * 1.1 + this.boredom * 0.2) * f('castFood');
     if (this.learned.fire && this.energy > 0.35) U.castFire = this.boredom * 0.6 * f('castFire');
     if (this.bowel > 0.6) U.poop = this.bowel * 1.1 * f('poop');
     if (this.bowel > 1.3) U.poop = 9;
@@ -1445,17 +1730,18 @@ class Creature {
   start(k) {
     this.action = k; this.thought = ACT[k].think;
     const done = call(e => e.finish(k));
-    const S = this.size;
+    const S = this.scale;
     switch (k) {
       case 'graze': {
         let p = null;
-        for (let i = 0; i < 30 && !p; i++) { const a = rand(6.28), r = rand(4, 18), x = this.pos.x + Math.cos(a) * r, z = this.pos.z + Math.sin(a) * r; const h = heightAt(x, z); if (h > 1.5 && h < 9 && flat({ x, z }, VILLAGE) > 14) p = { x, z }; }
+        const from = leash.mode ? leash.anchor : this.pos, far = leash.mode ? leashLen() * 0.7 : 18;
+        for (let i = 0; i < 30 && !p; i++) { const a = rand(6.28), r = rand(2, far), x = from.x + Math.cos(a) * r, z = from.z + Math.sin(a) * r; const h = heightAt(x, z); if (h > 1.5 && h < 9 && (leash.mode || flat({ x, z }, VILLAGE) > 22)) p = { x, z }; }
         p = p || { x: this.pos.x, z: this.pos.z };
         this.plan = [go(() => p, 1), act(7, 'graze', null, (dt, e) => { e.hunger = Math.max(0, e.hunger - dt * 0.05); }), call(e => { e.bowel += 0.15; }), done];
         break;
       }
       case 'eatVillager': {
-        const v = nearest(world.villagers, v => v.alive && v.state !== 'held', this.pos);
+        const v = nearest(world.villagers, v => v.alive && v.state !== 'held' && leashOk(v.pos), this.pos);
         this.plan = [
           go(() => v.alive && v.state !== 'held' && v.state !== 'flying' ? v.pos : null, 1.7 * S),
           call(e => { if (!v.alive || v.state === 'held') return false; v.state = 'eaten'; v.plan.length = 0; e.carry = v; sfx.chomp(); floatText(v.pos.x, v.pos.y + 2, v.pos.z, 'AAAH!', '#fff'); }),
@@ -1471,7 +1757,7 @@ class Creature {
         }), done];
         break;
       case 'fetch': {
-        const t = nearest(world.trees, t => t.state === 'planted' && !t.burning, this.pos);
+        const t = nearest(world.trees, t => t.state === 'planted' && !t.burning && leashOk(t.pos), this.pos);
         this.plan = [
           go(() => t.state === 'planted' && !t.burning ? t.pos : null, 1.3 * S),
           call(e => { if (t.state !== 'planted') return false; t.state = 'carried'; e.carry = t; sfx.grab(); emit(t.pos.x, t.pos.y, t.pos.z, { c: 0x8a6a44, n: 10, size: 0.6, spd: 3, up: 3, life: 0.6 }); }),
@@ -1481,7 +1767,7 @@ class Creature {
         break;
       }
       case 'rock': {
-        const r = nearest(world.rocks, r => r.state === 'idle', this.pos);
+        const r = nearest(world.rocks, r => r.state === 'idle' && leashOk(r.pos), this.pos);
         this.plan = [
           go(() => r.state === 'idle' ? r.pos : null, 1.3 * S),
           call(e => { if (r.state !== 'idle') return false; r.state = 'carried'; e.carry = r; }),
@@ -1495,7 +1781,7 @@ class Creature {
         break;
       }
       case 'dance':
-        this.plan = [go(() => temple.pos, 7.5), act(6, 'dance', null, (dt) => { R.prayer = Math.min(PRAYER_MAX, R.prayer + 3 * dt); }), call(e => floatText(e.pos.x, e.pos.y + 7 * S, e.pos.z, 'The faithful are delighted!', '#ffd23f')), done];
+        this.plan = [...this.intoYard(), act(6, 'dance', null, (dt) => { R.prayer = Math.min(PRAYER_MAX, R.prayer + 3 * dt); }), call(e => floatText(e.pos.x, e.pos.y + 7 * S, e.pos.z, 'The faithful are delighted!', '#ffd23f')), done];
         break;
       case 'show':
         this.plan = [go(() => DOUBT, 9), act(6, 'dance'), call(e => impressAt(DOUBT.x, DOUBT.z, Math.round(8 + 4 * S), 'cow moves')), done];
@@ -1517,7 +1803,7 @@ class Creature {
       case 'poop':
         this.plan = [act(2.2, 'poop'), call(e => {
           const p = e.g.localToWorld(new V3(0, 1.5, -2.2));
-          const blob = new THREE.Mesh(GEO.blob, MAT.poop); blob.scale.set(0.9, 0.6, 0.9).multiplyScalar(e.size); blob.position.set(p.x, heightAt(p.x, p.z), p.z);
+          const blob = new THREE.Mesh(GEO.blob, MAT.poop); blob.scale.set(0.9, 0.6, 0.9).multiplyScalar(e.scale); blob.position.set(p.x, heightAt(p.x, p.z), p.z);
           addShadow(blob); scene.add(blob); world.poops.push({ mesh: blob, t: 25 });
           e.bowel = 0; sfx.thud();
           for (const f of world.fields) if (flat(f.pos, p) < 12) { f.crop = Math.min(30, f.crop + 15); f.refresh(); floatText(f.pos.x, f.pos.y + 2, f.pos.z, 'FERTILISED', '#9dff7a'); }
@@ -1526,15 +1812,20 @@ class Creature {
         }), done];
         break;
       case 'sleep':
-        this.plan = [act(14, 'sleep', null, (dt, e) => { e.energy = Math.min(1, e.energy + dt / 13); }), done];
+        this.plan = [...(leashOk(YARD_MID) ? this.intoYard() : []), act(14, 'sleep', null, (dt, e) => { e.energy = Math.min(1, e.energy + dt / 13); }), done];
         break;
       default: {
         let p = null;
-        for (let i = 0; i < 20 && !p; i++) { const a = rand(6.28), r = rand(5, 16), x = this.pos.x + Math.cos(a) * r, z = this.pos.z + Math.sin(a) * r; if (isLand(x, z, 1.2)) p = { x, z }; }
+        const from = leash.mode ? leash.anchor : this.pos, far = leash.mode ? leashLen() * 0.7 : 16;
+        for (let i = 0; i < 20 && !p; i++) { const a = rand(6.28), r = rand(leash.mode ? 1 : 5, far), x = from.x + Math.cos(a) * r, z = from.z + Math.sin(a) * r; if (isLand(x, z, 1.2) && !inTemple({ x, z }, 3)) p = { x, z }; }
         p = p || VILLAGE;
         this.plan = [go(() => p, 1), act(rand(1, 3), 'idle'), done];
       }
     }
+  }
+  // Through the gate, never over the fence.
+  intoYard() {
+    return inYard(this.pos) ? [go(() => YARD_MID, 1.5)] : [go(() => YARD_GATE, 2), go(() => YARD_MID, 1.5)];
   }
   finish(k) {
     this.align = clamp(this.align + ACT[k].moral * 0.07, -1, 1);
@@ -1547,8 +1838,24 @@ class Creature {
     if (this.anim !== 'sleep') this.energy = Math.max(0, this.energy - dt / 230);
     this.bowel = Math.min(1.5, this.bowel + dt / 160);
     this.size = Math.min(2.4, this.size + dt / 700);
+    // Squeeze into the yard: it shrinks as it walks through the gate so it always fits.
+    const fit = inYard(this.pos, 1) ? Math.min(this.size, YARD_SCALE) : this.size;
+    this.scale = lerp(this.scale, fit, Math.min(1, dt * 2.5));
     this.recoil = Math.max(0, this.recoil - dt * 2.5);
-    if (this.stun > 0) { this.stun -= dt; this.anim = 'stun'; }
+    // The leash: once it goes tight, drop everything and walk to whatever holds it.
+    if (leash.mode) {
+      const L = leashLen(), d = flat(this.pos, leash.anchor);
+      if (d > L && !this.pulled) { this.abort(); this.pulled = true; this.stun = 0; this.thought = pick(['Coming, coming!', 'Walkies?', 'Ow, my neck.', 'Where are we going?']); }
+      if (this.pulled && d < L * 0.5) { this.pulled = false; this.thinkT = 0.8; }
+    } else this.pulled = false;
+    if (this.pulled) {
+      const L = leashLen(), d = flat(this.pos, leash.anchor), dx = leash.anchor.x - this.pos.x, dz = leash.anchor.z - this.pos.z;
+      const step = Math.min(d, this.speed() * (1 + clamp((d - L) / L, 0, 1.5)) * dt);
+      const nx = this.pos.x + dx / d * step, nz = this.pos.z + dz / d * step;
+      if (heightAt(nx, nz) > WATER - 1.6) { this.pos.x = nx; this.pos.z = nz; pushOutOfTemple(this.pos, 1.2 * this.scale); this.anim = 'walk'; }
+      else this.anim = 'idle';
+      this.heading = angLerp(this.heading, Math.atan2(dx, dz), Math.min(1, dt * 6));
+    } else if (this.stun > 0) { this.stun -= dt; this.anim = 'stun'; }
     else if (!this.plan.length) {
       if (this.action) { this.last = { key: this.action, t: simTime }; this.action = null; this.dropCarry(); }
       this.anim = 'idle';
@@ -1560,7 +1867,7 @@ class Creature {
     this.animate(dt);
   }
   animate(dt) {
-    const t = this.animT += dt, S = this.size;
+    const t = this.animT += dt, S = this.scale;
     this.g.position.copy(this.pos);
     this.g.rotation.y = this.heading;
     this.g.scale.setScalar(S);
@@ -1603,38 +1910,82 @@ class Creature {
   }
 }
 
+/* ---------- The leash ---------- */
+// Elastic: it stretches as far as you like, but once it is tight the creature walks to your hand (or the building it is tied to).
+const leash = { mode: null, target: null, anchor: new V3(), mesh: new THREE.Mesh(new THREE.BufferGeometry(), mat(0x8a5a33)) };
+leash.mesh.castShadow = true; leash.mesh.visible = false;
+scene.add(leash.mesh);
+const leashLen = () => 9 + 4 * (creature?.size ?? 1.4);
+const leashOk = p => !leash.mode || flat(p, leash.anchor) < leashLen() * 0.85;
+const PLACE_NAMES = { store: 'the store', temple: 'the temple', workshop: 'the workshop', house: 'a house', field: 'a field', site: 'a building plan', shrine: 'the shrine', wonder: 'the Cow Wonder' };
+function setLeash(m, target = null) {
+  if (state !== 'play') return;
+  leash.mode = m; leash.target = target;
+  const n = esc(creature.name);
+  if (m === 'hand') { leash.anchor.copy(hasGround ? groundHit : creature.pos); toast(`🪢 ${n} is on the leash. Walk it somewhere, or click a building to tie it up. <b>L</b> lets go.`); }
+  else if (m === 'tied') { tiePoint(target, leash.anchor); toast(`🪢 ${n} is tied to ${PLACE_NAMES[target.type] || 'that'}.`); }
+  else toast(`✂️ ${n} is off the leash.`);
+  creature.thinkT = Math.min(creature.thinkT, 0.6);
+  sfx.pop();
+  $('#leashBtn').textContent = m === 'hand' ? '✂ LET GO' : m === 'tied' ? '🪢 TAKE LEASH' : '🪢 LEASH';
+}
+// Tied to the temple means tied to the yard's gate post, so it can still get to bed.
+const tiePoint = (t, out) => t === temple ? out.set(VILLAGE.x + 2.2, PLAT, YARD.z1) : out.copy(t.pos);
+const toggleLeash = () => setLeash(leash.mode === 'hand' ? null : 'hand');
+const ropeA = new V3(), ropeB = new V3(), ropeM = new V3();
+function updateLeash() {
+  if (!leash.mode || !creature) { leash.mesh.visible = false; return; }
+  if (leash.mode === 'tied') {
+    if (leash.target.removed || leash.target.dead) { setLeash(null); return; }
+    tiePoint(leash.target, leash.anchor);
+    ropeB.copy(leash.anchor).setY(leash.anchor.y + (leash.target === temple ? 1.3 : Math.min(3, (leash.target.pickH || 1) * 1.5)));
+  } else if (hand.g.visible) {
+    leash.anchor.copy(mode === 'pan' ? panAnchor : groundHit);
+    ropeB.copy(hand.pos);
+  } else ropeB.copy(leash.anchor).setY(leash.anchor.y + 2);
+  creature.head.localToWorld(ropeA.set(0, -0.4, 0.5));
+  const L = leashLen(), d = flat(creature.pos, leash.anchor), stretch = clamp((d - L) / L, 0, 1);
+  ropeM.copy(ropeA).lerp(ropeB, 0.5);
+  ropeM.y -= Math.min(Math.max(0, L - d) * 0.45, 6) + 0.3;
+  leash.mesh.geometry.dispose();
+  leash.mesh.geometry = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(ropeA, ropeM, ropeB), 24, 0.13 * (1 - stretch * 0.45) * Math.max(1, cam.dist / 55), 5, false);
+  leash.mesh.material.color.setHex(0x8a5a33).lerp(tmpC.setHex(0xff5a5a), stretch);
+  leash.mesh.visible = true;
+}
+
 /* ============================================================
    World setup
    ============================================================ */
 function setupWorld() {
   const V = (dx, dz) => [VILLAGE.x + dx, VILLAGE.z + dz];
-  for (const [dx, dz] of [[-10, 1], [-9, 8], [-3, 9], [7, -9], [-10, -7]]) new House(...V(dx, dz));
+  for (const [dx, dz] of [[-14, -6], [-17, 12], [-7, 15], [11, -9], [17, -7]]) new House(...V(dx, dz));
   for (const [dx, dz] of [[-6, 0], [5, 4], [0, -6], [3, -5], [-4, 6]]) new House(DOUBT.x + dx, DOUBT.z + dz, 'doubt');
-  for (const [dx, dz] of [[11, -2], [11, 5], [4, 12]]) new Field(...V(dx, dz));
+  for (const [dx, dz] of [[14, 0], [14, 7.5], [5, 15]]) new Field(...V(dx, dz));
+  for (let i = 0; i < 2; i++) workshop.restock(new Scaffold(workshop.pos));
   // A ring of forest close to the village so the woodcutters have something to do from minute one.
   let tries = 0;
   while (world.trees.length < 30 && tries++ < 500) {
-    const a = rand(6.28), r = rand(20, 30), x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r;
-    if (treeSpotOk(x, z)) new Tree(x, z);
+    const a = rand(6.28), r = rand(27, 36), x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r;
+    if (treeSpotOk(x, z) && !inTemple({ x, z }, 3)) new Tree(x, z);
   }
   tries = 0;
   while (world.trees.length < 190 && tries++ < 6000) {
     const x = rand(-95, 95), z = rand(-95, 95);
     if (fbm(x * 0.03 + 50, z * 0.03 + 50, 3) < 0.48) continue;
-    if (flat({ x, z }, DOUBT) < 15 || flat({ x, z }, VILLAGE) < 18) continue;
+    if (flat({ x, z }, DOUBT) < 15 || flat({ x, z }, VILLAGE) < 27) continue;
     if (treeSpotOk(x, z)) new Tree(x, z);
   }
   tries = 0;
   while (world.rocks.length < 34 && tries++ < 3000) {
     const x = rand(-90, 90), z = rand(-90, 90), h = heightAt(x, z);
-    if (h < 1 || flat({ x, z }, VILLAGE) < 15 || flat({ x, z }, DOUBT) < 11) continue;
+    if (h < 1 || flat({ x, z }, VILLAGE) < 26 || flat({ x, z }, DOUBT) < 11) continue;
     new Rock(x, z);
   }
-  for (let i = 0; i < 5; i++) { const a = rand(6.28); new Rock(VILLAGE.x + Math.cos(a) * rand(17, 22), VILLAGE.z + Math.sin(a) * rand(17, 22)); }
+  for (let i = 0; i < 5; i++) { const a = rand(6.28), r = rand(22, 26), x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r; if (!inTemple({ x, z }, 2)) new Rock(x, z); }
   const jobs = ['farmer', 'farmer', 'farmer', 'woodcutter', 'woodcutter', 'worshipper', 'worshipper', 'worshipper', 'builder', 'farmer'];
-  jobs.forEach(j => { const a = rand(6.28), r = rand(2, 9); new Villager(VILLAGE.x + Math.cos(a) * r, VILLAGE.z + Math.sin(a) * r, 'mine', j); });
+  jobs.forEach(j => { const a = rand(6.28), r = rand(2, 9); new Villager(VILLAGE.x + Math.cos(a) * r, VILLAGE.z + 6 + Math.sin(a) * r, 'mine', j); });
   for (let i = 0; i < 6; i++) { const a = rand(6.28), r = rand(2, 8); new Villager(DOUBT.x + Math.cos(a) * r, DOUBT.z + Math.sin(a) * r, 'doubt', 'skeptic'); }
-  const s1 = textSprite('LITTLE GULLIBLE', '#ffffff', 'your village'); s1.position.set(VILLAGE.x, 21, VILLAGE.z); scene.add(s1);
+  const s1 = textSprite('LITTLE GULLIBLE', '#ffffff', 'your village'); s1.position.set(VILLAGE.x, 30, VILLAGE.z - 12); scene.add(s1);
   const s2 = textSprite('DOUBTSBY', '#cfcfcf', 'they do not believe in you'); s2.position.set(DOUBT.x, 18, DOUBT.z); scene.add(s2);
   creature = new Creature($('#nameIn').value.trim() || 'Sir Moosalot');
 }
@@ -1684,6 +2035,7 @@ const hand = (() => {
     const s2 = box(0.22, 0.24, len * 0.85); s2.position.z = -len * 0.42; j.add(s2);
     return [root, j];
   });
+  const tip = new THREE.Object3D(); tip.position.z = -0.55 * 0.85; fingers[0][1].add(tip);
   const tr = new THREE.Group(); tr.position.set(-0.6, -0.02, 0.1); tr.rotation.y = 0.75; inner.add(tr);
   const t1 = box(0.26, 0.26, 0.45); t1.position.z = -0.22; tr.add(t1);
   const tj = new THREE.Group(); tj.position.z = -0.45; tr.add(tj);
@@ -1694,7 +2046,7 @@ const hand = (() => {
   g.traverse(o => { if (o.isMesh && o !== orb) o.castShadow = true; });
   g.visible = false;
   scene.add(g);
-  return { g, inner, m, fingers, thumb: [tr, tj], orb, curl: 0.2, target: new V3(), pos: new V3(), scale: 1, slap: 0 };
+  return { g, inner, m, fingers, tip, thumb: [tr, tj], orb, curl: 0.2, tilt: -0.7, target: new V3(), pos: new V3(), scale: 1, slap: 0 };
 })();
 const ring = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.85, depthTest: false }));
 ring.renderOrder = 10; ring.visible = false; scene.add(ring);
@@ -1746,11 +2098,11 @@ function pickEntity(r, maxT) {
     if (s < bs) { bs = s; best = e; }
   };
   test(creature);
-  for (const l of [world.villagers, world.trees, world.rocks, world.crates]) for (const e of l) test(e);
-  if (!best) { test(store, true); test(temple, true); for (const h of world.houses) test(h, true); for (const f of world.fields) test(f, true); }
+  for (const l of [world.villagers, world.trees, world.rocks, world.crates, world.scaffolds, world.bundles]) for (const e of l) test(e);
+  if (!best) { test(store, true); test(temple, true); test(workshop, true); for (const l of [world.houses, world.fields, world.sites, world.buildings]) for (const e of l) test(e, true); }
   return best;
 }
-const grabbable = e => e && ['villager', 'tree', 'rock', 'crate'].includes(e.type);
+const grabbable = e => e && ['villager', 'tree', 'rock', 'crate', 'scaffold', 'bundle'].includes(e.type);
 
 function updateHover() {
   if (!ptr.over || state !== 'play') { hover = null; hasGround = false; return; }
@@ -1764,6 +2116,7 @@ function updateHover() {
 function grab(e) {
   held = e;
   if (e.type === 'villager') { e.state = 'held'; e.plan.length = 0; e.eating = false; e.dazed = 0; floatText(e.pos.x, e.pos.y + 1.6, e.pos.z, pick(['AAAH', 'WHEE', 'PUT ME DOWN', 'oh no']), '#fff'); }
+  else if (e.type === 'scaffold') { if (e.state === 'stock') { removeFrom(workshop.stock, e); workshop.layout(); } e.state = 'held'; e.mesh.scale.setScalar(1); }
   else if (e.type === 'tree') { e.state = 'held'; e.byPlayer = true; emit(e.pos.x, e.pos.y + 0.2, e.pos.z, { c: 0x8a6a44, n: 12, size: 0.6, spd: 3, up: 3, life: 0.7 }); }
   else e.state = 'held';
   heldHist.length = 0;
@@ -1820,6 +2173,16 @@ function onDown(e) {
     }
     return;
   }
+  if (leash.mode === 'hand' && hover?.info) { setLeash('tied', hover); return; }
+  if (hover === store && R.wood >= 1) {
+    const b = new Bundle(store.pos, Math.min(20, Math.floor(R.wood)));
+    R.wood -= b.amount; floatText(store.pos.x, store.pos.y + 4, store.pos.z, `-${b.amount} wood`, '#e0a060');
+    grab(b); mode = 'hold'; return;
+  }
+  if (hover?.type === 'site') {
+    if (hover.progress > 0.02) { floatText(hover.pos.x, hover.pos.y + 3, hover.pos.z, 'Already being built', '#ff8a8a'); sfx.no(); return; }
+    const sc = new Scaffold(hover.pos); hover.takeScaffold(); grab(sc); mode = 'hold'; return;
+  }
   if (grabbable(hover)) { grab(hover); mode = 'hold'; return; }
   if (hover === creature) { mode = 'creature'; gest.samples = [{ x: e.clientX, y: e.clientY, t: performance.now() }]; gest.acc = 0; gest.moved = 0; return; }
   if (hasGround) {
@@ -1827,6 +2190,7 @@ function onDown(e) {
     if (now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 20) { flyTo(groundHit.x, groundHit.z, Math.min(cam.dist, 55)); mode = null; lastTap.t = 0; return; }
     lastTap = { t: now, x: e.clientX, y: e.clientY };
     mode = 'pan'; panAnchor.copy(groundHit); cam.fly = null;
+    emit(groundHit.x, groundHit.y + 0.2, groundHit.z, { c: [0xb59a68, 0x8a6a44], n: 8, size: 0.35 * hand.scale, spd: 2, up: 2, life: 0.5 });
   }
 }
 function panTo(x, y, anchor) {
@@ -1861,7 +2225,7 @@ function onUp(e) {
   pointers.delete(e.pointerId);
   if (mode === 'touch2') { if (pointers.size === 0) mode = null; return; }
   if (mode === 'hold' || mode === 'fire') release();
-  if (mode === 'creature' && gest.moved < 6 && state === 'play') { floatText(creature.pos.x, creature.pos.y + 6 * creature.size, creature.pos.z, 'Moo?', '#fff'); sfx.moo(1.1); }
+  if (mode === 'creature' && gest.moved < 6 && state === 'play') { floatText(creature.pos.x, creature.pos.y + 6 * creature.scale, creature.pos.z, 'Moo?', '#fff'); sfx.moo(1.1); }
   mode = null;
   if (e.pointerType !== 'mouse') ptr.over = false;
 }
@@ -1906,6 +2270,7 @@ addEventListener('keydown', e => {
   if (k === '1') setArmed('food'); else if (k === '2') setArmed('rain'); else if (k === '3') setArmed('fire');
   else if (k === 'm') toggleMute();
   else if (k === 'c') toggleCreaturePanel();
+  else if (k === 'l') toggleLeash();
   else if (k === ' ' || k === 'home') { e.preventDefault(); flyTo(VILLAGE.x, VILLAGE.z, 55); }
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
 });
@@ -1955,24 +2320,36 @@ function updateHand(dt) {
     heldHist.push({ t: performance.now(), p: carried.pos.clone() });
     while (heldHist.length > 12) heldHist.shift();
   }
-  const topOf = carried ? (carried.type === 'tree' ? 3 * carried.s : carried.type === 'villager' ? 1.4 : 1.2) : 0;
-  hand.target.set(groundHit.x, groundHit.y + lift + topOf + hand.scale * (carried ? 0.35 : 0.9), groundHit.z);
-  if (hover && !carried) { hand.target.y = Math.max(hand.target.y, hover.pos.y + hover.pickH * 2 + hand.scale * 0.6); }
-  hand.pos.lerp(hand.target, Math.min(1, dt * 22));
+  // Poses: point at things (the fingertip is the cursor), a fist gripping the ground while you drag the world,
+  // a curled grip when carrying, and an open palm for miracles and for slapping or stroking the creature.
+  const pose = carried ? 'hold' : mode === 'pan' ? 'fist' : (armed || hover === creature || mode === 'creature') ? 'open' : 'point';
+  hand.curl = lerp(hand.curl, pose === 'open' ? 0.05 : 1, Math.min(1, dt * 14));
+  hand.tilt = lerp(hand.tilt, { point: -0.4, hold: 0.4, fist: -0.1, open: 0.45 }[pose], Math.min(1, dt * 12));
+  hand.fingers.forEach(([r, j], i) => { const c = i === 0 && pose === 'point' ? 0 : hand.curl; r.rotation.x = -c * 1.5; j.rotation.x = -c * 1.65; r.scale.setScalar(i === 0 && pose === 'point' ? 1.15 : 1); });
+  hand.thumb[1].rotation.x = -hand.curl * 0.8; hand.thumb[0].rotation.y = 0.75 - hand.curl * 0.5;
+  hand.slap = Math.max(0, hand.slap - dt);
+  hand.twist = lerp(hand.twist || 0, pose === 'point' ? 0.55 : 0, Math.min(1, dt * 12));
+  hand.g.rotation.set(hand.tilt, cam.yaw + hand.twist, 0, 'YXZ');
+  hand.inner.rotation.set(0, 0, hand.slap > 0 ? Math.sin(hand.slap * 30) * 0.8 : 0);
+  hand.g.scale.setScalar(hand.scale);
+  if (pose === 'point') {
+    // Put the index fingertip just above whatever is being pointed at.
+    const aim = hover ? tmpV.set(hover.pos.x, hover.pos.y + hover.pickH * (hover.info ? 1 : 2) + 0.2, hover.pos.z) : tmpV.copy(groundHit);
+    hand.g.position.set(0, 0, 0); hand.g.updateMatrixWorld(true);
+    hand.tip.getWorldPosition(tmpV2);
+    hand.target.copy(aim).sub(tmpV2).setY(aim.y - tmpV2.y + hand.scale * 0.15);
+  } else if (pose === 'fist') {
+    hand.target.set(panAnchor.x, panAnchor.y + hand.scale * 0.32, panAnchor.z);
+  } else if (pose === 'hold') {
+    const topOf = carried.type === 'tree' ? 3 * carried.s : carried.type === 'villager' ? 1.4 : 1.2;
+    hand.target.set(groundHit.x, groundHit.y + lift + topOf + hand.scale * 0.35, groundHit.z);
+  } else {
+    hand.target.set(groundHit.x, groundHit.y + hand.scale * 0.9, groundHit.z);
+    if (hover) hand.target.y = Math.max(hand.target.y, hover.pos.y + hover.pickH * 2 + hand.scale * 0.6);
+  }
+  hand.pos.lerp(hand.target, Math.min(1, dt * (pose === 'fist' ? 40 : 22)));
   if (hand.pos.distanceTo(hand.target) > 30) hand.pos.copy(hand.target);
   hand.g.position.copy(hand.pos);
-  hand.g.scale.setScalar(hand.scale);
-  hand.slap = Math.max(0, hand.slap - dt);
-  hand.g.rotation.set(0.55, cam.yaw, 0, 'YXZ');
-  hand.inner.rotation.set(0, 0, hand.slap > 0 ? Math.sin(hand.slap * 30) * 0.8 : 0);
-  let curl = 0.22;
-  if (carried) curl = 1; else if (mode === 'pan') curl = 0.85;
-  else if (armed) curl = 0.05; else if (hover === creature) curl = 0;
-  else if (grabbable(hover)) curl = 0.5;
-  hand.curl = lerp(hand.curl, curl, Math.min(1, dt * 14));
-  const point = !carried && hover && hover.info;
-  hand.fingers.forEach(([r, j], i) => { const c = point && i === 0 ? 0 : (point ? 0.95 : hand.curl); r.rotation.x = -c * 1.1; j.rotation.x = -c * 1.4; });
-  hand.thumb[1].rotation.x = -hand.curl * 0.8; hand.thumb[0].rotation.y = 0.75 - hand.curl * 0.5;
   hand.orb.visible = !!armed;
   if (armed) {
     hand.orb.material.color.setHex({ food: 0xffe27a, rain: 0x8fd0ff, fire: 0xff8a3a }[armed]);
@@ -1991,11 +2368,18 @@ function updateHand(dt) {
     ring.scale.setScalar(r);
     ring.position.set(hover.pos.x, (hover.type === 'creature' ? hover.pos.y : surf(hover.pos.x, hover.pos.z)) + 0.15, hover.pos.z);
     ring.material.color.setHex(hover.type === 'creature' ? 0xff8ab0 : hover.info ? 0xffffff : 0xffd23f);
-    tipHtml = infoFor(hover);
+    tipHtml = leash.mode === 'hand' && hover.info ? `Click: tie the leash to ${PLACE_NAMES[hover.type] || 'this'}` : infoFor(hover);
   } else if (held?.type === 'villager' && held.faction === 'mine') {
     const job = siteAt(groundHit.x, groundHit.z);
     tipHtml = job ? (job === held.job ? `Already a <i>${JOBS[job].label}</i>` : `Drop here: make <i>${JOBS[job].label}</i>`) : 'Fling to throw · drop on a job site';
-  } else if (held && (held.type === 'tree' || held.type === 'crate') && flat(groundHit, store.pos) < 5.5) {
+  } else if (held?.type === 'scaffold') {
+    const site = siteNear(groundHit);
+    if (flat(groundHit, workshop.pos) < 4.5) tipHtml = 'Put it back in the <i>workshop</i>';
+    else if (site) tipHtml = site.n >= 4 ? 'This plan is as big as it gets' : `Drop: turn the ${site.bp.label.toLowerCase()} plan into a <i>${BLUEPRINTS[site.n + 1].label}</i>`;
+    else { const err = spotProblem(groundHit.x, groundHit.z, BLUEPRINTS[1]); tipHtml = err ? `<i>${err}</i>` : 'Drop: plan a <i>House</i> here'; }
+  } else if (held && (held.type === 'tree' || held.type === 'bundle') && siteNear(groundHit)) {
+    tipHtml = 'Drop: give the wood to this <i>plan</i>';
+  } else if (held && (held.type === 'tree' || held.type === 'crate' || held.type === 'bundle') && flat(groundHit, store.pos) < 5.5) {
     tipHtml = `Drop into the <i>store</i>`;
   } else if (armed) {
     tipHtml = { food: 'Click to drop <i>bread</i> (best on the store)', rain: 'Click to make it <i>rain</i>', fire: 'Click and hold, then <i>throw</i>' }[armed];
@@ -2012,8 +2396,14 @@ function infoFor(e) {
     case 'tree': return `Tree · ${Math.floor(e.wood)} wood${e.burning ? ' · <i>ON FIRE</i>' : ''} · grab to uproot`;
     case 'rock': return 'Rock · excellent for throwing';
     case 'crate': return `Bread crate · ${e.amount} food · drop it on the store`;
-    case 'store': return `Village store · <i>${Math.floor(R.food)}</i> food · <i>${Math.floor(R.wood)}</i> wood`;
-    case 'temple': { const n = world.villagers.filter(v => v.faction === 'mine' && v.job === 'worshipper').length; return `Temple · ${n} worshipper${n === 1 ? '' : 's'} · drop villagers here to pray`; }
+    case 'store': return `Village store · <i>${Math.floor(R.food)}</i> food · <i>${Math.floor(R.wood)}</i> wood${R.wood >= 1 ? ' · grab to take wood' : ''}`;
+    case 'workshop': return `Workshop · ${workshop.stock.length}/4 scaffolds ready · makes one from 10 wood`;
+    case 'scaffold': return 'Scaffold · drop on flat ground to plan a house, or on a plan to grow it';
+    case 'bundle': return `Wood · ${e.amount} · drop on a plan or the store`;
+    case 'site': { const b = e.bp, nx = BLUEPRINTS[e.n + 1]; return `Plan: <i>${b.label}</i> · wood ${Math.floor(e.wood)}/${b.wood} · built ${Math.floor(e.progress * 100)}%${nx && e.progress < 0.02 ? ` · +1 scaffold makes a ${nx.label}` : ''}`; }
+    case 'shrine': return 'Shrine · +1 prayer every second';
+    case 'wonder': return converted ? 'Cow Wonder · magnificent' : 'Cow Wonder · Doubtsby cannot stop staring at it';
+    case 'temple': { const n = world.villagers.filter(v => v.faction === 'mine' && v.job === 'worshipper').length; return `Temple · ${n} worshipper${n === 1 ? '' : 's'} · drop villagers here to pray · the yard is where your creature sleeps`; }
     case 'house': return e.faction !== 'mine' ? 'A skeptical house' : e.done ? (e.burning ? 'House · <i>ON FIRE</i>' : 'House · room for 3') : `House · being built (${Math.floor(e.progress * 100)}%)`;
     case 'field': return `Field · ${Math.floor(e.crop)}/30 crops · drop villagers here to farm`;
   }
@@ -2046,6 +2436,7 @@ function toggleCreaturePanel() { const p = $('#cpanel'); p.classList.toggle('clo
 $('#cToggle').onclick = toggleCreaturePanel;
 $('#slapBtn').onclick = () => { audio(); creature.slap(); };
 $('#strokeBtn').onclick = () => { audio(); creature.stroke(); };
+$('#leashBtn').onclick = () => { audio(); toggleLeash(); };
 document.querySelectorAll('.stat').forEach(s => s.addEventListener('click', () => {
   const t = s.dataset.fly === 'temple' ? temple.pos : s.dataset.fly === 'store' ? store.pos : VILLAGE;
   flyTo(t.x, t.z, 50);
@@ -2086,7 +2477,7 @@ function updateHud(dt) {
 function updateThought() {
   const el = $('#thought');
   if (state !== 'play' || !creature) { el.style.display = 'none'; return; }
-  const p = tmpV2.copy(creature.pos); p.y += 6.2 * creature.size;
+  const p = tmpV2.copy(creature.pos); p.y += 6.2 * creature.scale;
   const s = toScreen(p, tmpV);
   if (!s || s.x < 0 || s.x > innerWidth || s.y < 0 || s.y > innerHeight || cam.dist > 120) { el.style.display = 'none'; return; }
   el.style.display = 'block';
@@ -2098,38 +2489,7 @@ function updateThought() {
    Village simulation
    ============================================================ */
 const capacity = () => world.houses.filter(h => h.faction === 'mine' && h.done && !h.dead).length * 3;
-let birthT = 16, treeT = 6, fieldT = 10;
-const FIELD_COST = 40;
-function findFieldSpot() {
-  for (let i = 0; i < 150; i++) {
-    const a = rand(6.28), r = rand(12, 24), x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r;
-    const h = heightAt(x, z);
-    if (h < 0.8 || h > 9) continue;
-    if ([[-3.8, -3], [3.8, -3], [-3.8, 3], [3.8, 3]].some(([dx, dz]) => Math.abs(heightAt(x + dx, z + dz) - h) > 0.7)) continue;
-    const p = { x, z };
-    if (flat(p, store.pos) < 8 || flat(p, temple.pos) < 9) continue;
-    if (world.houses.some(o => Math.abs(o.pos.x - x) < 5.5 && Math.abs(o.pos.z - z) < 5)) continue;
-    if (world.fields.some(f => Math.abs(f.pos.x - x) < 8 && Math.abs(f.pos.z - z) < 6.5)) continue;
-    for (const t of [...world.trees]) if (Math.abs(t.pos.x - x) < 5 && Math.abs(t.pos.z - z) < 4.5) t.remove();
-    for (const rk of [...world.rocks]) if (rk.state === 'idle' && Math.abs(rk.pos.x - x) < 5 && Math.abs(rk.pos.z - z) < 4.5) rk.remove();
-    return p;
-  }
-  return null;
-}
-function findHouseSpot() {
-  for (let i = 0; i < 80; i++) {
-    const a = rand(6.28), r = rand(12, 19), x = VILLAGE.x + Math.cos(a) * r, z = VILLAGE.z + Math.sin(a) * r;
-    const h = heightAt(x, z);
-    if (h < 0.8 || h > 9 || slopeAt(x, z) > 1.2) continue;
-    const p = { x, z };
-    if (flat(p, store.pos) < 6.5 || flat(p, temple.pos) < 7.5) continue;
-    if (world.fields.some(f => f.contains(x, z, 2.5))) continue;
-    if (world.houses.some(o => flat(p, o.pos) < 4.6)) continue;
-    for (const t of [...world.trees]) if (flat(p, t.pos) < 2.5) t.remove();
-    return p;
-  }
-  return null;
-}
+let birthT = 16, treeT = 6, fullT = 40;
 function updateVillage(dt) {
   for (const f of world.fields) { f.crop = Math.min(30, f.crop + dt * 0.5); f.refresh(); }
   const mine = world.villagers.filter(v => v.faction === 'mine' && v.alive);
@@ -2148,29 +2508,19 @@ function updateVillage(dt) {
       sfx.pop();
     }
   }
-  // Builders start a house when wood allows and the village is nearly full.
-  if (R.wood >= HOUSE_COST && mine.length >= capacity() - 2 && capacity() < 60 && !world.houses.some(h => !h.done && !h.dead)) {
-    const p = findHouseSpot();
-    if (p) {
-      R.wood -= HOUSE_COST;
-      new House(p.x, p.z, 'mine', 0.02);
-      floatText(p.x, heightAt(p.x, p.z) + 3, p.z, 'NEW BUILDING SITE', '#6cc7ff');
-      if (!mine.some(v => v.job === 'builder')) toast('🔨 A new house is waiting to be built. Drop a villager on the store to make a builder.', 'tip');
+  workshop.update(dt);
+  for (const b of world.buildings) {
+    if (b.type === 'shrine') { R.prayer = Math.min(PRAYER_MAX, R.prayer + dt); if (Math.random() < dt * 2) emit(b.pos.x, b.pos.y + 7, b.pos.z, { c: 0xffe27a, size: 0.4, up: 2, spd: 0.5, grav: 0, life: 1 }); }
+    if (b.type === 'wonder' && !converted && state === 'play') {
+      impress = Math.min(100, impress + dt * 0.35); lastImpress = simTime;
+      if (Math.random() < dt * 3) emit(b.pos.x + rand(-2, 2), b.pos.y + rand(3, 7), b.pos.z + rand(-2, 2), { c: [0xffe27a, 0xffffff], size: 0.5, up: 1, spd: 0.5, grav: 0, life: 1 });
     }
   }
-  // Spare wood becomes new fields when food gets tight, so wood never just piles up.
-  fieldT -= dt;
-  if (fieldT <= 0) {
-    fieldT = 10;
-    if (R.wood >= FIELD_COST && R.food < 60 && world.fields.length < 9) {
-      const p = findFieldSpot();
-      if (p) {
-        R.wood -= FIELD_COST;
-        const f = new Field(p.x, p.z); f.crop = 4; f.refresh();
-        floatText(p.x, f.pos.y + 3, p.z, 'NEW FIELD!', '#9dff7a', true);
-        toast(`🌾 Your villagers turned ${FIELD_COST} wood into a new field.`);
-      }
-    }
+  // Nudge the player towards the workshop when the village is full.
+  fullT -= dt;
+  if (fullT <= 0) {
+    fullT = 75;
+    if (mine.length >= capacity() && !world.sites.length) toast('🏠 Little Gullible is full. Grab a scaffold from the <b>workshop</b> and drop it somewhere flat to plan a house.', 'tip');
   }
   treeT -= dt;
   if (treeT <= 0) {
@@ -2218,7 +2568,7 @@ function updateSky(t) {
   scene.background.copy(SKY_NIGHT).lerp(SKY_DAY, day).lerp(SKY_DUSK, dusk);
   scene.fog.color.copy(scene.background);
   temple.orb.rotation.y = t * 1.2;
-  temple.orb.position.y = 4.2 + Math.sin(t * 2) * 0.25;
+  temple.orb.position.y = temple.orbY + Math.sin(t * 2) * 0.35;
   temple.orb.scale.setScalar(0.6 + R.prayer / PRAYER_MAX * 0.9);
   for (const c of skyClouds) { c.position.x += c.userData.v * 0.016; if (c.position.x > 200) c.position.x = -200; }
 }
@@ -2231,7 +2581,10 @@ const HOW = [
   '<b>Right-drag</b> or <b>Q/E</b> to turn · <b>scroll</b> or <b>R/F</b> to zoom · <b>WASD</b> to pan',
   '<b>Click and hold</b> villagers, trees, rocks and crates to pick them up. <b>Fling</b> to throw.',
   '<b>Drop a villager</b> on a field, the forest, the temple or the store to give them that job',
-  '<b>Drop trees and crates</b> on the store to stock it up',
+  '<b>Drop trees and crates</b> on the store to stock it up. <b>Grab the store</b> to take wood out.',
+  '<b>Scaffolds</b> come from the workshop. Drop one on flat ground to plan a house; add more to the same plan for a farm, a shrine, then a Cow Wonder.',
+  'Builders bring wood to plans. Speed them up by <b>dropping trees or wood</b> straight onto a plan.',
+  '<b>L</b> puts your creature on a <b>leash</b>. Click a building to tie it up there. It sleeps in the temple yard.',
   '<b>1 2 3</b> ready a miracle, then click the ground. Fireballs get thrown.',
   'Your creature learns from you: <b>flick fast</b> across it to slap, <b>rub slowly</b> to stroke',
   '<b>Goal:</b> impress Doubtsby to 100% with miracles, mayhem and cow dancing',
@@ -2244,6 +2597,8 @@ const TIPS = [
   [19, 'Worshippers at the temple make <b>prayer</b>. Spend it on miracles with <b>1</b>, <b>2</b> and <b>3</b>.'],
   [30, 'That enormous cow is yours. Cast miracles near it and it will learn them. <b>Flick</b> it to slap, <b>rub</b> it to stroke.'],
   [42, 'Your goal: impress <b>Doubtsby</b> (top of the screen, click it) until they believe in you.'],
+  [56, 'Need more room? Grab a <b>scaffold</b> from the workshop and drop it on flat ground to plan a house. Stack more scaffolds on the plan for bigger buildings.'],
+  [72, 'Press <b>L</b> to put your creature on a <b>leash</b>. It follows your hand when the leash goes tight. Click a building to tie it up there.'],
 ];
 let tipQueue = [];
 function startGame() {
@@ -2307,7 +2662,7 @@ function tick(dt) {
   while (tipQueue.length && simTime >= tipQueue[0][0]) toast('💡 ' + tipQueue.shift()[1], 'tip');
   for (const v of [...world.villagers]) v.update(dt);
   creature.update(dt);
-  for (const l of [world.trees, world.rocks, world.crates, world.fireballs, world.clouds, world.houses]) for (const e of [...l]) e.update(dt);
+  for (const l of [world.trees, world.rocks, world.crates, world.fireballs, world.clouds, world.houses, world.scaffolds, world.bundles]) for (const e of [...l]) e.update(dt);
   updateVillage(dt);
   refreshStore();
   fireLight.intensity = Math.max(0, fireLight.intensity - dt * 160);
@@ -2331,6 +2686,7 @@ function frame(now) {
   applyCamera(dt);
   updateHover();
   updateHand(dt);
+  updateLeash();
   updateSky(state === 'title' ? 40 : simTime);
   updateWater(now / 1000);
   updateParticles(dt);
@@ -2341,7 +2697,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.BW = { camera, tick, store, temple, get state() { return state; }, get align() { return align; }, R, world, get creature() { return creature; }, cam, hand, ptr, castMiracle, get impress() { return impress; }, set impress(v) { impress = v; } };
+window.BW = { camera, tick, workshop, leash, setLeash, spotProblem, YARD_MID, inYard, get hover() { return hover; }, get mode() { return mode; }, get held() { return held; }, store, temple, get state() { return state; }, get align() { return align; }, R, world, get creature() { return creature; }, cam, hand, ptr, castMiracle, get impress() { return impress; }, set impress(v) { impress = v; } };
 </script>
 </body>
 </html>

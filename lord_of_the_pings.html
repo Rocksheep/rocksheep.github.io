@@ -234,7 +234,8 @@ details p{margin:10px 0}
 
     <details>
       <summary>HOW TO PLAY</summary>
-      <p>Your workers mine <b style="color:var(--yellow);font-weight:400">gold</b> from gold mines and chop <b style="color:#c58a4a;font-weight:400">wood</b> from trees, and carry it back to your hall. Spend it on buildings and an army. Every unit eats food, so build food buildings (Farms, Pig Farms, Rat Hutches, Compost Heaps or Aphid Ranches, depending on your race) to feed more. Destroy every building of the other teams to win.</p>
+      <p>Your workers mine <b style="color:var(--yellow);font-weight:400">gold</b> from gold mines and chop <b style="color:#c58a4a;font-weight:400">wood</b> from trees, and carry it back to your hall. Spend it on buildings and an army. Every unit eats food, so build food buildings (Farms, Pig Farms, Rat Hutches, Compost Heaps or Aphid Ranches, depending on your race) to feed more. Build a saw mill next to a forest so your workers don't have to walk so far with wood. Destroy every building of the other teams to win.</p>
+      <p><b style="color:var(--cyan);font-weight:400">Flyers:</b> every race can train one flying unit at its lab. Flyers go straight over trees, water and walls. Only ranged units, towers and other flyers can hit them, so keep some ranged units around.</p>
       <p><b style="color:var(--cyan);font-weight:400">Online:</b> pick HOST ONLINE, set some players to ONLINE PLAYER and open a room. Friends pick JOIN ONLINE, choose a race and type the room code, or open the invite link.</p>
       <div class="races" id="raceInfo"></div>
       <div class="keys">
@@ -308,12 +309,15 @@ const WALKABLE = [1, 0, 0, 0, 1, 1];
 const TREE_LOADS = 4;          // trips of wood in one tree
 
 // entity kinds: index is what goes over the network
-const KINDS = ['worker', 'melee', 'ranged', 'special', 'hall', 'farm', 'barracks', 'lab', 'tower', 'mine'];
+const KINDS = ['worker', 'melee', 'ranged', 'special', 'hall', 'farm', 'barracks', 'lab', 'tower', 'mine', 'mill', 'flyer'];
 const K = Object.fromEntries(KINDS.map((k, i) => [k, i]));
-const isUnitK = k => k <= 3;
-const isBldK = k => k >= 4 && k <= 8;
-const UP_ATK = 10, UP_ARM = 11;   // queue items in a lab that are upgrades, not units
-const UP_COST = [[150, 100, 30], [260, 200, 40]];
+const isUnitK = k => k <= 3 || k === 11;
+const isBldK = k => (k >= 4 && k <= 8) || k === 10;
+// queue items that are upgrades, not units: weapons and armour at the lab, axes at the mill
+const UP_ATK = 20, UP_ARM = 21, UP_WOOD = 22;
+const UP_COSTS = [[[150, 100, 30], [260, 200, 40]], [[150, 100, 30], [260, 200, 40]], [[100, 80, 25], [180, 150, 35]]];
+const UP_HOME = ['lab', 'lab', 'mill'];
+const WOOD_PER_UP = 3;
 const CARRY = 10;
 
 const BASE = {
@@ -325,64 +329,66 @@ const BASE = {
   farm:     { hp: 300, arm: 2, size: 2, g: 60, w: 40, t: 20, sight: 3, cap: 5 },
   barracks: { hp: 700, arm: 3, size: 3, g: 160, w: 90, t: 35, sight: 5 },
   lab:      { hp: 500, arm: 3, size: 3, g: 150, w: 130, t: 40, sight: 5, req: 'barracks' },
-  tower:    { hp: 450, arm: 4, size: 2, g: 100, w: 90, t: 28, sight: 8, dmg: 10, rng: 6, cd: 1.4, req: 'barracks' },
+  tower:    { hp: 450, arm: 4, size: 2, g: 100, w: 90, t: 28, sight: 8, dmg: 10, rng: 6, cd: 1.4, req: 'mill' },
   mine:     { hp: 1, arm: 0, size: 3, sight: 0 },
+  mill:     { hp: 500, arm: 3, size: 2, g: 110, w: 60, t: 25, sight: 4 },
+  flyer:    { hp: 120, dmg: 10, arm: 1, rng: 3.5, cd: 1.5, spd: 3.4, sight: 8, g: 160, w: 110, t: 30, food: 2, r: 0.45, fly: true },
 };
-const TRAINS = { hall: ['worker'], barracks: ['melee', 'ranged', 'special'], lab: [] };
+const TRAINS = { hall: ['worker'], barracks: ['melee', 'ranged', 'special'], lab: ['flyer'], mill: [] };
 
 const RACES = {
   humans: {
     name: 'Humans', short: 'HUMANS', skin: '#f2c49b', dark: '#8a6a4a', proj: 'arrow', build: 1.3,
     passive: 'Agile building: everything builds 30% faster.',
-    names: { worker: 'Intern', melee: 'Footman', ranged: 'Arch-er', special: 'Knight Who Says Ni', hall: 'Town Hall', farm: 'Farm', barracks: 'Barracks', lab: 'Library', tower: 'Guard Tower' },
+    names: { worker: 'Intern', melee: 'Footman', ranged: 'Arch-er', special: 'Knight Who Says Ni', hall: 'Town Hall', farm: 'Farm', barracks: 'Barracks', lab: 'Library', tower: 'Guard Tower', mill: 'Lumber Mill', flyer: 'Gryphon Rider' },
     desc: { worker: 'Mines, chops and builds. Unpaid.', melee: 'Sword, shield, strong opinions about tabs vs spaces.', ranged: 'Shoots arrows. Uses Arch, btw.', special: 'Fast, heavily armoured horseman. Demands a shrubbery.',
-      lab: 'Researches upgrades. Unlocks the knight.', tower: 'Shoots arrows at anything that gets close.' },
-    over: { special: { hp: 200, dmg: 15, spd: 3.1, arm: 4 } },
-    ups: ['Sharper Swords', 'Agile Plate'],
+      lab: 'Researches upgrades. Unlocks the knight.', tower: 'Shoots arrows at anything that gets close.', flyer: 'Rides a gryphon over trees, water and walls, throwing hammers.' },
+    over: { special: { hp: 200, dmg: 15, spd: 3.1, arm: 4 }, flyer: { hp: 140, dmg: 12, shot: 'hammer' } },
+    ups: ['Sharper Swords', 'Agile Plate', 'Ergonomic Axes'],
     quips: ['Yes, milord?', 'Have you tried turning it off and on again?', 'Per my last email…', 'Ready to work. Remotely.', 'Ni!', 'Ticket received.', 'On it. ETA: two sprints.'],
     workers: 'Interns', farms: 'Farms', ready: 'Job done!', alert: 'Our base is under attack! This is not a drill.', voice: 1.0,
   },
   orcs: {
     name: 'Orcs', short: 'ORCS', skin: '#6aa33f', dark: '#3d6324', proj: 'spear', hp: 1.15,
     passive: 'Thick skin: every unit has 15% more health.',
-    names: { worker: 'Peon', melee: 'Grunt', ranged: 'Spear Chucker', special: 'Ogre-clocker', hall: 'Great Hall', farm: 'Pig Farm', barracks: 'War Camp', lab: 'Altar of Firmware', tower: 'Watch Tower' },
+    names: { worker: 'Peon', melee: 'Grunt', ranged: 'Spear Chucker', special: 'Ogre-clocker', hall: 'Great Hall', farm: 'Pig Farm', barracks: 'War Camp', lab: 'Altar of Firmware', tower: 'Watch Tower', mill: 'Chop Shop', flyer: 'Wi-Fi-vern' },
     desc: { worker: 'Work work.', melee: 'Big axe. Small vocabulary.', ranged: 'Throws spears. Retrieves none.', special: 'Two heads, running way past spec. Its swings hit everyone near the target.',
-      lab: 'Researches upgrades. Unlocks the Ogre-clocker.', tower: 'Throws spears at anything that gets close.' },
-    over: { special: { hp: 250, dmg: 18, cd: 1.6, spd: 2.0, cleave: 1.0 } },
-    ups: ['Spikier Axes', 'Thicker Hides'],
+      lab: 'Researches upgrades. Unlocks the Ogre-clocker.', tower: 'Throws spears at anything that gets close.', flyer: 'A wyvern with full bars everywhere. Breathes fire from above.' },
+    over: { special: { hp: 250, dmg: 18, cd: 1.6, spd: 2.0, cleave: 1.0 }, flyer: { hp: 150, dmg: 13, cd: 1.6, shot: 'fire' } },
+    ups: ['Spikier Axes', 'Thicker Hides', 'Bigger Choppers'],
     quips: ['Zug zug.', 'Work work.', 'Me not that kind of orc!', 'Smash first, debug later.', 'Ready to smash.', 'Dabu.', 'Lok\'tar!'],
     workers: 'Peons', farms: 'Pig Farms', ready: 'Work complete!', alert: 'Enemies at the gate! Smash them!', voice: 0.7,
   },
   goblins: {
     name: 'Goblins', short: 'GOBLINS', skin: '#a6c94a', dark: '#5f7a22', proj: 'zap', hp: 0.85, cost: 0.8, spd: 1.05,
     passive: 'Cheap labour: everything costs 20% less, but gobs are a bit fragile.',
-    names: { worker: 'Gobbo', melee: 'Stabby', ranged: 'Zapper', special: 'Kaboomer', hall: 'Junk Hall', farm: 'Rat Hutch', barracks: 'Scrapyard', lab: 'Tinker Shed', tower: 'Zap Tower' },
+    names: { worker: 'Gobbo', melee: 'Stabby', ranged: 'Zapper', special: 'Kaboomer', hall: 'Junk Hall', farm: 'Rat Hutch', barracks: 'Scrapyard', lab: 'Tinker Shed', tower: 'Zap Tower', mill: 'Splinter Factory', flyer: 'Bomb Zeppelin' },
     desc: { worker: 'Time is money, friend!', melee: 'Stabs things. Pokes things. Is a thing.', ranged: 'Homemade lightning gun. Mostly safe.', special: 'A barrel of boom on legs. Runs at the target and explodes, hurting everything nearby (buildings extra).',
-      lab: 'Researches upgrades. Unlocks the Kaboomer.', tower: 'Zaps anything that gets close.' },
-    over: { special: { hp: 70, dmg: 0, arm: 1, spd: 3.4, g: 90, w: 50, t: 18, food: 1, r: 0.36, kaboom: { dmg: 120, r: 1.8 } } },
-    ups: ['Bigger Batteries', 'Duct Tape Armour'],
+      lab: 'Researches upgrades. Unlocks the Kaboomer.', tower: 'Zaps anything that gets close.', flyer: 'A balloon full of bombs. Drops them on whatever is underneath, but can\'t hit other flyers.' },
+    over: { special: { hp: 70, dmg: 0, arm: 1, spd: 3.4, g: 90, w: 50, t: 18, food: 1, r: 0.36, kaboom: { dmg: 120, r: 1.8 } }, flyer: { hp: 170, dmg: 24, rng: 0.6, cd: 2.2, spd: 2.4, splash: 1.3, groundOnly: true, shot: 'bomb' } },
+    ups: ['Bigger Batteries', 'Duct Tape Armour', 'Chainsaws (Mostly Safe)'],
     quips: ['Time is money, friend!', 'Ooh, shiny!', 'Boom? Boom!', 'It\'s not a bug, it\'s explosives.', 'Gimme gimme.', 'Yes boss, right away boss!', 'Who touched my wrench?'],
     workers: 'Gobbos', farms: 'Rat Hutches', ready: 'Done! Don\'t lean on it.', alert: 'Somebody\'s smashing our stuff!', voice: 1.35,
   },
   funguys: {
     name: 'Funguys', short: 'FUNGUYS', skin: '#f4ead6', dark: '#a8957a', proj: 'spore', regen: 0.8,
     passive: 'Mycelium network: every unit slowly regrows lost health.',
-    names: { worker: 'Sporeling', melee: 'Shroomtrooper', ranged: 'Spore Shooter', special: 'Truffle Tank', hall: 'Mother Shroom', farm: 'Compost Heap', barracks: 'Fairy Ring', lab: 'Spore Lab', tower: 'Puffball Tower' },
+    names: { worker: 'Sporeling', melee: 'Shroomtrooper', ranged: 'Spore Shooter', special: 'Truffle Tank', hall: 'Mother Shroom', farm: 'Compost Heap', barracks: 'Fairy Ring', lab: 'Spore Lab', tower: 'Puffball Tower', mill: 'Rot Pile', flyer: 'Spore Balloon' },
     desc: { worker: 'Small, cheerful, always growing on you.', melee: 'These aren\'t the shrooms you\'re looking for.', ranged: 'Fires spore puffs that splash on nearby enemies.', special: 'Big, slow and lumpy. Heals friendly units around it.',
-      lab: 'Researches upgrades. Unlocks the Truffle Tank.', tower: 'Puffs spores at anything that gets close.' },
-    over: { ranged: { splash: 0.8 }, special: { hp: 240, dmg: 12, spd: 1.7, aura: 3.5 } },
-    ups: ['Toxic Spores', 'Tougher Stalks'],
+      lab: 'Researches upgrades. Unlocks the Truffle Tank.', tower: 'Puffs spores at anything that gets close.', flyer: 'A puffball with ambitions. Drifts over anything and rains spores that splash.' },
+    over: { ranged: { splash: 0.8 }, special: { hp: 240, dmg: 12, spd: 1.7, aura: 3.5 }, flyer: { hp: 130, dmg: 9, spd: 2.8, splash: 0.9, shot: 'spore' } },
+    ups: ['Toxic Spores', 'Tougher Stalks', 'Faster Decay'],
     quips: ['I\'m a fun guy!', 'There\'s mush room for activity.', 'Spore-ty time!', 'Morel support incoming.', 'Shiitake happens.', 'Don\'t be a portabellend.', 'I can\'t, I\'m all stalk.'],
     workers: 'Sporelings', farms: 'Compost Heaps', ready: 'Fully grown!', alert: 'Somebody is stepping on our shrooms!', voice: 1.2,
   },
   bugs: {
     name: 'Bugs', short: 'BUGS', skin: '#3a3328', dark: '#1d1914', proj: 'spit', hp: 0.9, spd: 1.2,
     passive: 'Swarm: every unit moves 20% faster, but is a little squishy.',
-    names: { worker: 'Antern', melee: 'Beetle Brawler', ranged: 'Spitter Wasp', special: 'Heisenbug', hall: 'Hive Core', farm: 'Aphid Ranch', barracks: 'Brood Chamber', lab: 'The Debugger', tower: 'Stinger Spire' },
+    names: { worker: 'Antern', melee: 'Beetle Brawler', ranged: 'Spitter Wasp', special: 'Heisenbug', hall: 'Hive Core', farm: 'Aphid Ranch', barracks: 'Brood Chamber', lab: 'The Debugger', tower: 'Stinger Spire', mill: 'Termite Mound', flyer: 'Drone-fly' },
     desc: { worker: 'An ant intern. Carries ten times its weight, gets paid in sugar.', melee: 'Horned, armoured, mildly annoyed.', ranged: 'Spits acid from a safe distance.', special: 'You can know where it is or hit it, not both: dodges a third of all attacks.',
-      lab: 'Researches upgrades. Unlocks the Heisenbug.', tower: 'Stings anything that gets close.' },
-    over: { melee: { arm: 3 }, special: { hp: 150, dmg: 15, spd: 2.6, dodge: 0.35 } },
-    ups: ['Sharper Mandibles', 'Harder Shells'],
+      lab: 'Researches upgrades. Unlocks the Heisenbug.', tower: 'Stings anything that gets close.', flyer: 'A dragonfly running quadcopter firmware. Very fast, spits acid.' },
+    over: { melee: { arm: 3 }, special: { hp: 150, dmg: 15, spd: 2.6, dodge: 0.35 }, flyer: { hp: 100, dmg: 10, spd: 4.4, cd: 1.2, shot: 'spit' } },
+    ups: ['Sharper Mandibles', 'Harder Shells', 'Termite Turbo'],
     quips: ['It\'s not a bug, it\'s a feature.', 'Works on my machine.', 'Bzzzt. Acknowledged.', 'Off by one? Off by one.', '*clicks mandibles*', 'Segfault? Sounds tasty.', 'Can\'t reproduce.'],
     workers: 'Anterns', farms: 'Aphid Ranches', ready: 'Hatched!', alert: 'The hive is under attack! Swarm!', voice: 1.6,
   },
@@ -398,10 +404,11 @@ for (const rk of RACE_KEYS) {
     if (isUnitK(k)) {
       d.hp = Math.round(d.hp * (R.hp || 1));
       d.spd *= R.spd || 1;
-      d.proj = d.rng > 1.5 ? R.proj : null;
+      d.proj = d.shot || (d.rng > 1.5 ? R.proj : null);
+      d.hitsAir = (d.rng > 1.5 || !!d.fly) && !d.groundOnly;
       if (R.regen) d.regen = R.regen;
     }
-    if (kind === 'tower') d.proj = R.proj;
+    if (kind === 'tower') { d.proj = R.proj; d.hitsAir = true; }
     if (d.g) { d.g = Math.round(d.g * (R.cost || 1)); d.w = Math.round(d.w * (R.cost || 1)); }
     if (isBldK(k)) d.t /= R.build || 1;
     return d;
@@ -414,9 +421,11 @@ const descOf = (rk, kind) => {
   if (kind === 'hall') return `Trains ${R.workers}. ${R.workers} drop off gold and wood here. Feeds 5.`;
   if (kind === 'farm') return `Feeds 5 more units.`;
   if (kind === 'barracks') return `Trains your army: ${R.names.melee}, ${R.names.ranged} and ${R.names.special}.`;
+  if (kind === 'mill') return `${R.workers} can drop off wood here, so build it by a forest. Researches ${R.ups[2]} for more wood per trip. Needed for towers.`;
+  if (kind === 'lab') return `Researches upgrades and trains the ${R.names.flyer}. Unlocks the ${R.names.special}.`;
   return R.desc[kind] || '';
 };
-const upCost = (lvl, rk) => UP_COST[lvl].map((v, i) => i < 2 ? Math.round(v * (RACES[rk].cost || 1)) : v);
+const upCost = (lvl, rk, which = 0) => UP_COSTS[which][Math.min(1, lvl)].map((v, i) => i < 2 ? Math.round(v * (RACES[rk].cost || 1)) : v);
 
 const THEMES = [
   { name: 'GREEN HILLS', grass: ['#4f8a3a', '#55923e', '#4a8336'], dirt: '#8a6a3e', water: '#2d5f9a', water2: '#3a72b0', rock: '#6d6a72', rock2: '#8a8790',
@@ -474,6 +483,9 @@ const SFX = {
   zap() { tone(rand(900, 1300), 0.12, 'sawtooth', 0.05, 0.3); },
   spore() { noise(0.18, 0.08, 600); },
   spit() { noise(0.1, 0.07, 1800); tone(300, 0.08, 'sine', 0.04, 0.5); },
+  hammer() { noise(0.1, 0.08, 2000, 0, 'bandpass'); tone(500, 0.06, 'square', 0.04, 1.4); },
+  fire() { noise(0.35, 0.12, 900); },
+  bomb() { tone(900, 0.4, 'sine', 0.06, 0.35); },
   chop() { noise(0.05, 0.1, 900); tone(140, 0.05, 'square', 0.05); },
   fell() { noise(0.5, 0.18, 500); tone(90, 0.4, 'sine', 0.12, 0.5); },
   die() { tone(rand(300, 380), 0.25, 'square', 0.06, 0.4); },
@@ -588,7 +600,7 @@ function makeWorld(cfg, replica) {
     ev: [], treeLog: [], pending: [], over: null, paused: false,
     me: cfg.you, players: cfg.players.map((p, i) => ({
       slot: i, name: p.name, race: p.race, color: COLORS[i], team: p.team, kind: p.kind, diff: p.diff || 'normal', peer: p.peer || null,
-      g: cfg.res[0], w: cfg.res[1], food: 0, cap: 0, up: [0, 0], alive: true, lastAlert: -99, foodWarn: -99,
+      g: cfg.res[0], w: cfg.res[1], food: 0, cap: 0, up: [0, 0, 0], alive: true, lastAlert: -99, foodWarn: -99,
       stats: { made: 0, kills: 0, lost: 0, gold: 0, wood: 0, built: 0 }, ai: null,
     })),
     vis: new Uint8Array(N), exp: new Uint8Array(N), fogT: 0,
@@ -616,7 +628,7 @@ function spawn(w, k, o, x, y, extra = {}) {
   const e = { id: w.nextId++, k, o, hp: 1, face: 1, cd: Math.random(), atkT: 0, st: 'idle', scanT: Math.random() * 0.5 };
   const d = o < 0 ? DEFS.none[k] : DEFS[w.players[o].race][k];
   if (isUnitK(k)) {
-    Object.assign(e, { x: x + 0.5, y: y + 0.5, hp: d.hp, r: d.r, carry: 0, path: null, pi: 0 });
+    Object.assign(e, { x: x + 0.5, y: y + 0.5, hp: d.hp, r: d.r, carry: 0, path: null, pi: 0, fly: !!d.fly });
   } else {
     const size = d.size;
     Object.assign(e, { bx: x, by: y, size, x: x + size / 2, y: y + size / 2, r: size / 2, built: false, prog: 0, queue: [], qt: 0, rally: null, inside: 0 });
@@ -636,6 +648,8 @@ function removeEnt(w, e) {
 }
 const inMap = (w, x, y) => x >= 0 && y >= 0 && x < w.W && y < w.H;
 const walk = (w, x, y) => inMap(w, x, y) && WALKABLE[w.ter[y * w.W + x]] === 1 && !w.occ[y * w.W + x];
+// flyers can only be hit by ranged units, towers and other flyers (bombers excepted)
+const canHit = (w, a, t) => !t.fly || !!def(w, a).hitsAir;
 const allied = (w, a, b) => a >= 0 && b >= 0 && w.players[a].team === w.players[b].team;
 const enemies = (w, a, b) => a >= 0 && b >= 0 && w.players[a].team !== w.players[b].team;
 
@@ -766,8 +780,10 @@ function applyCmd(w, slot, c) {
     case 'move': {
       if (!num(c.x) || !num(c.y)) return;
       const tx = clamp(c.x, 0, w.W - 0.01), ty = clamp(c.y, 0, w.H - 0.01);
-      const spots = formation(w, units, tx, ty);
-      units.forEach((u, i) => orderMove(w, u, spots[i].x, spots[i].y, !!c.a));
+      const ground = units.filter(u => !u.fly), air = units.filter(u => u.fly);
+      const spots = formation(w, ground, tx, ty);
+      ground.forEach((u, i) => orderMove(w, u, spots[i].x, spots[i].y, !!c.a));
+      air.forEach((u, i) => { const a = i * 2.4, r = i ? 0.75 * Math.sqrt(i) : 0; orderMove(w, u, clamp(tx + Math.cos(a) * r, 0.3, w.W - 0.3), clamp(ty + Math.sin(a) * r, 0.3, w.H - 0.3), !!c.a); });
       break;
     }
     case 'attack': {
@@ -803,11 +819,12 @@ function applyCmd(w, slot, c) {
       const b = mine.find(e => isBldK(e.k) && e.built); if (!b) return;
       const k = c.k | 0, bd = def(w, b);
       if (b.queue.length >= 5) return;
-      if (k === UP_ATK || k === UP_ARM) {
-        if (bd.kind !== 'lab') return;
-        const i = k - UP_ATK, lvl = P.up[i] + w.ents.filter(e => e.o === slot && e.queue && e.queue.includes(k)).length;
+      if (k >= UP_ATK && k <= UP_WOOD) {
+        const i = k - UP_ATK;
+        if (bd.kind !== UP_HOME[i]) return;
+        const lvl = P.up[i] + w.ents.filter(e => e.o === slot && e.queue && e.queue.includes(k)).length;
         if (lvl >= 2) return;
-        const [g, wd] = upCost(lvl, P.race);
+        const [g, wd] = upCost(lvl, P.race, i);
         if (P.g < g || P.w < wd) { note(w, slot, 'nope'); return; }
         P.g -= g; P.w -= wd; b.queue.push(k);
       } else {
@@ -828,7 +845,7 @@ function applyCmd(w, slot, c) {
       const i = clamp(c.i | 0, 0, b.queue.length - 1), k = b.queue[i];
       if (k === undefined) return;
       b.queue.splice(i, 1); if (i === 0) b.qt = 0;
-      if (k >= UP_ATK) { const lvl = P.up[k - UP_ATK] + b.queue.filter(q => q === k).length; const [g, wd] = upCost(Math.min(1, lvl), P.race); P.g += g; P.w += wd; }
+      if (k >= UP_ATK) { const lvl = P.up[k - UP_ATK] + b.queue.filter(q => q === k).length; const [g, wd] = upCost(lvl, P.race, k - UP_ATK); P.g += g; P.w += wd; }
       else { const d = DEFS[P.race][k]; P.g += d.g; P.w += d.w; }
       break;
     }
@@ -890,11 +907,12 @@ function orderMove(w, u, x, y, amove) {
   const keepRes = null;
   stopUnit(u); u.hold = false;
   u.st = 'move'; u.goal = { x, y }; u.amove = amove ? { x, y } : null; u.res = keepRes;
+  if (u.fly) { u.path = [{ x, y }]; u.pi = 0; u.stuckT = 0; u.lastD = 1e9; return; }
   const gx = Math.floor(x), gy = Math.floor(y);
   pathTo(w, u, (tx, ty) => tx === gx && ty === gy, gx, gy);
 }
 function orderAttack(w, u, t) {
-  if (t === u) return;
+  if (t === u || !canHit(w, u, t)) return;
   stopUnit(u); u.hold = false;
   if (def(w, u).dmg <= 0 && !def(w, u).kaboom) return;
   u.st = 'attack'; u.tgt = t.id; u.forced = true;
@@ -929,7 +947,8 @@ function step(w) {
     w.pending.splice(i, 1);
     const t = w.byId.get(p.tgt);
     if (p.splash) {
-      for (const o of w.ents.slice()) if (!o.dead && o.k !== K.mine && enemies(w, p.o, o.o) && !o.hidden && edgeDist(o, p.x, p.y) <= p.splash) damage(w, o, o === t ? p.dmg : p.dmg * 0.6, p.from, p.o);
+      w.ev.push(['splash', +p.x.toFixed(2), +p.y.toFixed(2), p.splash]);
+      for (const o of w.ents.slice()) if (!o.dead && o.k !== K.mine && enemies(w, p.o, o.o) && !o.hidden && (!o.fly || p.air) && edgeDist(o, p.x, p.y) <= p.splash) damage(w, o, o === t ? p.dmg : p.dmg * 0.6, p.from, p.o);
     } else if (t && !t.dead && !t.hidden) damage(w, t, p.dmg, p.from, p.o);
   }
   separate(w);
@@ -944,7 +963,7 @@ function recountFood(w) {
     const P = w.players[e.o], d = def(w, e);
     if (isUnitK(e.k)) P.food += d.food;
     else if (e.built && d.cap) P.cap += d.cap;
-    if (e.queue && e.queue[0] !== undefined && e.queue[0] < 4 && e.qt > 0) P.food += DEFS[P.race][e.queue[0]].food;
+    if (e.queue && e.queue[0] !== undefined && isUnitK(e.queue[0]) && e.qt > 0) P.food += DEFS[P.race][e.queue[0]].food;
   }
   for (const P of w.players) P.cap = Math.min(100, P.cap);
 }
@@ -1016,7 +1035,7 @@ function unitTick(w, u, dt) {
 function findEnemy(w, u, range) {
   let best = null, bd = 1e9;
   for (const o of w.ents) {
-    if (o.k === K.mine || o.hidden || !enemies(w, u.o, o.o)) continue;
+    if (o.k === K.mine || o.hidden || !enemies(w, u.o, o.o) || !canHit(w, u, o)) continue;
     const dd = edgeDist(o, u.x, u.y);
     if (dd > range) continue;
     // prefer things that fight back over buildings and workers
@@ -1038,7 +1057,7 @@ function follow(w, u, d, dt) {
   if (dd <= stepLen) { u.x = tx; u.y = ty; u.pi++; }
   else {
     const mx = u.x + nx * stepLen, my = u.y + ny * stepLen;
-    if (walk(w, Math.floor(mx), Math.floor(my))) { u.x = mx; u.y = my; }
+    if (u.fly || walk(w, Math.floor(mx), Math.floor(my))) { u.x = mx; u.y = my; }
     else { u.stuckT = (u.stuckT || 0) + 1; }
   }
   // stuck behind something that appeared (a new building)? look for a new way
@@ -1060,7 +1079,7 @@ function attackTick(w, u, d, dt) {
     if (u.after) { const a = u.after; u.after = null; orderMove(w, u, a.x, a.y, true); }
     else u.st = 'idle';
   };
-  if (!t || t.dead || t.hidden || (!enemies(w, u.o, t.o) && !u.forced)) return giveUp();
+  if (!t || t.dead || t.hidden || (!enemies(w, u.o, t.o) && !u.forced) || !canHit(w, u, t)) return giveUp();
   // idle units that chased something too far wander back
   if (!u.forced && !u.after && u.home && dist(u.x, u.y, u.home.x, u.home.y) > 12) { const h = u.home; u.home = null; orderMove(w, u, h.x, h.y, false); return; }
   if (inRange(w, u, d, t)) {
@@ -1072,12 +1091,12 @@ function attackTick(w, u, d, dt) {
       const dmg = d.dmg + upAtk(w, u);
       if (d.proj) {
         const travel = Math.min(0.6, edgeDist(t, u.x, u.y) / 12 + 0.1);
-        w.pending.push({ at: travel, tgt: t.id, dmg, from: u.id, o: u.o, splash: d.splash || 0, x: t.x, y: t.y });
-        w.ev.push(['proj', +u.x.toFixed(2), +u.y.toFixed(2), +t.x.toFixed(2), +t.y.toFixed(2), d.proj, +travel.toFixed(2)]);
+        w.pending.push({ at: travel, tgt: t.id, dmg, from: u.id, o: u.o, splash: d.splash || 0, air: !!d.hitsAir, x: t.x, y: t.y });
+        w.ev.push(['proj', +u.x.toFixed(2), +(u.fly ? u.y - 0.9 : u.y).toFixed(2), +t.x.toFixed(2), +(t.fly ? t.y - 0.9 : t.y).toFixed(2), d.proj, +travel.toFixed(2)]);
       } else {
         damage(w, t, dmg, u.id, u.o);
         w.ev.push(['hit', +t.x.toFixed(2), +t.y.toFixed(2), u.k === K.worker ? 0 : 1]);
-        if (d.cleave) for (const o of w.ents.slice()) if (o !== t && !o.dead && !o.hidden && o.k !== K.mine && enemies(w, u.o, o.o) && edgeDist(o, t.x, t.y) <= d.cleave) damage(w, o, dmg * 0.5, u.id, u.o);
+        if (d.cleave) for (const o of w.ents.slice()) if (o !== t && !o.dead && !o.hidden && !o.fly && o.k !== K.mine && enemies(w, u.o, o.o) && edgeDist(o, t.x, t.y) <= d.cleave) damage(w, o, dmg * 0.5, u.id, u.o);
       }
     }
     return;
@@ -1088,7 +1107,8 @@ function attackTick(w, u, d, dt) {
   if (!u.path || u.repathT <= 0 || u.pi >= u.path.length) {
     u.repathT = 0.6 + Math.random() * 0.4;
     const reach = Math.max(d.rng, 0.3) + u.r - 0.1;
-    if (!pathTo(w, u, entGoal(t, reach), t.x, t.y)) { u.failT = (u.failT || 0) + 1; if (u.failT > 4) { u.failT = 0; return giveUp(); } }
+    if (u.fly) { u.path = [{ x: t.x, y: t.y }]; u.pi = 0; }
+    else if (!pathTo(w, u, entGoal(t, reach), t.x, t.y)) { u.failT = (u.failT || 0) + 1; if (u.failT > 4) { u.failT = 0; return giveUp(); } }
     u.repathT = 0.6 + Math.random() * 0.4;
   }
   follow(w, u, d, dt);
@@ -1097,7 +1117,7 @@ function explode(w, u) {
   const d = def(w, u), kb = d.kaboom;
   w.ev.push(['boom', +u.x.toFixed(2), +u.y.toFixed(2), kb.r]);
   for (const o of w.ents.slice()) {
-    if (o === u || o.dead || o.hidden || o.k === K.mine || !enemies(w, u.o, o.o)) continue;
+    if (o === u || o.dead || o.hidden || o.fly || o.k === K.mine || !enemies(w, u.o, o.o)) continue;
     const dd = edgeDist(o, u.x, u.y);
     if (dd <= kb.r) damage(w, o, kb.dmg * (o.size ? 1.6 : 1) * (1 - dd / kb.r * 0.4) + upAtk(w, u) * 3, u.id, u.o);
   }
@@ -1114,7 +1134,7 @@ function damage(w, t, amount, fromId, fromOwner) {
     const P = w.players[t.o];
     if (w.t - P.lastAlert > 12 && (t.size || t.k === K.worker)) { P.lastAlert = w.t; w.ev.push(['alert', t.o, +t.x.toFixed(1), +t.y.toFixed(1)]); }
     const src = w.byId.get(fromId);
-    if (src && isUnitK(t.k) && t.st === 'idle' && !t.hold && (t.k !== K.worker || src.k === K.worker)) { t.st = 'attack'; t.tgt = src.id; t.forced = false; t.home = { x: t.x, y: t.y }; }
+    if (src && isUnitK(t.k) && t.st === 'idle' && !t.hold && canHit(w, t, src) && (t.k !== K.worker || src.k === K.worker)) { t.st = 'attack'; t.tgt = src.id; t.forced = false; t.home = { x: t.x, y: t.y }; }
     if (src && P.ai) aiAttacked(w, P, src);
   }
   if (t.hp <= 0) {
@@ -1148,9 +1168,9 @@ function leaveInside(w, u, host) {
   u.x = spot.x + 0.5; u.y = spot.y + 0.5;
   if (u.st === 'inside') u.st = 'idle';
 }
-function nearestHall(w, o, x, y) {
+function nearestHall(w, o, x, y, wood) {
   let best = null, bd = 1e9;
-  for (const e of w.ents) if (e.o === o && e.k === K.hall && e.built) { const dd = dist(e.x, e.y, x, y); if (dd < bd) { bd = dd; best = e; } }
+  for (const e of w.ents) if (e.o === o && (e.k === K.hall || (wood && e.k === K.mill)) && e.built) { const dd = dist(e.x, e.y, x, y); if (dd < bd) { bd = dd; best = e; } }
   return best;
 }
 function nearestMine(w, x, y, maxD = 30) {
@@ -1204,7 +1224,7 @@ function gatherTick(w, u, d, dt) {
       w.wood[i]--;
       if (w.wood[i] <= 0) { w.ter[i] = T_STUMP; w.treeLog.push([w.frame, i]); w.ev.push(['fell', r.tx, r.ty]); }
       const P = w.players[u.o], mul = P.ai ? AI_DIFF[P.diff].gather : 1;
-      u.carry = 2; u.cAmt = Math.round(CARRY * mul); u.st = 'return';
+      u.carry = 2; u.cAmt = Math.round((CARRY + P.up[2] * WOOD_PER_UP) * mul); u.st = 'return';
     }
     return;
   }
@@ -1222,7 +1242,7 @@ function gatherTick(w, u, d, dt) {
 }
 function returnTick(w, u, d, dt) {
   if (!u.carry) { u.st = u.res ? 'gather' : 'idle'; return; }
-  const h = nearestHall(w, u.o, u.x, u.y);
+  const h = nearestHall(w, u.o, u.x, u.y, u.carry === 2);
   if (!h) { u.st = 'idle'; return; }
   if (edgeDist(h, u.x, u.y) <= 1.2) {
     const P = w.players[u.o];
@@ -1246,7 +1266,7 @@ function buildTick(w, u, d, dt) {
   const refund = () => { P.g += bd.g; P.w += bd.w; u.bld = null; u.st = 'idle'; u.noBuild = w.t + 60; note(w, u.o, 'blocked'); };
   if (edgeDist(fake, u.x, u.y) <= 1.3) {
     // push anyone standing on the spot out of the way
-    for (const o of w.ents) if (isUnitK(o.k) && !o.hidden && o !== u && edgeDist(fake, o.x, o.y) <= 0) {
+    for (const o of w.ents) if (isUnitK(o.k) && !o.hidden && !o.fly && o !== u && edgeDist(fake, o.x, o.y) <= 0) {
       const s = freeSpotNearExcluding(w, fake, o.x, o.y); o.x = s.x + 0.5; o.y = s.y + 0.5;
     }
     if (!canPlace(w, b.k, b.tx, b.ty, u.o, u)) return refund();
@@ -1305,7 +1325,7 @@ function buildingTick(w, b, dt) {
   const k = b.queue[0];
   if (k === undefined) { b.qt = 0; return; }
   if (k >= UP_ATK) {
-    const lvl = P.up[k - UP_ATK], t = UP_COST[Math.min(1, lvl)][2];
+    const lvl = P.up[k - UP_ATK], t = upCost(lvl, P.race, k - UP_ATK)[2];
     b.qt += dt;
     if (b.qt >= t) { P.up[k - UP_ATK] = Math.min(2, lvl + 1); b.queue.shift(); b.qt = 0; w.ev.push(['upgraded', b.o, k - UP_ATK, P.up[k - UP_ATK]]); }
     return;
@@ -1343,7 +1363,15 @@ function canNudge(w, u, x, y) {
 }
 function separate(w) {
   const cell = new Map();
-  const units = w.ents.filter(e => isUnitK(e.k) && !e.hidden);
+  const air = w.ents.filter(e => e.fly);
+  for (let i = 0; i < air.length; i++) for (let j = i + 1; j < air.length; j++) {
+    const a = air[i], b = air[j], dx = b.x - a.x, dy = b.y - a.y, dd = Math.hypot(dx, dy), min = (a.r + b.r) * 0.9;
+    if (dd >= min) continue;
+    const push = (min - dd) * 0.3, nx = dd > 0.001 ? dx / dd : Math.random() - 0.5, ny = dd > 0.001 ? dy / dd : Math.random() - 0.5;
+    a.x = clamp(a.x - nx * push, 0.3, w.W - 0.3); a.y = clamp(a.y - ny * push, 0.3, w.H - 0.3);
+    b.x = clamp(b.x + nx * push, 0.3, w.W - 0.3); b.y = clamp(b.y + ny * push, 0.3, w.H - 0.3);
+  }
+  const units = w.ents.filter(e => isUnitK(e.k) && !e.hidden && !e.fly);
   for (const u of units) {
     const key = Math.floor(u.x) + Math.floor(u.y) * 4096;
     let a = cell.get(key); if (!a) cell.set(key, a = []); a.push(u);
@@ -1399,7 +1427,11 @@ function aiAssignWorker(w, P, u) {
   const share = P.w < P.g * 0.6 ? 0.35 : 0.6;
   if (m && (onGold < 3 || onGold < (onGold + onWood + 1) * share)) applyCmd(w, P.slot, { c: 'gather', ids: [u.id], id: m.id });
   else {
-    const t = nearestTree(w, base.x, base.y, 18);
+    // chop near the mill if there is one
+    let mill = null, md = 1e9;
+    for (const e of w.ents) if (e.o === P.slot && e.k === K.mill && e.built) { const dd = dist(e.x, e.y, base.x, base.y); if (dd < md) { md = dd; mill = e; } }
+    const from = mill || base;
+    const t = nearestTree(w, from.x, from.y, 18);
     if (t) applyCmd(w, P.slot, { c: 'gather', ids: [u.id], tx: t.tx, ty: t.ty });
     else if (m) applyCmd(w, P.slot, { c: 'gather', ids: [u.id], id: m.id });
   }
@@ -1479,6 +1511,11 @@ function aiThink(w, P) {
   // buildings in order
   const rax = count(K.barracks);
   if (!rax && workers.length >= 5 && !pending(K.barracks)) aiBuild(w, P, K.barracks, hall, workers);
+  else if (count(K.barracks, true) && !count(K.mill) && !pending(K.mill)) {
+    // the saw mill goes by the nearest forest
+    const t = nearestTree(w, hall.x, hall.y, 14);
+    aiBuild(w, P, K.mill, t ? { x: t.tx + 0.5, y: t.ty + 0.5, bx: t.tx, by: t.ty } : hall, workers);
+  }
   else if (count(K.barracks, true) && !count(K.lab) && army.length >= 3 && w.t > 150 && !pending(K.lab)) aiBuild(w, P, K.lab, hall, workers);
   else if (count(K.lab, true) && count(K.tower) < D.towers && P.g > 250 && !pending(K.tower)) aiBuild(w, P, K.tower, hall, workers);
   else if (rax < D.rax && (count(K.lab, true) || P.g > 700) && P.g > 400 && !pending(K.barracks)) aiBuild(w, P, K.barracks, hall, workers);
@@ -1488,10 +1525,19 @@ function aiThink(w, P) {
     const which = P.up[0] <= P.up[1] ? UP_ATK : UP_ARM;
     if (P.up[which - UP_ATK] < D.ups) applyCmd(w, P.slot, { c: 'train', ids: [lab.id], k: which });
   }
+  const mill = mine.find(e => e.k === K.mill && e.built);
+  if (mill && D.ups && !mill.queue.length && P.up[2] < D.ups && P.w > 150 && P.g > 200) applyCmd(w, P.slot, { c: 'train', ids: [mill.id], k: UP_WOOD });
+  // flyers from the lab now and then
+  if (lab && !lab.queue.length && army.length >= 4 && Math.random() < 0.6) {
+    const d = DEFS[P.race][K.flyer];
+    if (canAfford(P, d) && P.food + d.food <= P.cap) applyCmd(w, P.slot, { c: 'train', ids: [lab.id], k: K.flyer });
+  }
+  // enemy flyers about? lean on ranged units, they can shoot them down
+  const enemyAir = w.ents.some(e => e.fly && enemies(w, P.slot, e.o));
   // army
   for (const b of mine) if (b.k === K.barracks && b.built && b.queue.length < 2) {
     const r = Math.random();
-    const k = lab && r < 0.28 ? K.special : r < 0.62 ? K.melee : K.ranged;
+    const k = lab && r < (enemyAir ? 0.18 : 0.28) ? K.special : r < (enemyAir ? 0.4 : 0.62) ? K.melee : K.ranged;
     const d = DEFS[P.race][k];
     // leave enough for a farm when food is tight
     if (canAfford(P, d) && P.food + d.food <= P.cap) applyCmd(w, P.slot, { c: 'train', ids: [b.id], k });
@@ -1735,6 +1781,63 @@ function ell(c, x, y, rx, ry, col) { c.fillStyle = col; c.beginPath(); c.ellipse
 function box(c, x, y, w, h, col) { c.fillStyle = col; c.fillRect(x, y, w, h); }
 function line(c, x1, y1, x2, y2, col, wd) { c.strokeStyle = col; c.lineWidth = wd; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
 function poly(c, col, ...p) { c.fillStyle = col; c.beginPath(); c.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) c.lineTo(p[i], p[i + 1]); c.closePath(); c.fill(); }
+// flyers are drawn around (0, -14u); the renderer lifts them off the ground and adds a shadow
+function drawFlyer(c, race, color, u, t, swing, R) {
+  const fl = Math.sin(t * 20), y0 = -14 * u;
+  if (race === 'humans') {
+    // gryphon: lion body, eagle head, big white wings, rider with a hammer
+    poly(c, '#d9d2c0', -2 * u, y0 - 2 * u, -20 * u, y0 - 10 * u - fl * 10 * u, -14 * u, y0 + 2 * u);
+    ell(c, 0, y0 + 2 * u, 12 * u, 6 * u, '#c9a06a'); box(c, -12 * u, y0 + 3 * u, 3 * u, 6 * u, '#a07a40'); box(c, 6 * u, y0 + 4 * u, 3 * u, 6 * u, '#a07a40');
+    poly(c, '#a07a40', -12 * u, y0, -19 * u, y0 + 4 * u, -12 * u, y0 + 3 * u);
+    ell(c, 12 * u, y0 - 4 * u, 5 * u, 5 * u, '#f4f0e6'); poly(c, '#ffd23f', 16 * u, y0 - 5 * u, 21 * u, y0 - 3 * u, 16 * u, y0 - 2 * u); box(c, 13 * u, y0 - 6 * u, 1.6 * u, 1.6 * u, '#111');
+    box(c, -3 * u, y0 - 10 * u, 7 * u, 8 * u, color); ell(c, 0.5 * u, y0 - 13 * u, 3.5 * u, 3.5 * u, R.skin); ell(c, 0.5 * u, y0 - 15 * u, 4 * u, 2.5 * u, '#9aa2ad');
+    c.save(); c.translate(4 * u, y0 - 8 * u); c.rotate(-0.6 + swing * 1.6); line(c, 0, 0, 0, -9 * u, '#7a5530', 1.6 * u); box(c, -3 * u, -12 * u, 6 * u, 4 * u, '#b8bec8'); c.restore();
+    poly(c, '#f4f0e6', -2 * u, y0 - 2 * u, -16 * u, y0 - 14 * u + fl * 8 * u, -8 * u, y0 + 2 * u);
+  } else if (race === 'orcs') {
+    // the Wi-Fi-vern: green wyvern, bat wings, orc rider, full bars
+    poly(c, '#2f5a24', -2 * u, y0, -22 * u, y0 - 8 * u - fl * 11 * u, -18 * u, y0 + 2 * u, -10 * u, y0 + 3 * u);
+    ell(c, 0, y0 + 2 * u, 11 * u, 5 * u, '#4f7d3a'); poly(c, '#4f7d3a', -10 * u, y0 + 2 * u, -22 * u, y0 + 8 * u, -10 * u, y0 + 5 * u);
+    poly(c, '#4f7d3a', 8 * u, y0, 15 * u, y0 - 8 * u, 18 * u, y0 - 6 * u, 11 * u, y0 + 2 * u);
+    ell(c, 18 * u, y0 - 8 * u, 5 * u, 3.5 * u, '#5d9244'); box(c, 19 * u, y0 - 10 * u, 1.6 * u, 1.6 * u, '#ff4f4f'); poly(c, '#e8e0cc', 20 * u, y0 - 12 * u, 22 * u, y0 - 16 * u, 18 * u, y0 - 12 * u);
+    box(c, -3 * u, y0 - 9 * u, 7 * u, 8 * u, color); ell(c, 0.5 * u, y0 - 12 * u, 3.5 * u, 3.5 * u, R.skin); box(c, 2 * u, y0 - 10 * u, 1.2 * u, 2 * u, '#fff');
+    c.strokeStyle = color; c.lineWidth = 1.5 * u;
+    for (let i = 1; i <= 3; i++) { c.beginPath(); c.arc(0.5 * u, y0 - 15 * u, i * 3 * u, -2.3, -0.85); c.stroke(); }
+    poly(c, '#3d6a2c', -2 * u, y0, -18 * u, y0 - 12 * u + fl * 9 * u, -12 * u, y0 + 2 * u);
+  } else if (race === 'goblins') {
+    // bomb zeppelin: patched balloon, gondola, spinning propeller
+    ell(c, 0, y0 - 6 * u, 18 * u, 9 * u, '#b8a98a'); ell(c, -2 * u, y0 - 9 * u, 13 * u, 4 * u, '#d4c6a6');
+    box(c, -8 * u, y0 - 14 * u, 3 * u, 16 * u, color); box(c, 4 * u, y0 - 14 * u, 3 * u, 16 * u, color);
+    box(c, -12 * u, y0 - 8 * u, 5 * u, 4 * u, '#8a7a5a'); line(c, -15 * u, y0 - 6 * u, -11 * u, y0 - 2 * u, '#555', u);
+    poly(c, '#8a6a3e', -19 * u, y0 - 6 * u, -25 * u, y0 - 12 * u, -25 * u, y0, -19 * u, y0 - 6 * u);
+    line(c, -6 * u, y0 + 2 * u, -5 * u, y0 + 6 * u, '#444', u); line(c, 6 * u, y0 + 2 * u, 5 * u, y0 + 6 * u, '#444', u);
+    box(c, -7 * u, y0 + 6 * u, 14 * u, 5 * u, '#6a4426');
+    ell(c, 1 * u, y0 + 4 * u, 3 * u, 3 * u, R.skin); poly(c, R.skin, -2 * u, y0 + 4 * u, -6 * u, y0 + 1 * u, -2 * u, y0 + 6 * u); box(c, -0.5 * u, y0 + 1.5 * u, 4 * u, 1.5 * u, '#333');
+    ell(c, 18 * u, y0 - 6 * u, 1.5 * u, 7 * u * Math.abs(Math.cos(t * 40)) + u, '#444');
+    if (swing > 0) ell(c, 0, y0 + 13 * u, 3 * u, 3 * u, '#222');
+  } else if (race === 'funguys') {
+    // spore balloon: a giant puffball cap with a little funguy in a basket
+    const bob = Math.sin(t * 4) * 1.5 * u;
+    line(c, -6 * u, y0 - 4 * u + bob, -4 * u, y0 + 6 * u, '#8a7a5a', u); line(c, 6 * u, y0 - 4 * u + bob, 4 * u, y0 + 6 * u, '#8a7a5a', u);
+    ell(c, 0, y0 - 9 * u + bob, 15 * u, 12 * u, color);
+    for (const [dx, dy, r] of [[-7, -14, 3], [2, -18, 2.5], [8, -10, 2.2], [-2, -8, 1.8], [10, -16, 1.5]]) ell(c, dx * u, y0 + dy * u + bob, r * u, r * u, '#fff');
+    ell(c, 0, y0 - 3 * u + bob, 12 * u, 3 * u, shade(color, -0.3));
+    box(c, -5 * u, y0 + 6 * u, 10 * u, 6 * u, '#a07a40'); box(c, -5 * u, y0 + 8 * u, 10 * u, 1 * u, '#7a5530');
+    box(c, -2 * u, y0 + 2 * u, 4 * u, 5 * u, R.skin); ell(c, 0, y0 + 2 * u, 4 * u, 2.5 * u, shade(color, 0.2));
+    if (swing > 0) for (let i = 0; i < 3; i++) ell(c, (i - 1) * 4 * u, y0 + 14 * u + i * 2 * u, 2 * u, 2 * u, 'rgba(200,255,140,.7)');
+  } else if (race === 'bugs') {
+    // drone-fly: long thin dragonfly with four buzzing wings and big eyes
+    const wingA = 0.25 + fl * 0.35;
+    c.save(); c.translate(0, y0 - 2 * u);
+    for (const [sx, sy] of [[-1, -1], [1, -1]]) { c.save(); c.rotate(sy * wingA); ell(c, sx * 2 * u, -6 * u, 4 * u, 11 * u, 'rgba(210,240,255,.55)'); c.restore(); }
+    c.restore();
+    for (let i = 0; i < 5; i++) ell(c, -6 * u - i * 3.5 * u, y0, 2.2 * u, 1.8 * u, i % 2 ? color : '#2a6a6a');
+    ell(c, 0, y0, 5 * u, 3.5 * u, '#2a6a6a'); ell(c, 6 * u, y0 - 1 * u, 3.5 * u, 3.5 * u, '#1a4a4a');
+    ell(c, 7.5 * u, y0 - 3 * u, 2.2 * u, 2.2 * u, '#ff4f4f'); ell(c, 8.5 * u, y0 + 0 * u, 2 * u, 2 * u, '#ff4f4f');
+    c.save(); c.translate(0, y0 - 2 * u);
+    for (const sy of [1]) { c.save(); c.rotate(-sy * wingA * 0.8); ell(c, 4 * u, -6 * u, 3.5 * u, 10 * u, 'rgba(230,250,255,.6)'); c.restore(); }
+    c.restore();
+  }
+}
 // px, py = where the feet touch the ground; s = pixels per tile
 function drawUnit(c, race, k, color, px, py, s, a) {
   const u = s / 32, R = RACES[race], t = a.t || 0;
@@ -1745,6 +1848,7 @@ function drawUnit(c, race, k, color, px, py, s, a) {
   if (!a.noShadow) ell(c, 0, 0, 9 * u * sc * (k === K.special && race === 'humans' ? 1.5 : 1), 3 * u * sc, 'rgba(0,0,0,.3)');
   c.translate(0, -bob);
   const skin = R.skin, eye = '#111';
+  if (k === K.flyer) { drawFlyer(c, race, color, u, t, swing, R); c.restore(); return; }
   const legs = (h, col, spread = 3) => { box(c, (-spread - 1.5) * u * sc + walkPh * 2 * u, -h * u * sc, 3 * u * sc, h * u * sc, col); box(c, (spread - 1.5) * u * sc - walkPh * 2 * u, -h * u * sc, 3 * u * sc, h * u * sc, col); };
   const carry = () => {
     if (a.carry === 1) { ell(c, -6 * u, -14 * u * sc, 5 * u, 5 * u, '#c9a227'); ell(c, -6 * u, -15 * u * sc, 3 * u, 2 * u, '#ffd23f'); }
@@ -1910,9 +2014,10 @@ function buildingSprite(race, k, color, s) {
   return cvs;
 }
 const unitCache = new Map();
+const FLY_LIFT = 0.75;   // how high flyers hover above their shadow, in tiles
 const WALK_PERIOD = Math.PI * 2 / 14;
 // units that keep moving while they stand still (a lit fuse, buzzing wings, a glitching bug)
-const idleAnim = (race, k) => (race === 'goblins' && k === K.special) || (race === 'bugs' && (k === K.ranged || k === K.special));
+const idleAnim = (race, k) => k === K.flyer || (race === 'goblins' && k === K.special) || (race === 'bugs' && (k === K.ranged || k === K.special));
 function unitFrame(race, k, color, s, a) {
   const f = (a.mv || a.chop || idleAnim(race, k)) ? Math.floor(a.t / WALK_PERIOD * 8) & 7 : 0;
   const ab = a.atk > 0.2 ? 1 : a.atk > 0.1 ? 2 : a.atk > 0 ? 3 : 0;
@@ -1931,15 +2036,69 @@ function unitFrame(race, k, color, s, a) {
 }
 function drawUnitFast(c, race, k, color, px, py, s, a) {
   const R = RACES[race], u = s / 32, sc = (k === K.special ? 1.35 : 1) * (race === 'goblins' ? 0.85 : 1);
-  ell(c, px, py, 9 * u * sc * (k === K.special && race === 'humans' ? 1.5 : 1), 3 * u * sc, 'rgba(0,0,0,.3)');
+  if (k === K.flyer) { ell(c, px, py, 12 * u, 4 * u, 'rgba(0,0,0,.22)'); py -= FLY_LIFT * s + Math.sin(a.t * 3) * 2 * u; }
+  else ell(c, px, py, 9 * u * sc * (k === K.special && race === 'humans' ? 1.5 : 1), 3 * u * sc, 'rgba(0,0,0,.3)');
   const spr = unitFrame(race, k, color, s, a);
   const w = spr.width / spr.dpr, h = spr.height / spr.dpr;
   if (a.face < 0) { c.save(); c.translate(px, py); c.scale(-1, 1); c.drawImage(spr, -spr.ox, -spr.oy, w, h); c.restore(); }
   else c.drawImage(spr, px - spr.ox, py - spr.oy, w, h);
 }
+function logPile(c, x, y, u, n = 3) {
+  for (let r = 0; r < n; r++) for (let i = 0; i < n - r; i++) {
+    const lx = x + i * 7 * u + r * 3.5 * u, ly = y - r * 5.5 * u;
+    box(c, lx - 3 * u, ly - 3 * u, 6 * u, 6 * u, '#7a5530'); ell(c, lx + 3 * u, ly, 3 * u, 3 * u, '#c9a06a'); ell(c, lx + 3 * u, ly, 1.4 * u, 1.4 * u, '#a07a40');
+  }
+}
+function sawBlade(c, x, y, r, col) {
+  c.fillStyle = col; c.beginPath();
+  for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2, rr = i % 2 ? r : r * 0.82; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+  c.closePath(); c.fill(); ell(c, x, y, r * 0.25, r * 0.25, '#555');
+}
+// saw mills: every race keeps its wood somewhere different
+function paintMill(c, race, color, W, u) {
+  if (race === 'humans') {
+    box(c, W * 0.06, W * 0.4, W * 0.62, W * 0.52, '#a0784a'); for (let i = 1; i < 6; i++) line(c, W * 0.06, W * 0.4 + i * W * 0.09, W * 0.68, W * 0.4 + i * W * 0.09, 'rgba(0,0,0,.18)', u);
+    poly(c, color, W * 0.0, W * 0.42, W * 0.37, W * 0.08, W * 0.74, W * 0.42); poly(c, shade(color, -0.35), W * 0.37, W * 0.08, W * 0.74, W * 0.42, W * 0.37, W * 0.42);
+    box(c, W * 0.28, W * 0.62, W * 0.16, W * 0.3, '#4a2e16');
+    sawBlade(c, W * 0.78, W * 0.62, W * 0.16, '#cfd6de');
+    logPile(c, W * 0.62, W * 0.9, u, 3);
+  } else if (race === 'orcs') {
+    poly(c, '#b08a5a', W * 0.02, W * 0.62, W * 0.32, W * 0.12, W * 0.62, W * 0.62);
+    box(c, W * 0.06, W * 0.6, W * 0.52, W * 0.32, '#7a5530'); box(c, W * 0.25, W * 0.7, W * 0.14, W * 0.22, '#2a1a0a');
+    line(c, W * 0.18, W * 0.34, W * 0.12, W * 0.62, color, 3 * u); line(c, W * 0.46, W * 0.34, W * 0.52, W * 0.62, color, 3 * u);
+    // a giant axe stuck in a stump
+    ell(c, W * 0.8, W * 0.86, W * 0.14, W * 0.06, '#6a4426'); box(c, W * 0.67, W * 0.72, W * 0.26, W * 0.14, '#8a5a34'); ell(c, W * 0.8, W * 0.72, W * 0.13, W * 0.05, '#c9a06a');
+    line(c, W * 0.8, W * 0.72, W * 0.92, W * 0.3, '#5a3a1e', 3 * u); poly(c, '#b8bec8', W * 0.84, W * 0.36, W * 0.98, W * 0.3, W * 1.0, W * 0.5, W * 0.88, W * 0.5);
+    logPile(c, W * 0.06, W * 0.98, u, 2);
+  } else if (race === 'goblins') {
+    box(c, W * 0.05, W * 0.32, W * 0.66, W * 0.6, '#8a8790'); for (let i = 1; i < 7; i++) line(c, W * 0.05 + i * W * 0.094, W * 0.32, W * 0.05 + i * W * 0.094, W * 0.92, 'rgba(0,0,0,.2)', u);
+    poly(c, '#a0522d', W * 0.02, W * 0.36, W * 0.2, W * 0.14, W * 0.74, W * 0.24, W * 0.74, W * 0.36);
+    box(c, W * 0.05, W * 0.55, W * 0.66, W * 0.07, color); box(c, W * 0.5, W * 0.0, W * 0.09, W * 0.26, '#555');
+    sawBlade(c, W * 0.8, W * 0.66, W * 0.19, '#ffd23f'); sawBlade(c, W * 0.8, W * 0.66, W * 0.12, '#cfd6de');
+    box(c, W * 0.25, W * 0.7, W * 0.16, W * 0.22, '#2a2a2a');
+  } else if (race === 'funguys') {
+    // a heap of rotting logs sprouting shrooms
+    for (let i = 0; i < 3; i++) { box(c, W * (0.08 + i * 0.05), W * (0.62 - i * 0.16), W * (0.84 - i * 0.1), W * 0.16, ['#6a4e30', '#5a4128', '#7a5a38'][i]); ell(c, W * (0.92 - i * 0.05), W * (0.7 - i * 0.16), W * 0.06, W * 0.08, '#a07a40'); }
+    for (const [x, y, r] of [[0.2, 0.62, 6], [0.5, 0.46, 8], [0.75, 0.3, 6], [0.35, 0.3, 5], [0.85, 0.62, 5]]) {
+      box(c, W * x - 1.5 * u, W * y - r * u, 3 * u, r * u, '#efe3c8');
+      c.fillStyle = color; c.beginPath(); c.ellipse(W * x, W * y - r * u, r * 0.9 * u, r * 0.7 * u, 0, Math.PI, 0); c.fill();
+      ell(c, W * x - r * 0.3 * u, W * y - r * 1.3 * u, 1.3 * u, 1.3 * u, '#fff');
+    }
+  } else if (race === 'bugs') {
+    // termite mound: tall knobbly dirt spires with tunnels
+    for (const [x, h, wd] of [[0.3, 0.95, 0.2], [0.55, 1.25, 0.24], [0.78, 0.8, 0.18]]) {
+      poly(c, '#7d6342', W * (x - wd), W * 0.95, W * (x - wd * 0.3), W * (0.95 - h), W * (x + wd * 0.3), W * (0.95 - h), W * (x + wd), W * 0.95);
+      poly(c, '#6a5236', W * x, W * (0.95 - h), W * (x + wd * 0.3), W * (0.95 - h), W * (x + wd), W * 0.95, W * x, W * 0.95);
+      for (let i = 1; i < 4; i++) ell(c, W * (x - wd * 0.25), W * (0.95 - h * i / 4), 1.6 * u, 2 * u, '#1a120a');
+    }
+    box(c, W * 0.1, W * 0.86, W * 0.8, W * 0.06, color);
+    logPile(c, W * 0.06, W * 0.98, u, 2);
+  }
+}
 function paintBuilding(c, race, k, color, W, s) {
   const u = s / 32, kind = KINDS[k], dk = shade(color, -0.35);
   if (!c.noShadow) ell(c, W / 2, W * 0.92, W * 0.48, W * 0.12, 'rgba(0,0,0,.3)');
+  if (kind === 'mill') { paintMill(c, race, color, W, u); return; }
   if (kind === 'mine') {
     poly(c, '#6d6a72', W * 0.04, W * 0.95, W * 0.12, W * 0.35, W * 0.4, W * 0.12, W * 0.7, W * 0.2, W * 0.95, W * 0.55, W * 0.98, W * 0.95);
     poly(c, '#8a8790', W * 0.15, W * 0.45, W * 0.4, W * 0.17, W * 0.6, W * 0.3, W * 0.35, W * 0.55);
@@ -2144,6 +2303,7 @@ function say(w, e, text) {
 const PROJ = {
   arrow: { col: '#e8dcc0', arc: 0.6 }, spear: { col: '#cfa070', arc: 0.8 }, zap: { col: '#3ff0ff', arc: 0 },
   spore: { col: '#b7f07a', arc: 1.0 }, spit: { col: '#9bdc3a', arc: 0.5 }, bolt: { col: '#fff', arc: 0.4 },
+  hammer: { col: '#b8bec8', arc: 0.4 }, fire: { col: '#ff9a3c', arc: 0.1 }, bomb: { col: '#2a2a2a', arc: 0 },
 };
 // events from the simulation: sounds and sparkles on every screen, messages only for the owner
 function runEvents(w, list) {
@@ -2157,6 +2317,10 @@ function runEvent(w, [n, ...a]) {
   switch (n) {
     case 'proj': { const [x1, y1, x2, y2, kind, dur] = a; w.fx.proj.push({ x1, y1, x2, y2, kind, dur: Math.max(0.05, dur), t: 0 }); if (onScreen(x1, y1)) sfx(kind === 'arrow' || kind === 'bolt' ? 'arrow' : kind); break; }
     case 'hit': { const [x, y, hard] = a; if (onScreen(x, y)) { addParts(w, x, y - 0.3, 4, hard ? '#ff4f6d' : '#ddd', 1.5, 0.35, 2); w.fx.rings.push({ x, y: y - 0.2, r: 0.35, life: 0.18, max: 0.18, col: '#fff', wd: 2 }); sfx('sword'); } break; }
+    case 'splash': { const [x, y, r] = a; if (!onScreen(x, y)) break;
+      if (r >= 1.2) { w.fx.rings.push({ x, y, r, life: 0.4, max: 0.4, col: '#ff9a3c', wd: 4, flash: true }); addParts(w, x, y, 16, '#ff9a3c', 3, 0.6, 4); addParts(w, x, y, 8, '#444', 1.5, 1, 5, -1.5); sfx('boom'); }
+      else { w.fx.rings.push({ x, y, r, life: 0.4, max: 0.4, col: '#c8ff9a', wd: 3 }); addParts(w, x, y, 6, '#c8ff9a', 1.2, 0.6, 4, -0.5); }
+      break; }
     case 'miss': { const [x, y] = a; floatText(w, x, y - 0.6, 'MISS', '#3ff0ff'); break; }
     case 'heal': { const [x, y] = a; addParts(w, x, y - 0.3, 1, '#7dff6a', 0.3, 0.8, 3, -1); break; }
     case 'die': { const [x, y, k, o] = a; if (onScreen(x, y)) { addParts(w, x, y, 10, w.players[o] ? w.players[o].race === 'funguys' ? '#f4ead6' : w.players[o].race === 'bugs' ? '#9bdc3a' : '#c22' : '#c22', 2.5, 0.7, 3); sfx('die'); }
@@ -2260,7 +2424,7 @@ function render(w, now) {
     list.push(e);
   }
   if (w.me >= 0 && !w.over) for (const g of w.seen.values()) if (!w.byId.has(g.id) || !seesEnt(w, w.byId.get(g.id))) { if (g.x > x0 && g.x < x1 && g.y > y0 && g.y < y1) list.push({ ...g, ghost: true }); }
-  const ey = e => e.size ? e.by + e.size - 0.3 : e.ry;
+  const ey = e => e.size ? e.by + e.size - 0.3 : e.ry + (e.fly ? 1000 : 0);
   list.sort((a, b) => ey(a) - ey(b));
   const selSet = selection;
   const ux = e => e.size ? e.x : e.rx, uy = e => e.size ? e.y : e.ry;
@@ -2291,7 +2455,7 @@ function render(w, now) {
       if (d.aura) { ctx.strokeStyle = 'rgba(125,255,106,.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(px, py, d.aura * s * (0.95 + Math.sin(t * 3) * 0.05), d.aura * s * 0.5, 0, 0, 7); ctx.stroke(); }
       drawUnitFast(ctx, race, e.k, color, px, py + e.r * s * 0.3, s * 1.2, a);
       // kicked-up dust
-      if (e.moving && !(race === 'bugs' && e.k === K.ranged) && Math.random() < frameDt * 2) addParts(w, e.rx, e.ry + 0.2, 1, w.theme.snow ? '#ffffff' : '#c8b08a', 0.3, 0.45, 3, 0);
+      if (e.moving && !e.fly && !(race === 'bugs' && e.k === K.ranged) && Math.random() < frameDt * 2) addParts(w, e.rx, e.ry + 0.2, 1, w.theme.snow ? '#ffffff' : '#c8b08a', 0.3, 0.45, 3, 0);
     }
   }
   // health bars
@@ -2301,7 +2465,7 @@ function render(w, now) {
     if (!sel && e.id !== hoverId && e.hp >= d.hp - 0.5) continue;
     const f = clamp(e.hp / d.hp, 0, 1);
     const bw = e.size ? e.size * s * 0.7 : s * 0.8, [cx, cy] = toScreen(ux(e), e.size ? e.by : uy(e));
-    const by = e.size ? cy - s * 0.25 : cy - s * (e.k === K.special ? 1.5 : 1.05) - (e.k === K.ranged && w.players[e.o].race === 'bugs' ? s * 0.3 : 0);
+    const by = e.size ? cy - s * 0.25 : cy - s * (e.fly ? 1.95 : e.k === K.special ? 1.5 : 1.05) - (e.k === K.ranged && w.players[e.o].race === 'bugs' ? s * 0.3 : 0);
     ctx.fillStyle = '#05020c'; ctx.fillRect(cx - bw / 2 - 1, by - 1, bw + 2, 5);
     ctx.fillStyle = f > 0.6 ? '#7dff6a' : f > 0.3 ? '#ffd23f' : '#ff4f4f'; ctx.fillRect(cx - bw / 2, by, bw * f, 3);
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(cx - bw / 2, by, bw * f, 1);
@@ -2324,7 +2488,7 @@ function render(w, now) {
       continue;
     }
     const [tx, ty] = projAt(p, P, Math.max(0, k - 0.18)), [qx, qy] = toScreen(tx, ty);
-    if (p.kind === 'spore' || p.kind === 'spit') {
+    if (p.kind === 'spore' || p.kind === 'spit' || p.kind === 'fire' || p.kind === 'bomb') {
       ctx.globalAlpha = 0.35; ell(ctx, qx, qy, s * 0.09, s * 0.09, P.col); ctx.globalAlpha = 1;
       ell(ctx, px, py, s * 0.14, s * 0.14, shade(P.col, -0.4)); ell(ctx, px, py, s * 0.11, s * 0.11, P.col); ell(ctx, px - s * 0.04, py - s * 0.04, s * 0.04, s * 0.04, '#fff');
       continue;
@@ -2370,7 +2534,7 @@ function render(w, now) {
   ctx.font = '20px VT323, monospace';
   for (const b of w.fx.bubbles) {
     const e = w.byId.get(b.id); if (!e || e.hidden || !seesEnt(w, e)) continue;
-    const [px, py] = toScreen(e.rx ?? e.x, (e.ry ?? e.y) - (e.k === K.special ? 1.8 : 1.4));
+    const [px, py] = toScreen(e.rx ?? e.x, (e.ry ?? e.y) - (e.fly ? 2.3 : e.k === K.special ? 1.8 : 1.4));
     const tw = ctx.measureText(b.text).width + 14, bx = clamp(px - tw / 2, 4, VW - tw - 4);
     ctx.globalAlpha = clamp(b.life * 2, 0, 1);
     ctx.fillStyle = '#05020c'; ctx.fillRect(bx + 2, py - 22, tw, 22);
@@ -2489,7 +2653,7 @@ function pickEnt(sx, sy) {
     if (e.size) {
       if (x >= e.bx && x <= e.bx + e.size && y >= e.by - 0.6 && y <= e.by + e.size) { const d = 2 + dist(x, y, e.x, e.y) * 0.1; if (d < bd) { bd = d; best = e; } }
     } else {
-      const h = e.k === K.special ? 0.7 : 0.45, d = dist(x, y, e.x, e.y - h);
+      const h = e.fly ? 1.2 : e.k === K.special ? 0.7 : 0.45, d = dist(x, y, e.x, e.y - h);
       if (d < e.r + 0.35 && d < bd) { bd = d; best = e; }
     }
   }
@@ -2804,6 +2968,7 @@ function drawIcon(c, name, S, w) {
     case 'rally': line(c, 16 * u, 38 * u, 16 * u, 8 * u, '#ddd', 3 * u); poly(c, P ? P.color : '#7dff6a', 17 * u, 8 * u, 36 * u, 14 * u, 17 * u, 21 * u); break;
     case 'cancel': line(c, 12 * u, 12 * u, 34 * u, 34 * u, '#ff4f4f', 6 * u); line(c, 34 * u, 12 * u, 12 * u, 34 * u, '#ff4f4f', 6 * u); break;
     case 'upAtk': line(c, 10 * u, 36 * u, 30 * u, 14 * u, '#dfe6ee', 5 * u); line(c, 14 * u, 26 * u, 20 * u, 32 * u, '#c9a85a', 4 * u); box(c, 30 * u, 26 * u, 12 * u, 4 * u, '#7dff6a'); box(c, 34 * u, 22 * u, 4 * u, 12 * u, '#7dff6a'); break;
+    case 'upWood': line(c, 12 * u, 36 * u, 28 * u, 12 * u, '#7a5530', 4 * u); poly(c, '#b8bec8', 24 * u, 6 * u, 36 * u, 12 * u, 30 * u, 22 * u, 22 * u, 16 * u); box(c, 30 * u, 26 * u, 12 * u, 4 * u, '#7dff6a'); box(c, 34 * u, 22 * u, 4 * u, 12 * u, '#7dff6a'); break;
     case 'upArm': poly(c, '#9aa2ad', 8 * u, 8 * u, 32 * u, 8 * u, 30 * u, 26 * u, 20 * u, 36 * u, 10 * u, 26 * u); box(c, 30 * u, 26 * u, 12 * u, 4 * u, '#7dff6a'); box(c, 34 * u, 22 * u, 4 * u, 12 * u, '#7dff6a'); break;
   }
 }
@@ -2818,7 +2983,7 @@ function buildCards() {
   if (units.length) {
     const workers = units.filter(e => e.k === K.worker);
     if (buildMenu && workers.length) {
-      for (const [kind, key] of [['hall', 'H'], ['farm', 'F'], ['barracks', 'B'], ['lab', 'L'], ['tower', 'T']]) {
+      for (const [kind, key] of [['hall', 'H'], ['farm', 'F'], ['barracks', 'B'], ['mill', 'M'], ['lab', 'L'], ['tower', 'T']]) {
         const d = DEFS[P.race][K[kind]], req = d.req && !hasReq(w, w.me, d);
         cards.push(card({ bld: K[kind], race: P.race, color: col }, key, d.name, descOf(P.race, kind), () => { placing = { k: K[kind] }; targeting = null; refreshHud(true); },
           { cost: [d.g, d.w], disabled: req, why: req ? `Needs a ${R.names[d.req]}.` : '', on2: placing && placing.k === K[kind] }));
@@ -2841,18 +3006,18 @@ function buildCards() {
   }
   const b = blds[0], d = def(w, b);
   if (!b.built) { cards.push(card('cancel', 'X', 'Cancel construction', 'Stop building and get 75% of the money back.', () => issue({ c: 'cancel', ids: [b.id] }))); return cards; }
-  const keys = ['Q', 'W', 'E'];
+  const keys = d.kind === 'lab' ? ['E'] : ['Q', 'W', 'E'];
   (TRAINS[d.kind] || []).forEach((kind, i) => {
     const ud = DEFS[P.race][K[kind]], req = ud.req && !hasReq(w, w.me, ud);
     cards.push(card({ unit: K[kind], race: P.race, color: col }, keys[i], `Train ${ud.name}`, R.desc[kind] || '',
       () => { if (!canAfford(P, ud)) { msg('Not enough gold or wood.', '#ff4fa3'); sfx('nope'); return; } issue({ c: 'train', ids: [b.id], k: K[kind] }); sfx('click'); },
       { cost: [ud.g, ud.w, ud.food], disabled: req, why: req ? `Needs a ${R.names[ud.req]}.` : '', stats: ud }));
   });
-  if (d.kind === 'lab') {
-    for (const [i, key] of [[0, 'Q'], [1, 'W']]) {
+  if (d.kind === 'lab' || d.kind === 'mill') {
+    for (const [i, key] of d.kind === 'lab' ? [[0, 'Q'], [1, 'W']] : [[2, 'Q']]) {
       const queued = w.ents.filter(e => e.o === w.me && e.queue && e.queue.includes(UP_ATK + i)).length, lvl = P.up[i] + queued;
-      const maxed = lvl >= 2, cost = maxed ? null : upCost(lvl, P.race);
-      cards.push(card(i ? 'upArm' : 'upAtk', key, `${R.ups[i]} ${'I'.repeat(Math.min(2, lvl + 1))}`, i ? 'All your units take 2 less damage per hit.' : 'All your units and towers hit 2 harder.',
+      const maxed = lvl >= 2, cost = maxed ? null : upCost(lvl, P.race, i);
+      cards.push(card(['upAtk', 'upArm', 'upWood'][i], key, `${R.ups[i]} ${'I'.repeat(Math.min(2, lvl + 1))}`, ['All your units and towers hit 2 harder.', 'All your units take 2 less damage per hit.', `${R.workers} bring back ${WOOD_PER_UP} more wood per trip.`][i],
         () => { if (P.g < cost[0] || P.w < cost[1]) { msg('Not enough gold or wood.', '#ff4fa3'); sfx('nope'); return; } issue({ c: 'train', ids: [b.id], k: UP_ATK + i }); sfx('click'); },
         { cost: cost ? [cost[0], cost[1]] : null, disabled: maxed, why: maxed ? 'Fully researched.' : '' }));
     }
@@ -2888,7 +3053,7 @@ function showTip(btn, c) {
   tip.replaceChildren();
   const h = document.createElement('b'); h.textContent = c.title + (c.key ? `  [${c.key === 'Escape' ? 'ESC' : c.key}]` : ''); tip.append(h);
   if (c.text) tip.append(document.createTextNode(c.text));
-  if (c.stats) { const s = document.createElement('div'); s.style.color = 'var(--dim)'; s.textContent = `HP ${c.stats.hp} · DMG ${c.stats.kaboom ? c.stats.kaboom.dmg + ' (boom)' : c.stats.dmg} · ARM ${c.stats.arm} · RANGE ${c.stats.rng > 1 ? Math.round(c.stats.rng) : 'melee'}`; tip.append(s); }
+  if (c.stats) { const s = document.createElement('div'); s.style.color = 'var(--dim)'; s.textContent = `HP ${c.stats.hp} · DMG ${c.stats.kaboom ? c.stats.kaboom.dmg + ' (boom)' : c.stats.dmg} · ARM ${c.stats.arm} · RANGE ${c.stats.rng > 1 ? Math.round(c.stats.rng) : 'melee'} · ${c.stats.fly ? 'FLIES' : c.stats.hitsAir ? 'HITS AIR' : 'CAN\'T HIT FLYERS'}`; tip.append(s); }
   if (c.cost) { const s = document.createElement('div'); s.className = 'cost'; s.textContent = `${c.cost[0]} gold · ${c.cost[1]} wood` + (c.cost[2] ? ` · ${c.cost[2]} food` : ''); if (P && (P.g < c.cost[0] || P.w < c.cost[1])) s.className = 'no'; tip.append(s); }
   if (c.why) { const s = document.createElement('div'); s.className = 'no'; s.textContent = c.why; tip.append(s); }
   tip.hidden = false;
@@ -2950,12 +3115,12 @@ function renderInfo() {
     const hb = document.createElement('div'); hb.className = 'hpbar'; const hi = document.createElement('i'); hi.style.width = clamp(e.hp / d.hp, 0, 1) * 100 + '%'; hb.append(hi);
     const hp = document.createElement('div'); hp.className = 'sub'; hp.textContent = `${Math.ceil(e.hp)} / ${d.hp} HP`;
     txt.append(hb, hp);
-    const desc = d.desc || (owner ? descOf(owner.race, d.kind) : '');
+    const desc = (isBldK(e.k) && owner ? descOf(owner.race, d.kind) : d.desc) || '';
     if (isUnitK(e.k)) {
       const st = document.createElement('div'); st.className = 'stats';
       const up = owner ? owner.up : [0, 0];
       const dmg = d.kaboom ? `${d.kaboom.dmg} boom` : `${d.dmg}${up[0] ? '+' + up[0] * 2 : ''}`;
-      st.innerHTML = `<span>DMG <b>${dmg}</b></span><span>ARM <b>${d.arm}${up[1] ? '+' + up[1] * 2 : ''}</b></span><span>RANGE <b>${d.rng > 1 ? Math.round(d.rng) : 'melee'}</b></span><span>SPEED <b>${d.spd.toFixed(1)}</b></span>`;
+      st.innerHTML = `<span>DMG <b>${dmg}</b></span><span>ARM <b>${d.arm}${up[1] ? '+' + up[1] * 2 : ''}</b></span><span>RANGE <b>${d.rng > 1 ? Math.round(d.rng) : 'melee'}</b></span><span>SPEED <b>${d.spd.toFixed(1)}</b></span><span>${d.fly ? '<b>FLIES</b>' : d.hitsAir ? 'HITS <b>AIR</b>' : 'GROUND ONLY'}</span>`;
       txt.append(st);
       const s = document.createElement('div'); s.className = 'sub';
       s.textContent = e.carry ? `Carrying ${e.cAmt || CARRY} ${e.carry === 1 ? 'gold' : 'wood'}.` : desc;
@@ -2969,17 +3134,17 @@ function renderInfo() {
       e.queue.forEach((k, i) => {
         const b = document.createElement('button'); b.type = 'button'; b.title = 'Click to cancel';
         const c = document.createElement('canvas'); c.width = 60; c.height = 60; const x = c.getContext('2d'); x.scale(2, 2);
-        drawIcon(x, k >= UP_ATK ? (k === UP_ATK ? 'upAtk' : 'upArm') : { unit: k, race: owner.race, color: owner.color }, 30, w);
+        drawIcon(x, k >= UP_ATK ? ['upAtk', 'upArm', 'upWood'][k - UP_ATK] : { unit: k, race: owner.race, color: owner.color }, 30, w);
         b.append(c);
         b.onpointerdown = ev => { ev.preventDefault(); issue({ c: 'cancel', ids: [e.id], i }); };
         q.append(b);
       });
-      const k = e.queue[0], total = k >= UP_ATK ? UP_COST[Math.min(1, owner.up[k - UP_ATK])][2] : DEFS[owner.race][k].t;
+      const k = e.queue[0], total = k >= UP_ATK ? upCost(owner.up[k - UP_ATK], owner.race, k - UP_ATK)[2] : DEFS[owner.race][k].t;
       const pg = document.createElement('div'); pg.className = 'prog'; const pi = document.createElement('i'); pi.style.width = clamp(e.qt / total, 0, 1) * 100 + '%'; pg.append(pi);
       txt.append(q, pg);
     } else {
       const s = document.createElement('div'); s.className = 'sub'; s.textContent = desc; txt.append(s);
-      if (d.kind === 'lab' && owner) { const s2 = document.createElement('div'); s2.className = 'sub'; s2.textContent = `${RACES[owner.race].ups[0]} ${owner.up[0]}/2 · ${RACES[owner.race].ups[1]} ${owner.up[1]}/2`; txt.append(s2); }
+      if ((d.kind === 'lab' || d.kind === 'mill') && owner) { const s2 = document.createElement('div'); s2.className = 'sub'; const R = RACES[owner.race]; s2.textContent = d.kind === 'lab' ? `${R.ups[0]} ${owner.up[0]}/2 · ${R.ups[1]} ${owner.up[1]}/2` : `${R.ups[2]} ${owner.up[2]}/2`; txt.append(s2); }
     }
   }
   box.replaceChildren(pic, txt);
@@ -3027,7 +3192,7 @@ function encodeEnts(w) {
 let netEv = [];
 function sendSnapshots(w) {
   const e = encodeEnts(w);
-  const p = w.players.map(P => [Math.floor(P.g), Math.floor(P.w), P.food, P.cap, P.up[0], P.up[1], P.alive ? 1 : 0]);
+  const p = w.players.map(P => [Math.floor(P.g), Math.floor(P.w), P.food, P.cap, P.up[0], P.up[1], P.alive ? 1 : 0, P.up[2]]);
   const ev = netEv; netEv = [];
   for (const pl of net.players) {
     const dc = pl.conn.dataChannel;
@@ -3043,7 +3208,7 @@ function applySnapshot(w, m) {
   const seen = new Set();
   for (const d of m.e) {
     if (!Array.isArray(d)) continue;
-    const id = d[0] | 0, k = clamp(d[1] | 0, 0, 9), o = k === K.mine ? -1 : clamp(d[2] | 0, 0, w.players.length - 1);
+    const id = d[0] | 0, k = clamp(d[1] | 0, 0, KINDS.length - 1), o = k === K.mine ? -1 : clamp(d[2] | 0, 0, w.players.length - 1);
     seen.add(id);
     let e = w.byId.get(id);
     if (!e || e.k !== k) {
@@ -3066,7 +3231,7 @@ function applySnapshot(w, m) {
       e.moving = !!(f & F_MOVE); if (f & F_ATK) e.atkT = 0.3;
       e.carry = f & F_GOLD ? 1 : f & F_WOOD ? 2 : 0; e.hidden = !!(f & F_HIDDEN); e.chopping = !!(f & F_CHOP); e.st = f & F_IDLE ? 'idle' : 'busy';
       e.face = d[7] < 0 ? -1 : 1; e.cAmt = d[8] | 0;
-      e.r = def(w, e).r;
+      e.r = def(w, e).r; e.fly = !!def(w, e).fly;
     }
   }
   for (const e of w.ents.slice()) if (!seen.has(e.id)) { w.byId.delete(e.id); w.ents.splice(w.ents.indexOf(e), 1); e.dead = true; }
@@ -3074,7 +3239,7 @@ function applySnapshot(w, m) {
   for (const e of w.ents) if (e.size) for (let y = e.by; y < e.by + e.size; y++) for (let x = e.bx; x < e.bx + e.size; x++) if (inMap(w, x, y)) w.occ[y * w.W + x] = e.id;
   if (Array.isArray(m.p)) m.p.forEach((d, i) => {
     const P = w.players[i]; if (!P || !Array.isArray(d)) return;
-    [P.g, P.w, P.food, P.cap] = d.map(v => +v || 0); P.up = [d[4] | 0, d[5] | 0]; P.alive = !!d[6];
+    [P.g, P.w, P.food, P.cap] = d.map(v => +v || 0); P.up = [d[4] | 0, d[5] | 0, d[7] | 0]; P.alive = !!d[6];
   });
   if (Array.isArray(m.tr)) for (const i of m.tr) removeTree(w, i | 0);
   if (Array.isArray(m.ev)) runEvents(w, m.ev);
@@ -3335,7 +3500,7 @@ function renderRaceInfo() {
     const x = c.getContext('2d'); x.scale(2, 2); drawUnit(x, rk, K.melee, COLORS[i % 4], 24, 42, 44, { t: 0, face: 1 });
     const t = document.createElement('span');
     const b = document.createElement('b'); b.textContent = R.name.toUpperCase();
-    t.append(b, `${R.passive} Units: ${R.names.worker}, ${R.names.melee}, ${R.names.ranged} and the ${R.names.special}.`);
+    t.append(b, `${R.passive} Units: ${R.names.worker}, ${R.names.melee}, ${R.names.ranged}, the ${R.names.special} and the flying ${R.names.flyer}.`);
     d.append(c, t); return d;
   }));
 }

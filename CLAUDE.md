@@ -128,7 +128,8 @@ broker is on the internet, so this needs a network connection even on localhost.
 sections in this order:
 
 - **Constants and game data**: `BASE` stats per kind (worker, melee, ranged, special, hall,
-  farm, barracks, lab, tower, mine) and `RACES` (Humans, Orcs, Goblins, Funguys, Bugs) with
+  farm, barracks, lab, tower, mine, mill, flyer; the index in `KINDS` goes over the network,
+  so add new kinds at the end) and `RACES` (Humans, Orcs, Goblins, Funguys, Bugs) with
   names, jokes, a passive and per-kind overrides (`over`). `DEFS[race][kindIndex]` is the
   merged result. Balance changes go in `BASE`/`RACES`, not in the simulation code. `AI_DIFF`
   tunes the CPU levels.
@@ -140,7 +141,9 @@ sections in this order:
   `boom`). Local players, CPU players and online guests all go through it, so it's the one
   place to validate and the one place to add a new order.
 - **Simulation**: `step(w)` at 20 steps a second; units are small state machines
-  (`unitTick`: idle, move, attack, gather, return, build, inside). Things the screen should
+  (`unitTick`: idle, move, attack, gather, return, build, inside). Flyers (`e.fly`) skip
+  pathfinding and fly straight; `canHit()` decides who can hit them (`hitsAir` on a def).
+  Upgrades are queue items `UP_ATK`/`UP_ARM` (lab) and `UP_WOOD` (mill), levels in `P.up`. Things the screen should
   show (sounds, projectiles, messages) are pushed to `w.ev` as `[name, ...args]` and played
   by `runEvent()`, on the host and on guests alike.
 - **CPU players**: `aiThink()` once a second per CPU, issuing commands through `applyCmd`.

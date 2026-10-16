@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="640" height="400">
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c58b54"/>
+      <stop offset="1" stop-color="#a16536"/>
+    </linearGradient>
+    <pattern id="gingham" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="#f6f1ea"/>
+      <rect width="6" height="12" fill="#d62834" fill-opacity=".42"/>
+      <rect width="12" height="6" fill="#d62834" fill-opacity=".42"/>
+    </pattern>
+    <g id="cheerio">
+      <circle r="3.4" fill="#d98c2b"/><circle cx="-.6" cy="-.6" r="2.4" fill="#f2b04d"/><circle r="1.2" fill="#5a2c0c"/>
+    </g>
+  </defs>
+
+  <!-- table -->
+  <rect width="320" height="200" fill="url(#wood)"/>
+  <g stroke="#5a2d0e" stroke-opacity=".16" stroke-width="1" fill="none">
+    <path d="M0 18 Q80 14 160 19 T320 16"/><path d="M0 44 Q90 48 170 42 T320 46"/><path d="M0 92 Q70 88 150 94 T320 90"/>
+    <path d="M0 132 Q100 136 190 130 T320 134"/><path d="M0 176 Q80 172 170 178 T320 174"/>
+  </g>
+  <rect y="66" width="320" height="2" fill="#5a2d0e" fill-opacity=".3"/>
+  <rect y="150" width="320" height="2" fill="#5a2d0e" fill-opacity=".3"/>
+
+  <!-- the track: a gingham runner with cereal along the edges -->
+  <path d="M-20 150 C40 150 60 112 110 112 C160 112 170 160 220 158 C270 156 280 96 250 70 C226 48 180 62 150 46 C120 30 120 10 140 -20"
+        fill="none" stroke="#7a1418" stroke-opacity=".55" stroke-width="54" stroke-linecap="round"/>
+  <path d="M-20 150 C40 150 60 112 110 112 C160 112 170 160 220 158 C270 156 280 96 250 70 C226 48 180 62 150 46 C120 30 120 10 140 -20"
+        fill="none" stroke="url(#gingham)" stroke-width="48" stroke-linecap="round"/>
+  <path d="M-20 150 C40 150 60 112 110 112 C160 112 170 160 220 158 C270 156 280 96 250 70 C226 48 180 62 150 46 C120 30 120 10 140 -20"
+        fill="none" stroke="#a0141e" stroke-opacity=".55" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <g>
+    <use href="#cheerio" x="10" y="122"/><use href="#cheerio" x="28" y="120"/><use href="#cheerio" x="46" y="112"/><use href="#cheerio" x="62" y="99"/>
+    <use href="#cheerio" x="80" y="89"/><use href="#cheerio" x="100" y="86"/><use href="#cheerio" x="120" y="87"/><use href="#cheerio" x="140" y="94"/>
+    <use href="#cheerio" x="10" y="177"/><use href="#cheerio" x="30" y="176"/><use href="#cheerio" x="50" y="170"/><use href="#cheerio" x="70" y="157"/>
+    <use href="#cheerio" x="90" y="141"/><use href="#cheerio" x="110" y="138"/><use href="#cheerio" x="132" y="143"/><use href="#cheerio" x="150" y="160"/>
+    <use href="#cheerio" x="170" y="176"/><use href="#cheerio" x="196" y="185"/><use href="#cheerio" x="224" y="185"/><use href="#cheerio" x="250" y="178"/>
+    <use href="#cheerio" x="272" y="160"/><use href="#cheerio" x="284" y="134"/><use href="#cheerio" x="284" y="104"/><use href="#cheerio" x="274" y="76"/>
+    <use href="#cheerio" x="258" y="54"/><use href="#cheerio" x="200" y="132"/><use href="#cheerio" x="222" y="132"/><use href="#cheerio" x="242" y="122"/>
+    <use href="#cheerio" x="252" y="102"/><use href="#cheerio" x="236" y="88"/>
+  </g>
+
+  <!-- start line -->
+  <g transform="translate(60 132) rotate(-62)">
+    <rect x="-24" y="-4" width="48" height="8" fill="#f4f4f4"/>
+    <g fill="#111"><rect x="-24" y="-4" width="4" height="4"/><rect x="-16" y="-4" width="4" height="4"/><rect x="-8" y="-4" width="4" height="4"/><rect x="0" y="-4" width="4" height="4"/><rect x="8" y="-4" width="4" height="4"/><rect x="16" y="-4" width="4" height="4"/>
+      <rect x="-20" y="0" width="4" height="4"/><rect x="-12" y="0" width="4" height="4"/><rect x="-4" y="0" width="4" height="4"/><rect x="4" y="0" width="4" height="4"/><rect x="12" y="0" width="4" height="4"/><rect x="20" y="0" width="4" height="4"/></g>
+  </g>
+
+  <!-- cereal bowl -->
+  <circle cx="64" cy="44" r="38" fill="#000" fill-opacity=".3"/>
+  <circle cx="58" cy="38" r="38" fill="#e7ecf5"/>
+  <circle cx="58" cy="38" r="38" fill="none" stroke="#6f86b4" stroke-width="2.5"/>
+  <circle cx="58" cy="38" r="34" fill="none" stroke="#3f5fa8" stroke-width="1.5"/>
+  <circle cx="58" cy="38" r="30" fill="#f3eee2"/>
+  <use href="#cheerio" x="48" y="30"/><use href="#cheerio" x="62" y="26"/><use href="#cheerio" x="70" y="40"/><use href="#cheerio" x="54" y="46"/>
+  <use href="#cheerio" x="42" y="42"/><use href="#cheerio" x="64" y="52"/><use href="#cheerio" x="74" y="28"/>
+  <rect x="62" y="8" width="34" height="6" rx="3" fill="#c9ced8" transform="rotate(-30 62 8)"/>
+
+  <!-- sugar cube and a splash of milk -->
+  <rect x="290" y="180" width="18" height="18" fill="#000" fill-opacity=".25" transform="rotate(20 299 189)"/>
+  <rect x="287" y="176" width="18" height="18" fill="#fbfbff" transform="rotate(20 296 185)"/>
+  <circle cx="196" cy="102" r="12" fill="#f7f4ec"/><circle cx="208" cy="96" r="8" fill="#f7f4ec"/><circle cx="192" cy="92" r="6" fill="#f7f4ec"/>
+  <ellipse cx="193" cy="98" rx="4" ry="2" fill="#fff"/>
+
+  <!-- cars, nose to the right of each one -->
+  <g transform="translate(232 150) rotate(-18)">
+    <ellipse cx="2" cy="3" rx="14" ry="8" fill="#000" fill-opacity=".3"/>
+    <g fill="#16141c"><rect x="-11" y="-9" width="7" height="4"/><rect x="-11" y="5" width="7" height="4"/><rect x="5" y="-9" width="7" height="4"/><rect x="5" y="5" width="7" height="4"/></g>
+    <rect x="-14" y="-7" width="28" height="14" rx="4" fill="#ff4f4f"/>
+    <rect x="-13" y="-1.5" width="26" height="3" fill="#fff" fill-opacity=".75"/>
+    <path d="M1 -5 L7 -4 L7 4 L1 5Z" fill="#1b2340"/><rect x="-9" y="-4" width="3" height="8" fill="#1b2340"/>
+  </g>
+  <g transform="translate(196 140) rotate(4)">
+    <ellipse cx="2" cy="3" rx="14" ry="8" fill="#000" fill-opacity=".3"/>
+    <g fill="#16141c"><rect x="-12" y="-10" width="8" height="5"/><rect x="-12" y="5" width="8" height="5"/><rect x="6" y="-9" width="7" height="4"/><rect x="6" y="5" width="7" height="4"/></g>
+    <rect x="-12" y="-3.5" width="26" height="7" rx="3" fill="#3f8cff"/>
+    <rect x="12" y="-8" width="3" height="16" fill="#3f8cff"/><rect x="-16" y="-8" width="4" height="16" fill="#222"/>
+    <circle cx="-2" cy="0" r="2.6" fill="#222"/><circle cx="-2" cy="0" r="1.3" fill="#ffd23f"/>
+  </g>
+  <g transform="translate(266 98) rotate(-78)">
+    <ellipse cx="2" cy="3" rx="14" ry="9" fill="#000" fill-opacity=".3"/>
+    <g fill="#16141c"><rect x="-12" y="-10" width="8" height="5"/><rect x="-12" y="5" width="8" height="5"/><rect x="5" y="-10" width="8" height="5"/><rect x="5" y="5" width="8" height="5"/></g>
+    <rect x="-13" y="-8" width="26" height="16" rx="3" fill="#ffd23f"/>
+    <rect x="3" y="-6" width="3" height="12" fill="#1b2340"/><rect x="-7" y="-8" width="2.5" height="16" fill="#2a2a33"/>
+    <circle cx="-14" cy="0" r="3.5" fill="#16141c"/>
+  </g>
+  <!-- skid marks behind the leader -->
+  <path d="M170 150 Q190 158 214 156" fill="none" stroke="#3c190a" stroke-opacity=".3" stroke-width="2"/>
+  <path d="M170 160 Q192 166 216 164" fill="none" stroke="#3c190a" stroke-opacity=".3" stroke-width="2"/>
+  <!-- turbo pad -->
+  <g transform="translate(150 50) rotate(205)">
+    <rect x="-12" y="-10" width="24" height="20" rx="3" fill="#140c28" fill-opacity=".75"/>
+    <path d="M-8 -6 L-2 0 L-8 6 M0 -6 L6 0 L0 6" fill="none" stroke="#ffd23f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

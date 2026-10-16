@@ -183,11 +183,11 @@ details p{margin:10px 0}
 <div id="top" hidden>
   <span class="res" title="Gold"><i class="gold"></i><span id="rGold">0</span></span>
   <span class="res" title="Wood"><i class="wood"></i><span id="rWood">0</span></span>
-  <span class="res" title="Food used / food you have. Build farms for more."><i class="food"></i><span id="rFood">0/0</span></span>
+  <span class="res" id="foodRes" title="Food used / food you have."><i class="food"></i><span id="rFood">0/0</span></span>
   <span id="clock">00:00</span>
   <span id="netInfo"></span>
   <span class="sp"></span>
-  <button class="tbtn" style="--c:var(--yellow)" id="idleBtn" type="button" title="Select an idle worker (.)">IDLE <b id="idleN">0</b></button>
+  <button class="tbtn" style="--c:var(--yellow)" id="idleBtn" type="button" title="Select a worker with nothing to do (.)">IDLE <b id="idleN">0</b></button>
   <button class="tbtn" style="--c:var(--orange)" id="armyBtn" type="button" title="Select your whole army (,)">ARMY</button>
   <button class="tbtn" style="--c:var(--cyan)" id="muteBtn" type="button" title="Sound on/off">SND</button>
   <button class="tbtn" style="--c:var(--pink)" id="menuBtn" type="button" title="Menu (F10)">MENU</button>
@@ -234,7 +234,7 @@ details p{margin:10px 0}
 
     <details>
       <summary>HOW TO PLAY</summary>
-      <p>Your workers mine <b style="color:var(--yellow);font-weight:400">gold</b> from gold mines and chop <b style="color:#c58a4a;font-weight:400">wood</b> from trees, and carry it back to your hall. Spend it on buildings and an army. Every unit eats food: build farms to feed more. Destroy every building of the other teams to win.</p>
+      <p>Your workers mine <b style="color:var(--yellow);font-weight:400">gold</b> from gold mines and chop <b style="color:#c58a4a;font-weight:400">wood</b> from trees, and carry it back to your hall. Spend it on buildings and an army. Every unit eats food, so build food buildings (Farms, Pig Farms, Rat Hutches, Compost Heaps or Aphid Ranches, depending on your race) to feed more. Destroy every building of the other teams to win.</p>
       <p><b style="color:var(--cyan);font-weight:400">Online:</b> pick HOST ONLINE, set some players to ONLINE PLAYER and open a room. Friends pick JOIN ONLINE, choose a race and type the room code, or open the invite link.</p>
       <div class="races" id="raceInfo"></div>
       <div class="keys">
@@ -340,7 +340,7 @@ const RACES = {
     over: { special: { hp: 200, dmg: 15, spd: 3.1, arm: 4 } },
     ups: ['Sharper Swords', 'Agile Plate'],
     quips: ['Yes, milord?', 'Have you tried turning it off and on again?', 'Per my last email…', 'Ready to work. Remotely.', 'Ni!', 'Ticket received.', 'On it. ETA: two sprints.'],
-    ready: 'Job done!', alert: 'Our base is under attack! This is not a drill.', voice: 1.0,
+    workers: 'Interns', farms: 'Farms', ready: 'Job done!', alert: 'Our base is under attack! This is not a drill.', voice: 1.0,
   },
   orcs: {
     name: 'Orcs', short: 'ORCS', skin: '#6aa33f', dark: '#3d6324', proj: 'spear', hp: 1.15,
@@ -351,7 +351,7 @@ const RACES = {
     over: { special: { hp: 250, dmg: 18, cd: 1.6, spd: 2.0, cleave: 1.0 } },
     ups: ['Spikier Axes', 'Thicker Hides'],
     quips: ['Zug zug.', 'Work work.', 'Me not that kind of orc!', 'Smash first, debug later.', 'Ready to smash.', 'Dabu.', 'Lok\'tar!'],
-    ready: 'Work complete!', alert: 'Enemies at the gate! Smash them!', voice: 0.7,
+    workers: 'Peons', farms: 'Pig Farms', ready: 'Work complete!', alert: 'Enemies at the gate! Smash them!', voice: 0.7,
   },
   goblins: {
     name: 'Goblins', short: 'GOBLINS', skin: '#a6c94a', dark: '#5f7a22', proj: 'zap', hp: 0.85, cost: 0.8, spd: 1.05,
@@ -362,7 +362,7 @@ const RACES = {
     over: { special: { hp: 70, dmg: 0, arm: 1, spd: 3.4, g: 90, w: 50, t: 18, food: 1, r: 0.36, kaboom: { dmg: 120, r: 1.8 } } },
     ups: ['Bigger Batteries', 'Duct Tape Armour'],
     quips: ['Time is money, friend!', 'Ooh, shiny!', 'Boom? Boom!', 'It\'s not a bug, it\'s explosives.', 'Gimme gimme.', 'Yes boss, right away boss!', 'Who touched my wrench?'],
-    ready: 'Done! Don\'t lean on it.', alert: 'Somebody\'s smashing our stuff!', voice: 1.35,
+    workers: 'Gobbos', farms: 'Rat Hutches', ready: 'Done! Don\'t lean on it.', alert: 'Somebody\'s smashing our stuff!', voice: 1.35,
   },
   funguys: {
     name: 'Funguys', short: 'FUNGUYS', skin: '#f4ead6', dark: '#a8957a', proj: 'spore', regen: 0.8,
@@ -373,7 +373,7 @@ const RACES = {
     over: { ranged: { splash: 0.8 }, special: { hp: 240, dmg: 12, spd: 1.7, aura: 3.5 } },
     ups: ['Toxic Spores', 'Tougher Stalks'],
     quips: ['I\'m a fun guy!', 'There\'s mush room for activity.', 'Spore-ty time!', 'Morel support incoming.', 'Shiitake happens.', 'Don\'t be a portabellend.', 'I can\'t, I\'m all stalk.'],
-    ready: 'Fully grown!', alert: 'Somebody is stepping on our shrooms!', voice: 1.2,
+    workers: 'Sporelings', farms: 'Compost Heaps', ready: 'Fully grown!', alert: 'Somebody is stepping on our shrooms!', voice: 1.2,
   },
   bugs: {
     name: 'Bugs', short: 'BUGS', skin: '#3a3328', dark: '#1d1914', proj: 'spit', hp: 0.9, spd: 1.2,
@@ -384,7 +384,7 @@ const RACES = {
     over: { melee: { arm: 3 }, special: { hp: 150, dmg: 15, spd: 2.6, dodge: 0.35 } },
     ups: ['Sharper Mandibles', 'Harder Shells'],
     quips: ['It\'s not a bug, it\'s a feature.', 'Works on my machine.', 'Bzzzt. Acknowledged.', 'Off by one? Off by one.', '*clicks mandibles*', 'Segfault? Sounds tasty.', 'Can\'t reproduce.'],
-    ready: 'Hatched!', alert: 'The hive is under attack! Swarm!', voice: 1.6,
+    workers: 'Anterns', farms: 'Aphid Ranches', ready: 'Hatched!', alert: 'The hive is under attack! Swarm!', voice: 1.6,
   },
 };
 const RACE_KEYS = Object.keys(RACES);
@@ -408,10 +408,13 @@ for (const rk of RACE_KEYS) {
   });
 }
 DEFS.none = KINDS.map((kind, k) => ({ ...BASE[kind], kind, k, race: 'humans', name: 'Gold Mine', desc: 'Workers bring gold out of here. It runs dry eventually.' }));
-const DESC = {
-  hall: 'Trains workers. Workers drop off gold and wood here. Feeds 5.',
-  farm: 'Feeds 5 more units.',
-  barracks: 'Trains your army.',
+// descriptions that name the race's own units
+const descOf = (rk, kind) => {
+  const R = RACES[rk];
+  if (kind === 'hall') return `Trains ${R.workers}. ${R.workers} drop off gold and wood here. Feeds 5.`;
+  if (kind === 'farm') return `Feeds 5 more units.`;
+  if (kind === 'barracks') return `Trains your army: ${R.names.melee}, ${R.names.ranged} and ${R.names.special}.`;
+  return R.desc[kind] || '';
 };
 const upCost = (lvl, rk) => UP_COST[lvl].map((v, i) => i < 2 ? Math.round(v * (RACES[rk].cost || 1)) : v);
 
@@ -589,7 +592,7 @@ function makeWorld(cfg, replica) {
       stats: { made: 0, kills: 0, lost: 0, gold: 0, wood: 0, built: 0 }, ai: null,
     })),
     vis: new Uint8Array(N), exp: new Uint8Array(N), fogT: 0,
-    fx: { proj: [], parts: [], texts: [], bubbles: [], pings: [], marks: [] },
+    fx: { proj: [], parts: [], texts: [], bubbles: [], pings: [], marks: [], rings: [] },
     seen: new Map(),       // enemy buildings you saw once, still drawn in the fog
   };
   if (!replica) {
@@ -1556,7 +1559,7 @@ function shade(hex, f) {
   return `rgb(${r | 0},${g | 0},${b | 0})`;
 }
 
-// ---------- terrain (painted once, tiles repainted when a tree falls) ----------
+// ---------- terrain (painted once, patched up when a tree falls) ----------
 function buildTerrain(w) {
   w.terCv = document.createElement('canvas'); w.terCv.width = w.W * TS; w.terCv.height = w.H * TS;
   w.terCtx = w.terCv.getContext('2d');
@@ -1564,56 +1567,133 @@ function buildTerrain(w) {
   w.miniCtx = w.miniCv.getContext('2d');
   w.fogCv = document.createElement('canvas'); w.fogCv.width = w.W; w.fogCv.height = w.H;
   w.fogCtx = w.fogCv.getContext('2d'); w.fogImg = w.fogCtx.createImageData(w.W, w.H);
-  for (let i = 0; i < w.N; i++) paintTile(w, i);
+  // big soft patches of lighter and darker grass, so the ground isn't one flat colour
+  const rng = mulberry32(w.cfg.seed ^ 0x5eed);
+  w.tone = valueNoise(rng, w.W, w.H, 6);
+  w.tone2 = valueNoise(rng, w.W, w.H, 2);
+  const th = w.theme;
+  th.grassRGB = th.grassRGB || th.grass.map(h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+  paintRegion(w, 0, 0, w.W - 1, w.H - 1);
 }
-function paintTile(w, i) {
-  const c = w.terCtx, th = w.theme, x = (i % w.W) * TS, y = ((i / w.W) | 0) * TS, t = w.ter[i], d = w.deco[i];
-  const px = (ox, oy, sz, col) => { c.fillStyle = col; c.fillRect(x + ox, y + oy, sz, sz); };
-  const ground = t === T_DIRT ? th.dirt : th.grass[d % 3];
-  c.fillStyle = ground; c.fillRect(x, y, TS, TS);
-  for (let k = 0; k < 5; k++) { const v = (d * (k + 7) * 37) & 255; px((v * 7) % 30, (v * 13) % 30, 2, shade(ground, (v & 1 ? 0.12 : -0.12))); }
-  if (t === T_GRASS && d > 246) { px(10 + d % 12, 12, 3, th.snow ? '#9fd0ff' : '#ffd23f'); px(18, 20 - d % 6, 3, th.snow ? '#ffffff' : '#ff8fc8'); }
-  const mc = th.mini;
-  let mini = t === T_DIRT ? mc.d : mc.g;
-  if (t === T_WATER) {
-    c.fillStyle = th.water; c.fillRect(x, y, TS, TS);
-    c.fillStyle = th.water2;
-    for (let k = 0; k < 3; k++) c.fillRect(x + ((d + k * 11) % 22), y + 6 + k * 9, 8, 2);
-    // shores
-    const W = w.W, gx = i % W, gy = (i / W) | 0;
-    c.fillStyle = th.snow ? '#e8f2ff' : '#c9b783';
-    if (gy > 0 && w.ter[i - W] !== T_WATER) c.fillRect(x, y, TS, 3);
-    if (gy < w.H - 1 && w.ter[i + W] !== T_WATER) c.fillRect(x, y + TS - 3, TS, 3);
-    if (gx > 0 && w.ter[i - 1] !== T_WATER) c.fillRect(x, y, 3, TS);
-    if (gx < W - 1 && w.ter[i + 1] !== T_WATER) c.fillRect(x + TS - 3, y, 3, TS);
-    mini = mc.w;
-  } else if (t === T_ROCK) {
-    c.fillStyle = shade(th.rock, -0.35); c.beginPath(); c.ellipse(x + 16, y + 22, 14, 8, 0, 0, 7); c.fill();
-    c.fillStyle = th.rock; c.beginPath(); c.moveTo(x + 3, y + 24); c.lineTo(x + 8, y + 8); c.lineTo(x + 18, y + 3); c.lineTo(x + 28, y + 10); c.lineTo(x + 30, y + 24); c.closePath(); c.fill();
-    c.fillStyle = th.rock2; c.beginPath(); c.moveTo(x + 9, y + 10); c.lineTo(x + 18, y + 5); c.lineTo(x + 22, y + 12); c.lineTo(x + 12, y + 16); c.closePath(); c.fill();
-    mini = mc.r;
-  } else if (t === T_TREE) {
-    c.fillStyle = shade(th.grass[0], -0.25); c.fillRect(x, y, TS, TS);
-    c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(x + 17, y + 27, 12, 4, 0, 0, 7); c.fill();
-    c.fillStyle = th.trunk; c.fillRect(x + 14, y + 18, 5, 10);
-    const lf = th.leaf, o = (d % 5) - 2;
-    if (th.snow) {
-      for (let k = 0; k < 3; k++) {
-        c.fillStyle = lf[k % 3]; c.beginPath(); c.moveTo(x + 16 + o, y + 1 + k * 7); c.lineTo(x + 4 + k, y + 14 + k * 6); c.lineTo(x + 28 - k, y + 14 + k * 6); c.closePath(); c.fill();
-        c.fillStyle = '#f4f8ff'; c.beginPath(); c.moveTo(x + 16 + o, y + 1 + k * 7); c.lineTo(x + 11 + k, y + 7 + k * 7); c.lineTo(x + 21 - k, y + 7 + k * 7); c.closePath(); c.fill();
-      }
-    } else {
-      c.fillStyle = lf[2]; c.beginPath(); c.arc(x + 10 + o, y + 15, 9, 0, 7); c.arc(x + 23 + o, y + 15, 9, 0, 7); c.fill();
-      c.fillStyle = lf[0]; c.beginPath(); c.arc(x + 16 + o, y + 10, 10, 0, 7); c.fill();
-      c.fillStyle = lf[1]; c.beginPath(); c.arc(x + 13 + o, y + 7, 5, 0, 7); c.fill();
-    }
-    mini = mc.t;
-  } else if (t === T_STUMP) {
-    c.fillStyle = th.stump; c.beginPath(); c.ellipse(x + 16, y + 18, 5, 3, 0, 0, 7); c.fill();
-    c.fillStyle = shade(th.stump, 0.3); c.beginPath(); c.ellipse(x + 16, y + 17, 3.5, 2, 0, 0, 7); c.fill();
+const terAt = (w, x, y) => inMap(w, x, y) ? w.ter[y * w.W + x] : T_TREE;
+function grassCol(w, x, y, f = 0) {
+  const i = y * w.W + x, g = w.theme.grassRGB, k = clamp((w.tone[i] - 0.3) * 1.6, 0, 1), j = (w.tone2[i] - 0.5) * 0.1 + f;
+  const a = g[2], b = g[1];
+  let r = a[0] + (b[0] - a[0]) * k, gg = a[1] + (b[1] - a[1]) * k, bb = a[2] + (b[2] - a[2]) * k;
+  if (j < 0) { r *= 1 + j; gg *= 1 + j; bb *= 1 + j; } else { r += (255 - r) * j; gg += (255 - gg) * j; bb += (255 - bb) * j; }
+  return `rgb(${r | 0},${gg | 0},${bb | 0})`;
+}
+// repaint tiles x0..x1, y0..y1. Neighbours are painted too (clipped) because dirt edges,
+// shores, tree crowns and rocks spill a little over their own tile.
+function paintRegion(w, x0, y0, x1, y1) {
+  const c = w.terCtx, th = w.theme;
+  c.save();
+  c.beginPath(); c.rect(x0 * TS, y0 * TS, (x1 - x0 + 1) * TS, (y1 - y0 + 1) * TS); c.clip();
+  const X0 = Math.max(0, x0 - 1), Y0 = Math.max(0, y0 - 1), X1 = Math.min(w.W - 1, x1 + 1), Y1 = Math.min(w.H - 1, y1 + 2);
+  // 1. ground colour
+  for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
+    const t = w.ter[y * w.W + x], px = x * TS, py = y * TS;
+    c.fillStyle = t === T_WATER ? th.water : grassCol(w, x, y, t === T_TREE ? -0.12 : 0);
+    c.fillRect(px, py, TS, TS);
   }
-  w.miniCtx.fillStyle = mini; w.miniCtx.fillRect(i % w.W, (i / w.W) | 0, 1, 1);
+  // 2. dirt patches with ragged edges, then water depth and shores
+  for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
+    const i = y * w.W + x, t = w.ter[i], d = w.deco[i], px = x * TS, py = y * TS;
+    if (t === T_DIRT) {
+      c.fillStyle = th.dirt;
+      c.beginPath(); c.roundRect(px - 5, py - 5, TS + 10, TS + 10, 13); c.fill();
+      for (let k = 0; k < 4; k++) { const v = (d * (k + 3) * 53) & 255; c.fillStyle = shade(th.dirt, v & 1 ? 0.12 : -0.15); c.fillRect(px + (v * 7) % 28, py + (v * 11) % 28, 3, 2); }
+    }
+  }
+  for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
+    const i = y * w.W + x, d = w.deco[i], px = x * TS, py = y * TS;
+    if (w.ter[i] !== T_WATER) continue;
+    // deeper (darker) away from the bank
+    let bank = 9;
+    for (let r = 1; r <= 2 && bank === 9; r++) for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) if (terAt(w, x + ox, y + oy) !== T_WATER && w.ter[i] === T_WATER) bank = Math.min(bank, r);
+    if (bank > 1) { c.fillStyle = shade(th.water, bank > 2 ? -0.22 : -0.1); c.fillRect(px, py, TS, TS); }
+    c.fillStyle = th.water2; for (let k = 0; k < 2; k++) c.fillRect(px + ((d + k * 13) % 20), py + 8 + k * 12, 8, 2);
+    // sandy bank and a line of foam wherever land touches the water
+    const sand = th.snow ? '#e8f2ff' : th === THEMES[2] ? '#6e6a40' : '#d8c48a', foam = 'rgba(255,255,255,.55)';
+    const edge = (land, fx, fy, fw, fh) => { if (!land) return; c.fillStyle = sand; c.fillRect(fx, fy, fw, fh); };
+    const n = terAt(w, x, y - 1) !== T_WATER, s = terAt(w, x, y + 1) !== T_WATER, wst = terAt(w, x - 1, y) !== T_WATER, e = terAt(w, x + 1, y) !== T_WATER;
+    edge(n, px, py, TS, 5); edge(s, px, py + TS - 5, TS, 5); edge(wst, px, py, 5, TS); edge(e, px + TS - 5, py, 5, TS);
+    c.fillStyle = foam;
+    if (n) c.fillRect(px, py + 5, TS, 2); if (s) c.fillRect(px, py + TS - 7, TS, 2); if (wst) c.fillRect(px + 5, py, 2, TS); if (e) c.fillRect(px + TS - 7, py, 2, TS);
+  }
+  // 3. little things on the grass
+  for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
+    const i = y * w.W + x, t = w.ter[i], d = w.deco[i], px = x * TS, py = y * TS;
+    if (t !== T_GRASS && t !== T_STUMP) continue;
+    const dark = grassCol(w, x, y, -0.14), light = grassCol(w, x, y, 0.12);
+    for (let k = 0; k < 2; k++) {
+      const v = (d * (k + 5) * 41) & 255, tx = px + 3 + (v * 7) % 24, ty = py + 6 + (v * 13) % 22;
+      c.strokeStyle = v & 1 ? dark : light; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(tx, ty); c.lineTo(tx - 2, ty - 4); c.moveTo(tx, ty); c.lineTo(tx + 1, ty - 5); c.moveTo(tx, ty); c.lineTo(tx + 3, ty - 3); c.stroke();
+    }
+    if (d > 238) for (let k = 0; k < 3; k++) { c.fillStyle = th.snow ? ['#bfe0ff', '#fff'][k % 2] : ['#ffd23f', '#ff8fc8', '#fff'][k]; c.fillRect(px + 6 + k * 8 + (d % 5), py + 10 + ((d >> k) % 12), 3, 3); }
+    if (d < 10) { c.fillStyle = shade(th.rock, 0.1); c.beginPath(); c.ellipse(px + 10 + d, py + 20, 3, 2, 0, 0, 7); c.fill(); }
+  }
+  // 4. rocks, stumps and trees, top to bottom so lower ones overlap the ones behind
+  for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
+    const i = y * w.W + x, t = w.ter[i], d = w.deco[i], px = x * TS, py = y * TS;
+    if (t === T_ROCK) paintRock(c, th, px, py, d);
+    else if (t === T_STUMP) paintStump(c, th, px, py, d);
+    else if (t === T_TREE) paintTree(c, th, px, py, d);
+  }
+  c.restore();
+  const mc = th.mini;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const t = w.ter[y * w.W + x];
+    w.miniCtx.fillStyle = t === T_WATER ? mc.w : t === T_TREE ? mc.t : t === T_ROCK ? mc.r : t === T_DIRT ? mc.d : mc.g;
+    w.miniCtx.fillRect(x, y, 1, 1);
+  }
 }
+function paintRock(c, th, x, y, d) {
+  const o = (d % 7) - 3;
+  ell(c, x + 18, y + 26, 15, 6, 'rgba(0,0,0,.28)');
+  const dk = shade(th.rock, -0.45);
+  poly(c, dk, x + 1, y + 26, x + 5, y + 9, x + 15 + o, y + 1, x + 27, y + 6, x + 31, y + 18, x + 29, y + 28, x + 6, y + 30);
+  poly(c, th.rock, x + 3, y + 25, x + 7, y + 10, x + 15 + o, y + 3, x + 26, y + 8, x + 29, y + 19, x + 27, y + 27, x + 7, y + 28);
+  poly(c, th.rock2, x + 8, y + 11, x + 15 + o, y + 5, x + 23, y + 9, x + 17, y + 15, x + 10, y + 17);
+  poly(c, shade(th.rock, -0.2), x + 17, y + 15, x + 29, y + 19, x + 27, y + 27, x + 16, y + 27);
+  line(c, x + 14, y + 18, x + 19, y + 24, shade(th.rock, -0.5), 1);
+  if (th.snow) poly(c, '#f4f8ff', x + 8, y + 11, x + 15 + o, y + 4, x + 24, y + 8, x + 16, y + 10);
+  if (d > 200 && !th.snow) { ell(c, x + 8, y + 26, 3, 2, '#5d8a3a'); ell(c, x + 26, y + 27, 3, 2, '#5d8a3a'); }
+}
+function paintStump(c, th, x, y, d) {
+  ell(c, x + 17, y + 21, 8, 3, 'rgba(0,0,0,.25)');
+  box(c, x + 11, y + 14, 10, 6, shade(th.stump, -0.25));
+  ell(c, x + 16, y + 14, 5, 2.5, th.stump);
+  c.strokeStyle = shade(th.stump, -0.3); c.lineWidth = 1; c.beginPath(); c.ellipse(x + 16, y + 14, 2.5, 1.2, 0, 0, 7); c.stroke();
+  box(c, x + 6 + d % 6, y + 24, 3, 2, shade(th.stump, 0.2)); box(c, x + 22, y + 22 + d % 4, 2, 2, shade(th.stump, 0.2));
+}
+function paintTree(c, th, x, y, d) {
+  const lf = th.leaf, o = (d % 5) - 2, h = (d >> 3) % 4;
+  ell(c, x + 20, y + 28, 15, 5, 'rgba(0,0,0,.3)');
+  box(c, x + 13 + o, y + 17, 6, 12, shade(th.trunk, -0.3)); box(c, x + 14 + o, y + 17, 3, 12, th.trunk);
+  if (th.snow) {
+    for (let k = 0; k < 3; k++) {
+      const top = y - 8 + k * 8 + h, half = 9 + k * 3;
+      poly(c, shade(lf[0], -0.35), x + 16 + o, top - 1, x + 15 + o - half - 1, top + 12, x + 17 + o + half + 1, top + 12);
+      poly(c, lf[k % 3], x + 16 + o, top, x + 16 + o - half, top + 11, x + 16 + o + half, top + 11);
+      poly(c, '#f4f8ff', x + 16 + o, top, x + 12 + o - k, top + 6, x + 20 + o + k, top + 6);
+      poly(c, '#f4f8ff', x + 16 + o - half, top + 11, x + 12 + o - half * 0.5, top + 9, x + 14 + o - half * 0.6, top + 11);
+    }
+    return;
+  }
+  const blobs = [[-8, 6, 9], [8, 6, 9], [0, 0, 11], [-5, -6, 8], [6, -5, 7]];
+  c.fillStyle = shade(lf[2], -0.4);
+  c.beginPath(); for (const [bx, by, r] of blobs) { c.moveTo(x + 16 + o + bx + r + 1.5, y + 8 - h + by); c.arc(x + 16 + o + bx, y + 8 - h + by, r + 1.5, 0, 7); } c.fill();
+  c.fillStyle = lf[2];
+  c.beginPath(); for (const [bx, by, r] of blobs) { c.moveTo(x + 16 + o + bx + r, y + 8 - h + by); c.arc(x + 16 + o + bx, y + 8 - h + by, r, 0, 7); } c.fill();
+  c.fillStyle = lf[0];
+  c.beginPath(); for (const [bx, by, r] of blobs) { c.moveTo(x + 15 + o + bx + r * 0.75, y + 6 - h + by); c.arc(x + 15 + o + bx - 1, y + 6 - h + by - 1, r * 0.75, 0, 7); } c.fill();
+  c.fillStyle = lf[1];
+  for (const [bx, by, r] of blobs.slice(2)) { c.beginPath(); c.arc(x + 13 + o + bx, y + 3 - h + by, r * 0.38, 0, 7); c.fill(); }
+  if (d > 225) { box(c, x + 9 + o, y + 6 - h, 3, 3, '#ff4f4f'); box(c, x + 20 + o, y + 10 - h, 3, 3, '#ff4f4f'); }
+}
+function repaintAround(w, tx, ty) { paintRegion(w, Math.max(0, tx - 1), Math.max(0, ty - 1), Math.min(w.W - 1, tx + 1), Math.min(w.H - 1, ty + 1)); }
 
 // ---------- fog of war ----------
 function updateFog(w) {
@@ -1662,7 +1742,7 @@ function drawUnit(c, race, k, color, px, py, s, a) {
   const swing = a.atk > 0 ? Math.sin((1 - a.atk / 0.3) * Math.PI) : 0;
   c.save(); c.translate(px, py); if (a.face < 0) c.scale(-1, 1);
   const big = k === K.special ? 1.35 : 1, gob = race === 'goblins' ? 0.85 : 1, sc = big * gob;
-  ell(c, 0, 0, 9 * u * sc * (k === K.special && race === 'humans' ? 1.5 : 1), 3 * u * sc, 'rgba(0,0,0,.3)');
+  if (!a.noShadow) ell(c, 0, 0, 9 * u * sc * (k === K.special && race === 'humans' ? 1.5 : 1), 3 * u * sc, 'rgba(0,0,0,.3)');
   c.translate(0, -bob);
   const skin = R.skin, eye = '#111';
   const legs = (h, col, spread = 3) => { box(c, (-spread - 1.5) * u * sc + walkPh * 2 * u, -h * u * sc, 3 * u * sc, h * u * sc, col); box(c, (spread - 1.5) * u * sc - walkPh * 2 * u, -h * u * sc, 3 * u * sc, h * u * sc, col); };
@@ -1796,23 +1876,70 @@ function drawUnit(c, race, k, color, px, py, s, a) {
 }
 
 // ---------- buildings ----------
+// Sprites are drawn once at screen resolution, given a dark outline and a bit of light from
+// the top left, then cached. Drawing a few hundred cached images a frame is cheap.
+function finishSprite(raw, outlinePx) {
+  const out = document.createElement('canvas'); out.width = raw.width; out.height = raw.height;
+  const o = out.getContext('2d');
+  const sil = document.createElement('canvas'); sil.width = raw.width; sil.height = raw.height;
+  const sc = sil.getContext('2d');
+  sc.drawImage(raw, 0, 0); sc.globalCompositeOperation = 'source-in'; sc.fillStyle = 'rgba(14,7,26,.9)'; sc.fillRect(0, 0, sil.width, sil.height);
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) o.drawImage(sil, dx * outlinePx, dy * outlinePx);
+  o.drawImage(raw, 0, 0);
+  o.globalCompositeOperation = 'source-atop';
+  const g = o.createLinearGradient(0, 0, out.width, out.height);
+  g.addColorStop(0, 'rgba(255,250,230,.16)'); g.addColorStop(0.5, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(10,0,30,.22)');
+  o.fillStyle = g; o.fillRect(0, 0, out.width, out.height);
+  out.dpr = raw.dpr;
+  return out;
+}
+function drawSprite(c, spr, x, y) { c.drawImage(spr, x, y, spr.width / spr.dpr, spr.height / spr.dpr); }
 const bldCache = new Map();
 function buildingSprite(race, k, color, s) {
-  const key = race + k + color + Math.round(s);
+  const key = race + k + color + Math.round(s * 4) + DPR;
   let cvs = bldCache.get(key);
   if (cvs) return cvs;
   const n = k === K.mine ? 3 : BASE[KINDS[k]].size, top = s * 1.2;
-  cvs = document.createElement('canvas'); cvs.width = Math.ceil(n * s); cvs.height = Math.ceil(n * s + top);
-  const c = cvs.getContext('2d');
-  c.translate(0, top);
+  const raw = document.createElement('canvas'); raw.width = Math.ceil(n * s * DPR); raw.height = Math.ceil((n * s + top) * DPR); raw.dpr = DPR;
+  const c = raw.getContext('2d');
+  c.scale(DPR, DPR); c.translate(0, top); c.noShadow = true;
   paintBuilding(c, race, k, color, n * s, s);
+  cvs = finishSprite(raw, Math.max(1, Math.round(DPR * s / 26)));
   bldCache.set(key, cvs);
   if (bldCache.size > 300) bldCache.delete(bldCache.keys().next().value);
   return cvs;
 }
+const unitCache = new Map();
+const WALK_PERIOD = Math.PI * 2 / 14;
+// units that keep moving while they stand still (a lit fuse, buzzing wings, a glitching bug)
+const idleAnim = (race, k) => (race === 'goblins' && k === K.special) || (race === 'bugs' && (k === K.ranged || k === K.special));
+function unitFrame(race, k, color, s, a) {
+  const f = (a.mv || a.chop || idleAnim(race, k)) ? Math.floor(a.t / WALK_PERIOD * 8) & 7 : 0;
+  const ab = a.atk > 0.2 ? 1 : a.atk > 0.1 ? 2 : a.atk > 0 ? 3 : 0;
+  const key = `${race}${k}${color}${Math.round(s * 4)}${DPR}|${f}${a.mv ? 1 : 0}${ab}${a.carry || 0}${a.chop ? 1 : 0}`;
+  let cvs = unitCache.get(key);
+  if (cvs) return cvs;
+  if (unitCache.size > 3000) unitCache.clear();
+  const S = s * 2.8;
+  const raw = document.createElement('canvas'); raw.width = Math.ceil(S * DPR); raw.height = Math.ceil(S * DPR); raw.dpr = DPR;
+  const c = raw.getContext('2d'); c.scale(DPR, DPR);
+  drawUnit(c, race, k, color, S / 2, S * 0.78, s, { t: f * WALK_PERIOD / 8, mv: a.mv, atk: [0, 0.25, 0.15, 0.05][ab], carry: a.carry, chop: a.chop, face: 1, noShadow: true });
+  cvs = finishSprite(raw, Math.max(1, Math.round(DPR * s / 30)));
+  cvs.ox = S / 2; cvs.oy = S * 0.78;
+  unitCache.set(key, cvs);
+  return cvs;
+}
+function drawUnitFast(c, race, k, color, px, py, s, a) {
+  const R = RACES[race], u = s / 32, sc = (k === K.special ? 1.35 : 1) * (race === 'goblins' ? 0.85 : 1);
+  ell(c, px, py, 9 * u * sc * (k === K.special && race === 'humans' ? 1.5 : 1), 3 * u * sc, 'rgba(0,0,0,.3)');
+  const spr = unitFrame(race, k, color, s, a);
+  const w = spr.width / spr.dpr, h = spr.height / spr.dpr;
+  if (a.face < 0) { c.save(); c.translate(px, py); c.scale(-1, 1); c.drawImage(spr, -spr.ox, -spr.oy, w, h); c.restore(); }
+  else c.drawImage(spr, px - spr.ox, py - spr.oy, w, h);
+}
 function paintBuilding(c, race, k, color, W, s) {
   const u = s / 32, kind = KINDS[k], dk = shade(color, -0.35);
-  ell(c, W / 2, W * 0.92, W * 0.48, W * 0.12, 'rgba(0,0,0,.3)');
+  if (!c.noShadow) ell(c, W / 2, W * 0.92, W * 0.48, W * 0.12, 'rgba(0,0,0,.3)');
   if (kind === 'mine') {
     poly(c, '#6d6a72', W * 0.04, W * 0.95, W * 0.12, W * 0.35, W * 0.4, W * 0.12, W * 0.7, W * 0.2, W * 0.95, W * 0.55, W * 0.98, W * 0.95);
     poly(c, '#8a8790', W * 0.15, W * 0.45, W * 0.4, W * 0.17, W * 0.6, W * 0.3, W * 0.35, W * 0.55);
@@ -1940,25 +2067,67 @@ function paintBuilding(c, race, k, color, W, s) {
 }
 function drawBuildingAt(c, race, e, color, sx, sy, s, t) {
   const n = e.size, Wpx = n * s;
+  ell(c, sx + Wpx * 0.52, sy + Wpx * 0.93, Wpx * 0.5, Wpx * 0.13, 'rgba(0,0,0,.3)');
   if (e.built || e.k === K.mine) {
-    const spr = buildingSprite(race, e.k, color, s);
-    c.drawImage(spr, sx, sy - s * 1.2);
-    // smoke, glow and other things that move
-    if (race === 'goblins' && e.k !== K.tower && e.k !== K.mine) { const ph = (t * 0.6 + e.id * 0.37) % 1; ell(c, sx + Wpx * 0.8, sy - ph * s * 0.8, (3 + ph * 5) * s / 32, (3 + ph * 5) * s / 32, `rgba(180,180,180,${0.5 - ph * 0.5})`); }
+    drawSprite(c, buildingSprite(race, e.k, color, s), sx, sy - s * 1.2);
+    if (!e.ghost) buildingLife(c, race, e, color, sx, sy, s, t);
     return;
   }
   // under construction: the building rises out of a dirt patch behind scaffolding
-  box(c, sx + 2, sy + 2, Wpx - 4, Wpx - 4, 'rgba(110,80,40,.75)');
+  c.fillStyle = 'rgba(110,80,40,.8)'; c.beginPath(); c.roundRect(sx + 2, sy + 2, Wpx - 4, Wpx - 4, 6); c.fill();
   const p = clamp(e.prog, 0, 1);
   if (p > 0.1) {
-    const spr = buildingSprite(race, e.k, color, s), hShown = (Wpx + s * 1.2) * p;
-    c.save(); c.globalAlpha = 0.5 + p * 0.5;
-    c.drawImage(spr, 0, spr.height - hShown, spr.width, hShown, sx, sy + Wpx - hShown, spr.width, hShown);
+    const spr = buildingSprite(race, e.k, color, s), hShown = (Wpx + s * 1.2) * p, d = spr.dpr;
+    c.save(); c.globalAlpha = 0.55 + p * 0.45;
+    c.drawImage(spr, 0, spr.height - hShown * d, spr.width, hShown * d, sx, sy + Wpx - hShown, spr.width / d, hShown);
     c.restore();
   }
-  c.strokeStyle = '#a07040'; c.lineWidth = Math.max(1, s / 16);
-  for (let i = 0; i <= n; i++) { c.beginPath(); c.moveTo(sx + i * s * 0.95 + 2, sy + Wpx); c.lineTo(sx + i * s * 0.95 + 2, sy + Wpx * (1 - Math.max(0.35, p))); c.stroke(); }
-  for (let j = 1; j <= 3; j++) { const yy = sy + Wpx - j * Wpx * Math.max(0.35, p) / 3; c.beginPath(); c.moveTo(sx + 2, yy); c.lineTo(sx + Wpx - 2, yy); c.stroke(); }
+  c.strokeStyle = '#a07040'; c.lineWidth = Math.max(1.5, s / 14);
+  const top = sy + Wpx * (1 - Math.max(0.4, p)) - s * 0.2;
+  for (let i = 0; i <= n; i++) { const x = sx + 3 + i * (Wpx - 6) / n; c.beginPath(); c.moveTo(x, sy + Wpx); c.lineTo(x, top); c.stroke(); }
+  for (let j = 0; j <= 3; j++) { const yy = sy + Wpx - j * (sy + Wpx - top) / 3; c.beginPath(); c.moveTo(sx + 2, yy); c.lineTo(sx + Wpx - 2, yy); c.stroke(); }
+  c.lineWidth = Math.max(1, s / 24); c.beginPath(); c.moveTo(sx + 3, sy + Wpx); c.lineTo(sx + Wpx - 3, top); c.stroke();
+  // sawdust while it's going up
+  if (Math.random() < frameDt * 3) addParts(G, e.bx + rand(0.2, n - 0.2), e.by + n - 0.2, 2, '#d8b070', 1, 0.5, 2);
+}
+// smoke, flags, sparkles and fire: the bits of a building that move
+function buildingLife(c, race, e, color, sx, sy, s, t) {
+  const n = e.size, Wpx = n * s, u = s / 32, ph = t + e.id * 0.77;
+  if (e.k === K.mine) {
+    const k = Math.floor(ph * 1.5) % 6, spots = [[0.22, 0.6], [0.75, 0.5], [0.55, 0.28], [0.3, 0.38], [0.82, 0.78], [0.12, 0.8]];
+    const fr = (ph * 1.5) % 1, [mx, my] = spots[k], r = Math.sin(fr * Math.PI) * 4 * u;
+    line(c, sx + Wpx * mx - r, sy + Wpx * my, sx + Wpx * mx + r, sy + Wpx * my, '#fff', 1.5); line(c, sx + Wpx * mx, sy + Wpx * my - r, sx + Wpx * mx, sy + Wpx * my + r, '#fff', 1.5);
+    if (e.busy || G.ents.some(w => w.inId === e.id)) ell(c, sx + Wpx / 2, sy + Wpx * 0.85, s * 0.35, s * 0.3, `rgba(255,210,63,${0.25 + Math.sin(t * 6) * 0.1})`);
+    return;
+  }
+  // chimney smoke from halls and goblin shacks
+  if ((e.k === K.hall && race !== 'funguys' && race !== 'bugs') || (race === 'goblins' && e.k !== K.tower)) {
+    for (let i = 0; i < 3; i++) {
+      const q = (ph * 0.5 + i / 3) % 1, x = sx + Wpx * (race === 'goblins' ? 0.82 : race === 'humans' ? 0.5 : 0.5) + Math.sin(q * 5 + i) * 4 * u, y = sy - (race === 'humans' ? s * 0.55 : 0) - q * s * 1.1;
+      ell(c, x, y, (3 + q * 6) * u, (3 + q * 6) * u, `rgba(190,190,200,${0.45 * (1 - q)})`);
+    }
+  }
+  // flags on human halls and towers
+  if (race === 'humans' && (e.k === K.hall || e.k === K.tower)) {
+    const fx = sx + Wpx * 0.5, fy = e.k === K.hall ? sy - Wpx * 0.6 : sy - Wpx * 0.85, wv = Math.sin(t * 6 + e.id) * 2 * u;
+    poly(c, e.k === K.hall ? '#ffd23f' : color, fx, fy, fx + Wpx * 0.18, fy + Wpx * 0.06 + wv, fx + Wpx * 0.16, fy + Wpx * 0.08 + wv * 0.5, fx, fy + Wpx * 0.12);
+  }
+  // funguys puff spores, the hive has bees
+  if (race === 'funguys' && e.k !== K.farm && Math.random() < frameDt * 1.2) addParts(G, e.x + rand(-0.8, 0.8), e.y - n * 0.3, 1, '#d8ffb0', 0.3, 1.6, 3, -0.6);
+  if (race === 'bugs' && e.k === K.hall) for (let i = 0; i < 3; i++) { const an = t * (2 + i * 0.4) + i * 2; box(c, sx + Wpx / 2 + Math.cos(an) * Wpx * 0.45, sy + Wpx * 0.2 + Math.sin(an * 1.3) * Wpx * 0.2, 3 * u, 3 * u, i % 2 ? '#ffd23f' : '#222'); }
+  // zap tower crackle
+  if (race === 'goblins' && e.k === K.tower && Math.sin(t * 7 + e.id) > 0.85) { const cx = sx + Wpx / 2, cy = sy - Wpx * 0.42; c.strokeStyle = '#bff8ff'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(cx, cy); for (let i = 1; i < 4; i++) c.lineTo(cx + rand(-8, 8) * u * i / 2, cy + rand(-8, 8) * u * i / 2); c.stroke(); }
+  // on fire when badly damaged
+  const f = e.hp / def(G, e).hp;
+  if (f < 0.6) {
+    const fires = f < 0.25 ? 3 : f < 0.45 ? 2 : 1;
+    for (let i = 0; i < fires; i++) {
+      const fx = sx + Wpx * [0.3, 0.7, 0.5][i], fy = sy + Wpx * [0.45, 0.3, 0.65][i], fl = 0.75 + Math.sin(t * 17 + i * 3 + e.id) * 0.25;
+      poly(c, 'rgba(255,120,30,.9)', fx - 6 * u, fy, fx, fy - 16 * u * fl, fx + 6 * u, fy);
+      poly(c, 'rgba(255,220,80,.95)', fx - 3 * u, fy, fx, fy - 9 * u * fl, fx + 3 * u, fy);
+      if (Math.random() < frameDt * 3) addParts(G, (fx / (TS * cam.z)) + cam.x, (fy / (TS * cam.z)) + cam.y - 0.3, 1, '#3a3440', 0.4, 2, 6, -0.8);
+    }
+  }
 }
 
 // ---------- effects ----------
@@ -1987,19 +2156,19 @@ function runEvent(w, [n, ...a]) {
   const onScreen = (x, y) => { const [sx, sy] = toScreen(x, y); return sx > -50 && sy > -50 && sx < VW + 50 && sy < VH + 50 && (me < 0 || w.over || seesTile(w, x, y)); };
   switch (n) {
     case 'proj': { const [x1, y1, x2, y2, kind, dur] = a; w.fx.proj.push({ x1, y1, x2, y2, kind, dur: Math.max(0.05, dur), t: 0 }); if (onScreen(x1, y1)) sfx(kind === 'arrow' || kind === 'bolt' ? 'arrow' : kind); break; }
-    case 'hit': { const [x, y, hard] = a; if (onScreen(x, y)) { addParts(w, x, y, 4, hard ? '#ff4f6d' : '#ddd', 1.5, 0.35, 2); sfx('sword'); } break; }
+    case 'hit': { const [x, y, hard] = a; if (onScreen(x, y)) { addParts(w, x, y - 0.3, 4, hard ? '#ff4f6d' : '#ddd', 1.5, 0.35, 2); w.fx.rings.push({ x, y: y - 0.2, r: 0.35, life: 0.18, max: 0.18, col: '#fff', wd: 2 }); sfx('sword'); } break; }
     case 'miss': { const [x, y] = a; floatText(w, x, y - 0.6, 'MISS', '#3ff0ff'); break; }
     case 'heal': { const [x, y] = a; addParts(w, x, y - 0.3, 1, '#7dff6a', 0.3, 0.8, 3, -1); break; }
     case 'die': { const [x, y, k, o] = a; if (onScreen(x, y)) { addParts(w, x, y, 10, w.players[o] ? w.players[o].race === 'funguys' ? '#f4ead6' : w.players[o].race === 'bugs' ? '#9bdc3a' : '#c22' : '#c22', 2.5, 0.7, 3); sfx('die'); }
-      w.fx.marks.push({ x, y, t: 0, life: 6, corpse: true, k, o }); break; }
-    case 'crumble': { const [x, y, size] = a; if (onScreen(x, y)) { for (let i = 0; i < 4; i++) addParts(w, x + rand(-size / 2, size / 2), y + rand(-size / 2, size / 2), 8, pick(['#8a8790', '#6a5236', '#ff9a3c', '#333']), 3, 1.1, 4); sfx('crumble'); } break; }
-    case 'boom': { const [x, y, r] = a; addParts(w, x, y, 40, '#ff9a3c', 5 * r / 1.8, 0.9, 5); addParts(w, x, y, 20, '#ffd23f', 3, 0.6, 4); addParts(w, x, y, 14, '#444', 2, 1.4, 6, -2); sfx('boom'); shake = Math.max(shake, 0.4); break; }
+      w.fx.marks.push({ x, y, t: 0, life: 10, corpse: true, k, o }); if (w.fx.marks.length > 160) w.fx.marks.shift(); break; }
+    case 'crumble': { const [x, y, size] = a; w.fx.rings.push({ x, y: y + size * 0.3, r: size * 0.8, life: 0.7, max: 0.7, col: '#c8b08a', wd: 5 }); if (onScreen(x, y)) { for (let i = 0; i < 4; i++) addParts(w, x + rand(-size / 2, size / 2), y + rand(-size / 2, size / 2), 8, pick(['#8a8790', '#6a5236', '#ff9a3c', '#333']), 3, 1.1, 4); sfx('crumble'); } break; }
+    case 'boom': { const [x, y, r] = a; w.fx.rings.push({ x, y, r: r * 1.2, life: 0.6, max: 0.6, col: '#ffd23f', wd: 6, flash: true }); addParts(w, x, y, 40, '#ff9a3c', 5 * r / 1.8, 0.9, 5); addParts(w, x, y, 20, '#ffd23f', 3, 0.6, 4); addParts(w, x, y, 14, '#444', 2, 1.4, 6, -2); sfx('boom'); shake = Math.max(shake, 0.4); break; }
     case 'chop': { const [x, y] = a; if (onScreen(x, y)) { addParts(w, x, y, 2, '#c9a06a', 1.2, 0.4, 2); if (Math.random() < 0.5) sfx('chop'); } break; }
     case 'fell': { const [tx, ty] = a; const i = ty * w.W + tx; if (w.replica) { w.ter[i] = T_STUMP; w.wood[i] = 0; } repaintAround(w, tx, ty); if (onScreen(tx + 0.5, ty + 0.5)) { addParts(w, tx + 0.5, ty + 0.5, 12, w.theme.leaf[0], 2, 0.8, 4); sfx('fell'); } break; }
     case 'dry': { const [x, y] = a; addParts(w, x, y, 20, '#8a8790', 3, 1, 4); if (onScreen(x, y)) sfx('crumble'); msg('A gold mine has run dry.', '#ffd23f'); break; }
     case 'drop': { const [o, what] = a; if (mine(o) && Math.random() < 0.3) sfx('coin'); break; }
     case 'alert': { const [o, x, y] = a; if (mine(o)) { msg(RACES[w.players[o].race].alert, '#ff4f6d'); sfx('alert'); w.fx.pings.push({ x, y, life: 4 }); lastAlertAt = { x, y }; } break; }
-    case 'note': { const [o, what] = a; if (!mine(o)) break; const text = { nope: 'Not enough gold or wood.', food: 'Not enough food. Build more farms!', blocked: 'Can\'t build there. Something is in the way.' }[what]; if (text) { msg(text, '#ff4fa3'); sfx('nope'); } break; }
+    case 'note': { const [o, what] = a; if (!mine(o)) break; const text = { nope: 'Not enough gold or wood.', food: `Not enough food. Build more ${RACES[w.players[o].race].farms}!`, blocked: 'Can\'t build there. Something is in the way.' }[what]; if (text) { msg(text, '#ff4fa3'); sfx('nope'); } break; }
     case 'place': { const [o] = a; if (mine(o)) sfx('build'); break; }
     case 'ready': {
       const [o, k, x, y, isB] = a;
@@ -2018,9 +2187,6 @@ function nearestEntAt(w, x, y, k, o) {
   for (const e of w.ents) if (e.k === k && e.o === o) { const d = dist(e.x, e.y, x, y); if (d < bd) { bd = d; best = e; } }
   return best;
 }
-function repaintAround(w, tx, ty) {
-  for (let y = ty - 1; y <= ty + 1; y++) for (let x = tx - 1; x <= tx + 1; x++) if (inMap(w, x, y)) paintTile(w, y * w.W + x);
-}
 let shake = 0, lastAlertAt = null;
 function tickFx(w, dt) {
   const f = w.fx;
@@ -2035,12 +2201,15 @@ function tickFx(w, dt) {
   for (const p of f.pings) p.life -= dt;
   f.pings = f.pings.filter(p => p.life > 0);
   for (const m of f.marks) { m.t += dt; }
+  for (const r of f.rings) r.life -= dt;
+  f.rings = f.rings.filter(r => r.life > 0);
   f.marks = f.marks.filter(m => m.t < m.life);
   shake = Math.max(0, shake - dt);
 }
 
 // ---------- the whole frame ----------
 let hoverId = 0;
+let frameDt = 0.016;
 function render(w, now) {
   const s = TS * cam.z, t = now / 1000;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -2051,10 +2220,34 @@ function render(w, now) {
   // terrain
   const sx = cam.x * TS, sy = cam.y * TS, sw = VW / cam.z, sh = VH / cam.z;
   ctx.drawImage(w.terCv, sx, sy, sw, sh, 0, 0, VW, VH);
-  // command markers and corpses on the ground
+  const tx0 = Math.max(0, Math.floor(cam.x)), ty0 = Math.max(0, Math.floor(cam.y)), tx1 = Math.min(w.W - 1, Math.ceil(cam.x + VW / s)), ty1 = Math.min(w.H - 1, Math.ceil(cam.y + VH / s));
+  // light rippling over the water
+  ctx.fillStyle = 'rgba(255,255,255,.22)';
+  for (let y = ty0; y <= ty1; y++) for (let x = tx0; x <= tx1; x++) {
+    const i = y * w.W + x; if (w.ter[i] !== T_WATER) continue;
+    const d = w.deco[i], ph = (t * 0.6 + d / 64) % 1, [px, py] = toScreen(x, y);
+    ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.8;
+    ctx.fillRect(px + ((d * 7) % 18 + ph * 8) * cam.z, py + (8 + (d % 3) * 7) * cam.z, 6 * cam.z, 1.5 * cam.z);
+  }
+  ctx.globalAlpha = 1;
+  // where units are drawn: smoothly between simulation steps
+  const alpha = w.replica ? 1 : clamp(acc / TICK, 0, 1);
+  for (const e of w.ents) {
+    if (e.size) continue;
+    if (!w.replica && e.ox !== undefined && Math.abs(e.x - e.ox) < 1.5 && Math.abs(e.y - e.oy) < 1.5) { e.rx = e.ox + (e.x - e.ox) * alpha; e.ry = e.oy + (e.y - e.oy) * alpha; }
+    else { e.rx = e.x; e.ry = e.y; }
+  }
+  // command markers and the fallen
   for (const m of w.fx.marks) {
     const [mx, my] = toScreen(m.x, m.y);
-    if (m.corpse) { ctx.globalAlpha = Math.max(0, 1 - m.t / m.life) * 0.7; ell(ctx, mx, my, 0.3 * s, 0.12 * s, '#3a1010'); ell(ctx, mx + 0.1 * s, my - 0.03 * s, 0.12 * s, 0.07 * s, '#e8e0cc'); ctx.globalAlpha = 1; continue; }
+    if (m.corpse) {
+      if (w.me >= 0 && !w.over && !seesTile(w, m.x, m.y)) continue;
+      const fade = clamp((m.life - m.t) / 2, 0, 1), P = w.players[m.o];
+      ctx.globalAlpha = fade * 0.75;
+      if (P && P.race !== 'funguys') ell(ctx, mx, my, 0.32 * s, 0.13 * s, P.race === 'bugs' ? '#5d8a2a' : '#5a1010');
+      if (P) { ctx.save(); ctx.translate(mx, my - 0.05 * s); ctx.rotate(Math.PI / 2 * (m.k % 2 ? 1 : -1)); const spr = unitFrame(P.race, m.k, P.color, s * 1.2, { t: 0 }); ctx.drawImage(spr, -spr.ox, -spr.oy * 0.55, spr.width / spr.dpr, spr.height / spr.dpr); ctx.restore(); }
+      ctx.globalAlpha = 1; continue;
+    }
     const k = 1 - m.t / m.life;
     ctx.strokeStyle = m.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(mx, my, s * 0.45 * k, s * 0.2 * k, 0, 0, 7); ctx.stroke();
   }
@@ -2067,17 +2260,22 @@ function render(w, now) {
     list.push(e);
   }
   if (w.me >= 0 && !w.over) for (const g of w.seen.values()) if (!w.byId.has(g.id) || !seesEnt(w, w.byId.get(g.id))) { if (g.x > x0 && g.x < x1 && g.y > y0 && g.y < y1) list.push({ ...g, ghost: true }); }
-  list.sort((a, b) => (a.size ? a.by + a.size - 0.3 : a.y) - (b.size ? b.by + b.size - 0.3 : b.y));
+  const ey = e => e.size ? e.by + e.size - 0.3 : e.ry;
+  list.sort((a, b) => ey(a) - ey(b));
   const selSet = selection;
+  const ux = e => e.size ? e.x : e.rx, uy = e => e.size ? e.y : e.ry;
   // selection rings under everything
   for (const e of list) {
     if (!selSet.has(e.id) && e.id !== hoverId) continue;
     const col = e.o === w.me ? '#7dff6a' : e.o < 0 ? '#ffd23f' : allied(w, e.o, w.me) ? '#3ff0ff' : '#ff4f4f';
-    const [ex, ey] = toScreen(e.x, e.y);
+    const [ex, eyy] = toScreen(ux(e), uy(e));
     ctx.strokeStyle = col; ctx.lineWidth = selSet.has(e.id) ? 2 : 1; ctx.globalAlpha = selSet.has(e.id) ? 1 : 0.6;
     if (e.size) { const [bx, by] = toScreen(e.bx, e.by), L = s * 0.5, W = e.size * s; ctx.beginPath();
       for (const [cx, cy, dx, dy] of [[bx, by, 1, 1], [bx + W, by, -1, 1], [bx, by + W, 1, -1], [bx + W, by + W, -1, -1]]) { ctx.moveTo(cx + dx * L, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + dy * L); } ctx.stroke(); }
-    else { ctx.beginPath(); ctx.ellipse(ex, ey + e.r * s * 0.3, e.r * s * 1.25, e.r * s * 0.6, 0, 0, 7); ctx.stroke(); }
+    else {
+      ctx.fillStyle = col; ctx.globalAlpha *= 0.15; ctx.beginPath(); ctx.ellipse(ex, eyy + e.r * s * 0.3, e.r * s * 1.25, e.r * s * 0.6, 0, 0, 7); ctx.fill();
+      ctx.globalAlpha = selSet.has(e.id) ? 1 : 0.6; ctx.stroke();
+    }
     ctx.globalAlpha = 1;
   }
   for (const e of list) {
@@ -2087,11 +2285,13 @@ function render(w, now) {
       if (e.ghost) ctx.globalAlpha = 0.55;
       drawBuildingAt(ctx, race, e, color, bx, by, s, t);
       ctx.globalAlpha = 1;
-      if (e.k === K.mine && w.ents.some(u => u.inId === e.id)) ell(ctx, bx + e.size * s / 2, by + e.size * s * 0.85, s * 0.35, s * 0.3, 'rgba(255,210,63,.35)');
     } else {
-      const [ux, uy] = toScreen(e.x, e.y);
-      const a = { t: t + e.id * 0.37, mv: e.moving, atk: e.atkT, carry: e.carry, face: e.face, chop: e.chopping, aura: def(w, e).aura };
-      drawUnit(ctx, race, e.k, color, ux, uy + e.r * s * 0.3, s * 1.2, a);
+      const [px, py] = toScreen(e.rx, e.ry), d = def(w, e);
+      const a = { t: t + e.id * 0.37, mv: e.moving, atk: e.atkT, carry: e.carry, face: e.face, chop: e.chopping };
+      if (d.aura) { ctx.strokeStyle = 'rgba(125,255,106,.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(px, py, d.aura * s * (0.95 + Math.sin(t * 3) * 0.05), d.aura * s * 0.5, 0, 0, 7); ctx.stroke(); }
+      drawUnitFast(ctx, race, e.k, color, px, py + e.r * s * 0.3, s * 1.2, a);
+      // kicked-up dust
+      if (e.moving && !(race === 'bugs' && e.k === K.ranged) && Math.random() < frameDt * 2) addParts(w, e.rx, e.ry + 0.2, 1, w.theme.snow ? '#ffffff' : '#c8b08a', 0.3, 0.45, 3, 0);
     }
   }
   // health bars
@@ -2100,39 +2300,64 @@ function render(w, now) {
     const d = def(w, e), sel = selSet.has(e.id);
     if (!sel && e.id !== hoverId && e.hp >= d.hp - 0.5) continue;
     const f = clamp(e.hp / d.hp, 0, 1);
-    const bw = e.size ? e.size * s * 0.7 : s * 0.8, [cx, cy] = toScreen(e.x, e.size ? e.by : e.y);
+    const bw = e.size ? e.size * s * 0.7 : s * 0.8, [cx, cy] = toScreen(ux(e), e.size ? e.by : uy(e));
     const by = e.size ? cy - s * 0.25 : cy - s * (e.k === K.special ? 1.5 : 1.05) - (e.k === K.ranged && w.players[e.o].race === 'bugs' ? s * 0.3 : 0);
     ctx.fillStyle = '#05020c'; ctx.fillRect(cx - bw / 2 - 1, by - 1, bw + 2, 5);
     ctx.fillStyle = f > 0.6 ? '#7dff6a' : f > 0.3 ? '#ffd23f' : '#ff4f4f'; ctx.fillRect(cx - bw / 2, by, bw * f, 3);
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(cx - bw / 2, by, bw * f, 1);
     if (e.size && !e.built) { ctx.fillStyle = '#3ff0ff'; ctx.fillRect(cx - bw / 2, by + 4, bw * e.prog, 2); }
   }
-  // projectiles
+  // projectiles, with a short trail behind them
+  const projAt = (p, P, k) => [p.x1 + (p.x2 - p.x1) * k, p.y1 + (p.y2 - p.y1) * k - Math.sin(k * Math.PI) * P.arc - 0.4];
   for (const p of w.fx.proj) {
     const k = clamp(p.t / p.dur, 0, 1), P = PROJ[p.kind] || PROJ.arrow;
-    const x = p.x1 + (p.x2 - p.x1) * k, y = p.y1 + (p.y2 - p.y1) * k - Math.sin(k * Math.PI) * P.arc - 0.4;
+    const [x, y] = projAt(p, P, k);
     if (w.me >= 0 && !w.over && !seesTile(w, x, y + 0.4)) continue;
     const [px, py] = toScreen(x, y);
     if (p.kind === 'zap') {
       const [ax, ay] = toScreen(p.x1, p.y1 - 0.4), [bx, by] = toScreen(p.x2, p.y2 - 0.4);
-      ctx.strokeStyle = P.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ax, ay);
-      for (let i = 1; i < 6; i++) ctx.lineTo(ax + (bx - ax) * i / 6 + rand(-4, 4), ay + (by - ay) * i / 6 + rand(-4, 4));
-      ctx.lineTo(bx, by); ctx.stroke(); continue;
+      for (const [col, wd] of [['rgba(63,240,255,.35)', 6], ['#e8ffff', 1.5]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.beginPath(); ctx.moveTo(ax, ay);
+        for (let i = 1; i < 6; i++) ctx.lineTo(ax + (bx - ax) * i / 6 + rand(-5, 5), ay + (by - ay) * i / 6 + rand(-5, 5));
+        ctx.lineTo(bx, by); ctx.stroke();
+      }
+      continue;
     }
-    if (p.kind === 'spore' || p.kind === 'spit') { ell(ctx, px, py, s * 0.12, s * 0.12, P.col); continue; }
-    const ang = Math.atan2((p.y2 - p.y1) - Math.cos(k * Math.PI) * P.arc * 2, p.x2 - p.x1);
-    ctx.save(); ctx.translate(px, py); ctx.rotate(ang); line(ctx, -s * 0.25, 0, s * 0.15, 0, P.col, Math.max(1.5, s / 16)); ctx.restore();
+    const [tx, ty] = projAt(p, P, Math.max(0, k - 0.18)), [qx, qy] = toScreen(tx, ty);
+    if (p.kind === 'spore' || p.kind === 'spit') {
+      ctx.globalAlpha = 0.35; ell(ctx, qx, qy, s * 0.09, s * 0.09, P.col); ctx.globalAlpha = 1;
+      ell(ctx, px, py, s * 0.14, s * 0.14, shade(P.col, -0.4)); ell(ctx, px, py, s * 0.11, s * 0.11, P.col); ell(ctx, px - s * 0.04, py - s * 0.04, s * 0.04, s * 0.04, '#fff');
+      continue;
+    }
+    ctx.globalAlpha = 0.3; line(ctx, qx, qy, px, py, '#fff', Math.max(1, s / 24)); ctx.globalAlpha = 1;
+    const ang = Math.atan2(py - qy, px - qx);
+    ctx.save(); ctx.translate(px, py); ctx.rotate(ang);
+    line(ctx, -s * 0.28, 0, s * 0.14, 0, shade(P.col, -0.3), Math.max(2, s / 12)); line(ctx, -s * 0.28, 0, s * 0.14, 0, P.col, Math.max(1, s / 20));
+    poly(ctx, '#ddd', s * 0.18, 0, s * 0.1, -s * 0.05, s * 0.1, s * 0.05);
+    ctx.restore();
   }
+  // shockwaves and hit flashes
+  for (const r of w.fx.rings) {
+    if (w.me >= 0 && !w.over && !seesTile(w, r.x, r.y)) continue;
+    const k = 1 - r.life / r.max, [px, py] = toScreen(r.x, r.y);
+    ctx.globalAlpha = (1 - k) * 0.9; ctx.strokeStyle = r.col; ctx.lineWidth = r.wd * (1 - k) + 1;
+    ctx.beginPath(); ctx.ellipse(px, py, r.r * s * (0.3 + k * 0.7), r.r * s * (0.3 + k * 0.7) * 0.6, 0, 0, 7); ctx.stroke();
+    if (r.flash && k < 0.4) { ctx.globalAlpha = (0.4 - k) * 2; ell(ctx, px, py, r.r * s * 0.8, r.r * s * 0.6, '#fff6c0'); }
+  }
+  ctx.globalAlpha = 1;
   // particles
   for (const p of w.fx.parts) {
     if (w.me >= 0 && !w.over && !seesTile(w, p.x, p.y)) continue;
     const [px, py] = toScreen(p.x, p.y - p.z * 0.3);
-    ctx.globalAlpha = clamp(p.life / p.max * 1.5, 0, 1); ctx.fillStyle = p.col;
-    const sz = p.size * cam.z; ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
+    ctx.globalAlpha = clamp(p.life / p.max * 1.5, 0, 1) * (p.grav < 0 ? 0.6 : 1); ctx.fillStyle = p.col;
+    const sz = p.size * cam.z * (p.grav < 0 ? 1 + (1 - p.life / p.max) * 1.5 : 1);
+    if (sz > 4) { ctx.beginPath(); ctx.arc(px, py, sz / 2, 0, 7); ctx.fill(); } else ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
   }
   ctx.globalAlpha = 1;
-  // fog
+  // fog (only the part on screen)
   ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(w.fogCv, 0, 0, w.W, w.H, -cam.x * s, -cam.y * s, w.W * s, w.H * s);
+  const fx0 = Math.max(0, tx0 - 2), fy0 = Math.max(0, ty0 - 2), fx1 = Math.min(w.W, tx1 + 3), fy1 = Math.min(w.H, ty1 + 3);
+  ctx.drawImage(w.fogCv, fx0, fy0, fx1 - fx0, fy1 - fy0, (fx0 - cam.x) * s, (fy0 - cam.y) * s, (fx1 - fx0) * s, (fy1 - fy0) * s);
   ctx.imageSmoothingEnabled = false;
   // floating text and speech bubbles (above the fog, but only for things you can see)
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -2145,17 +2370,26 @@ function render(w, now) {
   ctx.font = '20px VT323, monospace';
   for (const b of w.fx.bubbles) {
     const e = w.byId.get(b.id); if (!e || e.hidden || !seesEnt(w, e)) continue;
-    const [px, py] = toScreen(e.x, e.y - (e.k === K.special ? 1.8 : 1.4));
+    const [px, py] = toScreen(e.rx ?? e.x, (e.ry ?? e.y) - (e.k === K.special ? 1.8 : 1.4));
     const tw = ctx.measureText(b.text).width + 14, bx = clamp(px - tw / 2, 4, VW - tw - 4);
     ctx.globalAlpha = clamp(b.life * 2, 0, 1);
-    ctx.fillStyle = '#efe6ff'; ctx.fillRect(bx, py - 24, tw, 22); ctx.fillStyle = '#05020c'; ctx.fillRect(bx, py - 2, tw, 2);
+    ctx.fillStyle = '#05020c'; ctx.fillRect(bx + 2, py - 22, tw, 22);
+    ctx.fillStyle = '#efe6ff'; ctx.fillRect(bx, py - 24, tw, 22);
     poly(ctx, '#efe6ff', px - 5, py - 3, px + 5, py - 3, px, py + 4);
     ctx.fillStyle = '#0f0820'; ctx.fillText(b.text, bx + tw / 2, py - 12);
   }
   ctx.globalAlpha = 1;
   drawOverlays(w, s, t);
   ctx.restore();
+  // soft dark edges around the view
+  if (!vignette || vignette.w !== VW || vignette.h !== VH) {
+    const g = ctx.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * 0.35, VW / 2, VH / 2, Math.max(VW, VH) * 0.75);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(8,2,20,.45)');
+    vignette = { w: VW, h: VH, g };
+  }
+  ctx.fillStyle = vignette.g; ctx.fillRect(0, 0, VW, VH);
 }
+let vignette = null;
 // rally points, building placement, drag box (everything about your own orders)
 function drawOverlays(w, s, t) {
   for (const id of selection) {
@@ -2171,7 +2405,7 @@ function drawOverlays(w, s, t) {
     placing.tx = tx; placing.ty = ty;
     const P = w.players[w.me];
     const spr = buildingSprite(P.race, placing.k, P.color, s), [gx, gy] = toScreen(tx, ty);
-    ctx.globalAlpha = 0.5; ctx.drawImage(spr, gx, gy - s * 1.2); ctx.globalAlpha = 1;
+    ctx.globalAlpha = 0.5; drawSprite(ctx, spr, gx, gy - s * 1.2); ctx.globalAlpha = 1;
     let ok = true;
     for (let y = ty; y < ty + size; y++) for (let x = tx; x < tx + size; x++) {
       const good = inMap(w, x, y) && x >= 1 && y >= 1 && x < w.W - 1 && y < w.H - 1 && WALKABLE[w.ter[y * w.W + x]] === 1 && !w.occ[y * w.W + x] && w.exp[y * w.W + x];
@@ -2518,7 +2752,7 @@ let idleIdx = 0;
 function selectIdle() {
   if (!G || G.me < 0) return;
   const idle = G.ents.filter(e => e.o === G.me && e.k === K.worker && e.st === 'idle' && !e.hidden);
-  if (!idle.length) { msg('No idle workers. Everybody is busy. Allegedly.', '#a898cf'); return; }
+  if (!idle.length) { msg(`No idle ${RACES[G.players[G.me].race].workers}. Everybody is busy. Allegedly.`, '#a898cf'); return; }
   const e = idle[idleIdx++ % idle.length];
   setSelection([e]); centerOn(e.x, e.y);
 }
@@ -2551,7 +2785,8 @@ function drawIcon(c, name, S, w) {
     if (name.unit !== undefined) drawUnit(c, name.race, name.unit, name.color, S / 2, S * 0.86, S * 0.95, { t: 0, face: 1 });
     else if (name.bld !== undefined) {
       const n = BASE[KINDS[name.bld]].size || 3, spr = buildingSprite(name.race, name.bld, name.color, S * 0.8 / n);
-      c.drawImage(spr, (S - spr.width) / 2, S - spr.height - 2 * u);
+      const sw = spr.width / spr.dpr, sh = spr.height / spr.dpr;
+      drawSprite(c, spr, (S - sw) / 2, S - sh - 2 * u);
     }
     return;
   }
@@ -2585,7 +2820,7 @@ function buildCards() {
     if (buildMenu && workers.length) {
       for (const [kind, key] of [['hall', 'H'], ['farm', 'F'], ['barracks', 'B'], ['lab', 'L'], ['tower', 'T']]) {
         const d = DEFS[P.race][K[kind]], req = d.req && !hasReq(w, w.me, d);
-        cards.push(card({ bld: K[kind], race: P.race, color: col }, key, d.name, (DESC[kind] || R.desc[kind] || ''), () => { placing = { k: K[kind] }; targeting = null; refreshHud(true); },
+        cards.push(card({ bld: K[kind], race: P.race, color: col }, key, d.name, descOf(P.race, kind), () => { placing = { k: K[kind] }; targeting = null; refreshHud(true); },
           { cost: [d.g, d.w], disabled: req, why: req ? `Needs a ${R.names[d.req]}.` : '', on2: placing && placing.k === K[kind] }));
       }
       cards.push(card('back', 'Escape', 'Back', '', () => { buildMenu = false; placing = null; refreshHud(true); }));
@@ -2597,7 +2832,7 @@ function buildCards() {
     cards.push(card('hold', 'H', 'Hold position', 'Stay put and only hit what comes in range.', () => issue({ c: 'hold', ids: units.map(u => u.id) })));
     if (workers.length) {
       cards.push(card('gather', 'G', 'Gather', 'Mine a gold mine or chop a tree.', setT('gather'), { on2: targeting === 'gather' }));
-      cards.push(card('return', 'R', 'Return cargo', 'Bring what you carry back to the hall.', () => issue({ c: 'return', ids: workers.map(u => u.id) }), { disabled: !workers.some(u => u.carry) }));
+      cards.push(card('return', 'R', 'Return cargo', `Bring what you carry back to the ${R.names.hall}.`, () => issue({ c: 'return', ids: workers.map(u => u.id) }), { disabled: !workers.some(u => u.carry) }));
       cards.push(card('build', 'B', 'Build', 'Open the build menu.', () => { buildMenu = true; refreshHud(true); }));
     }
     const boomers = units.filter(u => def(w, u).kaboom);
@@ -2622,7 +2857,7 @@ function buildCards() {
         { cost: cost ? [cost[0], cost[1]] : null, disabled: maxed, why: maxed ? 'Fully researched.' : '' }));
     }
   }
-  if (TRAINS[d.kind] && TRAINS[d.kind].length) cards.push(card('rally', 'R', 'Set rally point', 'New units walk here. Put it on a mine or tree and new workers start working.', setT('rally'), { on2: targeting === 'rally' }));
+  if (TRAINS[d.kind] && TRAINS[d.kind].length) cards.push(card('rally', 'R', 'Set rally point', `New units walk here. Put it on a gold mine or tree and new ${R.workers} get straight to work.`, setT('rally'), { on2: targeting === 'rally' }));
   return cards;
 }
 function renderCards(force) {
@@ -2686,7 +2921,7 @@ function renderInfo() {
       d.innerHTML = '';
       const n = document.createElement('div'); n.className = 'nm'; n.textContent = `${P.name.toUpperCase()} · ${R.short}`;
       const s = document.createElement('div'); s.className = 'sub'; s.textContent = R.passive;
-      const s2 = document.createElement('div'); s2.className = 'sub'; s2.textContent = 'Select something. Drag a box, or press . for an idle worker.';
+      const s2 = document.createElement('div'); s2.className = 'sub'; s2.textContent = `Select something. Drag a box, or press . for an idle ${R.names.worker}.`;
       d.append(n, s, s2);
     } else { const n = document.createElement('div'); n.className = 'nm'; n.textContent = 'SPECTATING'; d.append(n); }
     box.replaceChildren(d); return;
@@ -2710,12 +2945,12 @@ function renderInfo() {
   txt.append(nm);
   if (e.k === K.mine) {
     const s = document.createElement('div'); s.className = 'stats'; s.innerHTML = `<span>Gold left: <b>${e.gold}</b></span>`; txt.append(s);
-    const s2 = document.createElement('div'); s2.className = 'sub'; s2.textContent = 'Right-click it with workers selected to start mining.'; txt.append(s2);
+    const s2 = document.createElement('div'); s2.className = 'sub'; s2.textContent = P ? `Right-click it with ${RACES[P.race].workers} selected to start mining.` : 'Workers bring gold out of here.'; txt.append(s2);
   } else {
     const hb = document.createElement('div'); hb.className = 'hpbar'; const hi = document.createElement('i'); hi.style.width = clamp(e.hp / d.hp, 0, 1) * 100 + '%'; hb.append(hi);
     const hp = document.createElement('div'); hp.className = 'sub'; hp.textContent = `${Math.ceil(e.hp)} / ${d.hp} HP`;
     txt.append(hb, hp);
-    const desc = d.desc || DESC[d.kind] || '';
+    const desc = d.desc || (owner ? descOf(owner.race, d.kind) : '');
     if (isUnitK(e.k)) {
       const st = document.createElement('div'); st.className = 'stats';
       const up = owner ? owner.up : [0, 0];
@@ -2753,6 +2988,7 @@ function renderTop() {
   const P = myP(), w = G;
   if (P) {
     $('rGold').textContent = Math.floor(P.g); $('rWood').textContent = Math.floor(P.w);
+    $('foodRes').title = `Food used / food you have. Build ${RACES[P.race].farms} for more.`;
     $('rFood').textContent = `${P.food}/${P.cap}`; $('rFood').classList.toggle('full', P.food >= P.cap);
     $('idleN').textContent = w.ents.filter(e => e.o === w.me && e.k === K.worker && e.st === 'idle' && !e.hidden).length;
   }
@@ -2906,7 +3142,7 @@ function enterBattle() {
   if (G.me >= 0) {
     const R = RACES[G.players[G.me].race];
     msg(`You lead the ${R.name}. ${R.passive}`, '#ffd23f');
-    msg('Right-click the gold mine with your workers to start mining.', '#a898cf');
+    msg(`Right-click the gold mine with your ${R.workers} selected to start mining.`, '#a898cf');
   } else msg('A battle is on: you\'re watching. You can play in the next one.', '#3ff0ff');
 }
 function endBattle(w, team) {
@@ -3319,6 +3555,7 @@ $('quitBtn').onclick = () => {
 let last = performance.now(), acc = 0, fogT = 0, hudT = 0, lastWall = performance.now();
 function hostSteps(n) {
   for (let i = 0; i < n; i++) {
+    for (const e of G.ents) if (!e.size) { e.ox = e.x; e.oy = e.y; }
     step(G);
     const ev = G.ev; G.ev = [];
     runEvents(G, ev);
@@ -3327,7 +3564,7 @@ function hostSteps(n) {
   }
 }
 function frame(now) {
-  const dt = Math.min(0.1, (now - last) / 1000); last = now; lastWall = now;
+  const dt = Math.min(0.1, (now - last) / 1000); last = now; lastWall = now; frameDt = dt;
   sfxBudget = 0;
   if (G) {
     if (!G.replica) {

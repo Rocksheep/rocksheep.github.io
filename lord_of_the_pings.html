@@ -338,7 +338,8 @@ const UP_COSTS = [[[150, 100, 30], [260, 200, 40]], [[150, 100, 30], [260, 200, 
 const UP_HOME = ['lab', 'lab', 'mill'];
 const WOOD_PER_UP = 3;
 const CARRY = 10;
-const MINE_SLOTS = 3;     // workers inside a gold mine at once; the rest wait at the entrance
+const MINE_SLOTS = 3;
+const MINE_GAP = 4;       // open squares that must stay between a hall and a gold mine     // workers inside a gold mine at once; the rest wait at the entrance
 
 const BASE = {
   worker:   { hp: 40, dmg: 4, arm: 0, rng: 0.6, cd: 1.2, spd: 2.6, sight: 5, g: 50, w: 0, t: 12, food: 1, r: 0.3 },
@@ -602,8 +603,9 @@ function genMap(seed, W, nPlayers) {
     // a block of forest behind the base, along the wall
     for (let y = -3; y <= 3; y++) for (let x = 0; x < 3; x++) set(s.x - s.dx * (6 + x), s.y + y, T_TREE);
     for (let x = -3; x <= 3; x++) for (let y = 0; y < 2; y++) set(s.x + x, s.y - s.dy * (6 + y), T_TREE);
-    // the home gold mine sits beside the hall, towards the middle
-    const mx = s.x + s.dx * 5 - 1, my = s.y + s.dy * 3 - 1;
+    // the home gold mine sits beside the hall (MINE_GAP open squares away), towards the middle
+    const mx = s.x + s.dx * (MINE_GAP + 3) - 1, my = s.y + s.dy * 3 - 1;
+    clearDisc(mx + 1, my + 1, 3.5);
     mines.push({ x: mx, y: my, gold: 8000 });
     s.mine = mines.length - 1;
     for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++) set(s.x + x, s.y + y, T_DIRT);
@@ -912,7 +914,16 @@ function canPlace(w, k, tx, ty, slot, builder) {
     if (!inMap(w, x, y) || x < 1 || y < 1 || x >= w.W - 1 || y >= w.H - 1) return false;
     if (WALKABLE[w.ter[y * w.W + x]] !== 1 || w.occ[y * w.W + x]) return false;
   }
-  return true;
+  return k !== K.hall || !mineTooClose(w, tx, ty, size);
+}
+// halls have to keep MINE_GAP open squares between them and any gold mine
+function mineTooClose(w, tx, ty, size) {
+  for (const m of w.ents) {
+    if (m.k !== K.mine) continue;
+    const gx = Math.max(0, m.bx - (tx + size), tx - (m.bx + m.size)), gy = Math.max(0, m.by - (ty + size), ty - (m.by + m.size));
+    if (Math.max(gx, gy) < MINE_GAP) return m;
+  }
+  return null;
 }
 function formation(w, units, tx, ty) {
   // hand every unit its own free tile around the target so they don't all pile onto one spot
@@ -1322,18 +1333,22 @@ function gatherTick(w, u, d, dt) {
     const m = w.byId.get(r.mine);
     if (!m) { u.res = { mineNear: { x: u.x, y: u.y } }; return; }
     const ent = mineEntrance(w, m), de = dist(u.x, u.y, ent.x, ent.y);
-    if (de <= 1.8) {
-      // at the door: go in if there's room, otherwise hang about until someone comes out
+    if (de <= 3.5) {
+      // near the door: go in if there's room, otherwise queue until someone comes out
       if (mineCount(w, m) >= MINE_SLOTS) { u.path = null; u.waiting = true; return; }
-      u.waiting = false;
-      if (de <= 0.45) { u.path = null; u.st = 'inside'; u.hidden = true; u.inId = m.id; u.timer = 1.4; u.tries = 0; return; }
-      if (!u.path || u.pi >= u.path.length) { u.path = [{ x: ent.x, y: ent.y }]; u.pi = 0; }
+      u.waiting = false; u.tries = 0;
+      if (de <= 0.45) { u.path = null; u.st = 'inside'; u.hidden = true; u.inId = m.id; u.timer = 1.4; return; }
+      if (!u.path || u.pi >= u.path.length) {
+        if (de <= 1.2) { u.path = [{ x: ent.x, y: ent.y }]; u.pi = 0; }
+        else { const tx = Math.floor(ent.x), ty = Math.floor(ent.y); pathTo(w, u, (x, y) => x === tx && y === ty, tx, ty); }
+      }
       follow(w, u, d, dt);
       return;
     }
     u.waiting = false;
     if (!u.path || u.pi >= u.path.length) {
-      if (u.tries > 3) { u.tries = 0; stopUnit(u); return; }
+      // only give up on a mine that's far away and unreachable, never because of a crowd at the door
+      if (u.tries > 3) { u.tries = 0; if (de > 7) { stopUnit(u); return; } }
       u.tries = (u.tries || 0) + 1;
       const tx = Math.floor(ent.x), ty = Math.floor(ent.y);
       pathTo(w, u, (x, y) => Math.abs(x - tx) <= 1 && Math.abs(y - ty) <= 1, tx, ty);
@@ -2930,15 +2945,22 @@ function drawOverlays(w, s, t) {
     // walls: drag out a line, every free tile on it gets a piece
     const spots = placing.k === K.wall ? wallLine(placing.from || { tx, ty }, { tx, ty }) : [{ tx, ty }];
     let ok = true;
-    placing.tiles = [];
+    placing.tiles = []; placing.why = '';
     for (const sp of spots) {
       let good = true;
       for (let y = sp.ty; y < sp.ty + size; y++) for (let x = sp.tx; x < sp.tx + size; x++) if (!goodTile(x, y)) good = false;
+      const nearMine = placing.k === K.hall && mineTooClose(w, sp.tx, sp.ty, size);
+      if (nearMine) {
+        good = false; placing.why = `Too close to the gold mine: keep ${MINE_GAP} squares between a ${RACES[P.race].names.hall} and a mine.`;
+        // outline the squares that have to stay open
+        const [mx0, my0] = toScreen(nearMine.bx - MINE_GAP, nearMine.by - MINE_GAP), side = (nearMine.size + MINE_GAP * 2) * s;
+        ctx.setLineDash([5, 4]); ctx.strokeStyle = 'rgba(255,210,63,.8)'; ctx.lineWidth = 2; ctx.strokeRect(mx0, my0, side, side); ctx.setLineDash([]);
+      }
       if (good) placing.tiles.push(sp); else ok = false;
       const [gx, gy] = toScreen(sp.tx, sp.ty);
       ctx.globalAlpha = 0.5; drawSprite(ctx, spr, gx, gy - s * 1.2); ctx.globalAlpha = 1;
       for (let y = sp.ty; y < sp.ty + size; y++) for (let x = sp.tx; x < sp.tx + size; x++) {
-        const g = goodTile(x, y), [qx, qy] = toScreen(x, y);
+        const g = goodTile(x, y) && !nearMine, [qx, qy] = toScreen(x, y);
         ctx.fillStyle = g ? 'rgba(125,255,106,.3)' : 'rgba(255,79,79,.5)'; ctx.fillRect(qx + 1, qy + 1, s - 2, s - 2);
         ctx.strokeStyle = g ? '#7dff6a' : '#ff4f4f'; ctx.lineWidth = 1; ctx.strokeRect(qx + 1.5, qy + 1.5, s - 3, s - 3);
       }
@@ -3121,7 +3143,7 @@ function wallLine(a, b) {
 }
 function tryPlace() {
   if (!placing || placing.tx === undefined) return;
-  if (!placing.ok) { msg('Can\'t build there.', '#ff4fa3'); sfx('nope'); return; }
+  if (!placing.ok) { msg(placing.why || 'Can\'t build there.', '#ff4fa3'); sfx('nope'); return; }
   if (placing.k === K.wall && placing.tiles && placing.tiles.length) {
     const P = myP(), d = DEFS[P.race][K.wall], tiles = placing.tiles;
     if (!canAfford(P, d)) { msg('Not enough gold or wood.', '#ff4fa3'); sfx('nope'); return; }

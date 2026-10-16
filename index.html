@@ -130,6 +130,7 @@ h1 span{display:block;font-size:.42em;color:var(--ink);text-shadow:3px 3px 0 var
   font-family:'Press Start 2P',monospace;font-size:9px;
   background:var(--pink);color:#fff;padding:5px 6px;box-shadow:2px 2px 0 var(--shadow);
 }
+.new.update{background:var(--green);color:var(--bg)}
 
 .info{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
 .info h3{
@@ -137,6 +138,8 @@ h1 span{display:block;font-size:.42em;color:var(--ink);text-shadow:3px 3px 0 var
   color:var(--yellow);
 }
 .info .by{margin:-6px 0 0;color:var(--cyan);font-size:19px}
+.info .when{margin:-6px 0 0;color:#8d7fc0;font-size:18px;flex:0}
+.info .when.fresh{color:var(--green)}
 
 /* games by friends: dashed cyan frame + badge so they never pass for mine */
 .tile.friend{border-style:dashed;border-color:var(--cyan);background:#1a1838}
@@ -237,9 +240,14 @@ footer .hi{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--ink
  *   image  – cover picture for the tile (optional)
  *   icon   – emoji shown on the tile when there's no image
  *   art    – CSS background behind the emoji (optional)
- *   isNew  – show a NEW! badge (optional)
+ *   added  – when it went on the site (ISO date and time). Visitors who haven't played it
+ *            yet see NEW! for 30 days.
+ *   updated – when it last got an update worth telling people about. Bump this for new
+ *            features, not for typo fixes: everyone who played it before sees NEW UPDATE!
  *   by     – set this for a game a friend made: their name, shown on the tile.
  *            Friends' games sit on their own shelf and open in a new tab.
+ *   repo, path – for a friend's game: the GitHub repo (and folder in it) the game lives in.
+ *            Its last commit is looked up on GitHub and counts as the update date.
  */
 const GAMES = [
   {
@@ -248,7 +256,8 @@ const GAMES = [
     tags: ['Simulation', 'Strategy', '3D'],
     blurb: 'A god game in 3D, give or take. Feed your villagers, build with scaffolds, walk your enormous cow on a leash and train it by slapping and stroking until the skeptics next door believe in you.',
     image: 'assets/black_and_whiteish.svg',
-    isNew: true,
+    added: '2026-10-15T18:31:52+02:00',
+    updated: '2026-10-15T20:33:57+02:00',
   },
   {
     title: 'Warp Zone Survivors',
@@ -256,7 +265,8 @@ const GAMES = [
     tags: ['Action', 'Arcade', 'Survival'],
     blurb: 'Last 30 minutes against slimes and worse with shells, banana peels, POW blocks and sprouts. Max a weapon, pair it with the right passive and evolve it.',
     image: 'assets/warp_zone_survivors.svg',
-    isNew: true,
+    added: '2026-10-15T16:20:15+02:00',
+    updated: '2026-10-15T16:20:15+02:00',
   },
   {
     title: 'Caterpillar Chaos',
@@ -264,7 +274,8 @@ const GAMES = [
     tags: ['Action', 'Strategy', 'Multiplayer'],
     blurb: 'Turn-based caterpillar warfare on a random island or in a cave. Bazookas, super sheep, ninja ropes and crate drops for 2 or 4 players, online, on one screen or against the CPU.',
     image: 'assets/caterpillar_chaos.svg',
-    isNew: true,
+    added: '2026-10-15T14:35:47+02:00',
+    updated: '2026-10-16T13:32:02+02:00',
   },
   {
     title: 'Asphalt Tycoon: Island',
@@ -272,12 +283,15 @@ const GAMES = [
     tags: ['Tycoon', 'Simulation', 'Strategy'],
     blurb: 'Buy land, lay roads and run factories on a little island. Keep the traffic flowing and the money coming in.',
     image: 'assets/asphalt_tycoon.svg',
-    isNew: true,
+    added: '2026-10-15T13:43:49+02:00',
+    updated: '2026-10-15T13:43:49+02:00',
   },
   {
     title: 'Klapstuk',
     href: 'https://srijsbergen.github.io/klapstuk/',
     by: 'srijsbergen',
+    repo: 'srijsbergen/klapstuk',
+    added: '2026-10-15T16:26:54+02:00',
     tags: ['Fighting', 'Multiplayer', 'Action'],
     blurb: 'A platform fighter for 2 to 4 players with thirteen fighters. Every hit raises your damage %, so knock rivals off the screen. In Dutch.',
     image: 'assets/klapstuk.svg',
@@ -286,6 +300,8 @@ const GAMES = [
     title: 'Underlord',
     href: 'https://pjotrvdh.github.io/Underlord/',
     by: 'pjotrvdh',
+    repo: 'pjotrvdh/Underlord',
+    added: '2026-10-15T16:26:54+02:00',
     tags: ['Strategy', 'Simulation'],
     blurb: 'Dig into the dark, build rooms and attract creatures, then defend your Dungeon Heart against six waves of heroes.',
     image: 'assets/underlord.svg',
@@ -294,6 +310,8 @@ const GAMES = [
     title: 'Steel een Voertuig',
     href: 'https://zandv320.github.io/steel-een-voertuig/',
     by: 'zandv320',
+    repo: 'zandv320/zandv320.github.io', path: 'steel-een-voertuig',
+    added: '2026-10-16T13:32:05+02:00',
     tags: ['Action', 'Open World', 'Multiplayer'],
     blurb: 'A top-down open-world car thief in a harbour town. Steal cars, run jobs, shake off the police and run into whoever else is online. In Dutch.',
     image: 'assets/steel_een_voertuig.svg',
@@ -313,6 +331,76 @@ const $ = s => document.querySelector(s);
 const shelves = $('#shelves'), filters = $('#filters'), q = $('#q'), count = $('#count'), empty = $('#empty');
 let active = 'All', who = 'all';   // who: 'all' | 'mine' | 'friends'
 const isFriend = g => !!g.by;
+
+// ---- what's new for this visitor: what they played and when lives in their own browser ----
+const DAY = 864e5, FRESH = 30 * DAY;
+const PLAYED_KEY = 'arcade-played', FRIEND_KEY = 'arcade-friend-updates';
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode: badges just won't stick */ } },
+};
+let played = store.get(PLAYED_KEY);   // href -> when they last opened it
+const stamp = s => (s && Date.parse(s)) || 0;
+const updatedAt = g => Math.max(stamp(g.added), stamp(g.updated));
+// 'new' until you've played it (for its first 30 days), 'update' when it changed since you last played
+function badgeFor(g) {
+  const seen = played[g.href], added = stamp(g.added), upd = updatedAt(g), now = Date.now();
+  if (!seen) {
+    if (added && now - added < FRESH) return 'new';
+    return upd > added && now - upd < FRESH ? 'update' : null;
+  }
+  return upd > seen ? 'update' : null;
+}
+function markPlayed(g, tile) {
+  played = store.get(PLAYED_KEY);
+  played[g.href] = Date.now();
+  store.set(PLAYED_KEY, played);
+  // friends' games open in a new tab, so tidy this tile up straight away
+  tile.querySelector('.new')?.remove();
+  tile.querySelector('.when')?.classList.remove('fresh');
+}
+function ago(ms) {
+  const day = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const n = Math.round((day(Date.now()) - day(ms)) / DAY);
+  if (n <= 0) return 'today';
+  if (n === 1) return 'yesterday';
+  if (n < 14) return `${n} days ago`;
+  if (n < 60) return `${Math.round(n / 7)} weeks ago`;
+  return 'on ' + new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function whenLine(g) {
+  const added = stamp(g.added), upd = updatedAt(g);
+  if (!added) return null;
+  const text = upd > added ? `Updated ${ago(upd)}` : `Added ${ago(added)}`;
+  return el('p', { className: 'when' + (badgeFor(g) ? ' fresh' : ''), textContent: text });
+}
+// Friends' games: ask GitHub when their repo last changed. Unauthenticated calls are limited
+// to 60 an hour per visitor, so answers are kept for six hours.
+function useCachedFriendUpdates() {
+  const cache = store.get(FRIEND_KEY);
+  for (const g of GAMES) if (g.repo && cache[g.href]) g.updated = cache[g.href].updated;
+  return cache;
+}
+async function checkFriendUpdates() {
+  const cache = useCachedFriendUpdates(), now = Date.now();
+  const stale = GAMES.filter(g => g.repo && !(cache[g.href] && now - cache[g.href].checked < 6 * 3600e3));
+  if (!stale.length) return;
+  let changed = false;
+  await Promise.all(stale.map(async g => {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${g.repo}/commits?per_page=1` + (g.path ? `&path=${encodeURIComponent(g.path)}` : ''));
+      if (!res.ok) return;
+      const [last] = await res.json();
+      const date = last && last.commit && last.commit.committer && last.commit.committer.date;
+      if (!date) return;
+      cache[g.href] = { updated: date, checked: now };
+      changed = changed || g.updated !== date;
+      g.updated = date;
+    } catch (e) { /* offline or rate limited: keep what we had */ }
+  }));
+  store.set(FRIEND_KEY, cache);
+  if (changed) renderGrid();
+}
 
 function el(tag, props = {}, ...kids) {
   const n = Object.assign(document.createElement(tag), props);
@@ -370,6 +458,7 @@ function tileFor(g) {
       el('div', { className: 'info' },
         el('h3', { textContent: g.title }),
         ...(friend ? [el('p', { className: 'by', textContent: `by ${g.by} · opens in a new tab` })] : []),
+        ...[whenLine(g)].filter(Boolean),
         el('p', { textContent: g.blurb || '' }),
         el('ul', { className: 'tags' }, ...g.tags.map(t => {
           const b = el('button', { type: 'button', className: 'tag', textContent: t.toUpperCase(), title: `Show all ${t} games` });
@@ -385,7 +474,10 @@ function tileFor(g) {
       tile.prepend(el('span', { className: 'friend-badge', textContent: "FRIEND'S GAME" }));
     }
     if (g.art) tile.querySelector('.screen').style.setProperty('--art', g.art);
-    if (g.isNew) tile.prepend(el('span', { className: 'new', textContent: 'NEW!' }));
+    const badge = badgeFor(g);
+    if (badge) tile.prepend(el('span', { className: 'new' + (badge === 'update' ? ' update' : ''), textContent: badge === 'new' ? 'NEW!' : 'NEW UPDATE!' }));
+    tile.addEventListener('click', () => markPlayed(g, tile));
+    tile.addEventListener('auxclick', e => { if (e.button === 1) markPlayed(g, tile); });
     return el('li', {}, tile);
 }
 
@@ -398,7 +490,11 @@ function setFilter(t) {
 q.addEventListener('input', renderGrid);
 $('#reset').onclick = () => { q.value = ''; who = 'all'; setFilter('All'); q.focus(); };
 $('#year').textContent = new Date().getFullYear();
+useCachedFriendUpdates();
 setFilter('All');
+checkFriendUpdates();
+// coming back with the browser's back button can show the page from before you clicked a game
+addEventListener('pageshow', e => { if (e.persisted) { played = store.get(PLAYED_KEY); renderGrid(); } });
 </script>
 </body>
 </html>

@@ -128,7 +128,7 @@ summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);
 
     <details>
       <summary>HOW TO PLAY</summary>
-      <p>Take turns. Blow up every enemy caterpillar, or knock them into the water. Last team wiggling wins. Crates drop in now and then: grab them for health or extra weapons.</p>
+      <p>Take turns. Blow up every enemy caterpillar, or knock them into the water. Last team wiggling wins. Crates drop in now and then: grab them for health or extra weapons. After 8 rounds it's sudden death: the water rises after every turn.</p>
       <p><b style="color:var(--cyan);font-weight:400">Online:</b> one player picks HOST ONLINE, sets some teams to ONLINE PLAYER and opens a room. Friends pick JOIN ONLINE and type the room code, or just open the invite link.</p>
       <div class="keys">
         <b>← →</b><span>Walk</span>
@@ -181,7 +181,11 @@ summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);
 // ====================================================================
 //  Constants
 // ====================================================================
-const W = 1600, H = 900, WATER = 852, VIEW_H = 450;
+const W = 1600, H = 900, WATER0 = 852, VIEW_H = 450;
+// the sea level: it starts rising every turn once sudden death kicks in
+let WATER = WATER0;
+// sudden death starts after this many rounds
+const SD_ROUNDS = 8;
 const G = 0.25, WIND_ACC = 0.045, MAX_SPEED = 13.5, FALL_SAFE = 7;
 const FONT = '"Press Start 2P", monospace';
 const ZOOMS = [1, .75, .5];
@@ -290,6 +294,7 @@ const SFX = {
   shot: () => { noise(.18, .4, 3200); tone(160, 60, .1, 'square', .08); },
   jump: () => tone(260, 640, .12, 'square', .04),
   splash: () => noise(.6, .22, 900, 'bandpass'),
+  alarm: () => [0, .3, .6].forEach(d => tone(880, 440, .25, 'square', .05, d)),
   tick: () => tone(880, 880, .05, 'square', .035),
   turn: () => { tone(523, 523, .09, 'square', .045); tone(784, 784, .14, 'square', .045, .1); },
   error: () => tone(160, 110, .15, 'square', .05),
@@ -551,7 +556,7 @@ const catBlocked = (x, y) => solid(x, y) || solid(x, y - 5) || solid(x, y - 9);
 //  Projectile physics (shared by the game and the CPU's aiming)
 // ====================================================================
 function physStep(p, wind) {
-  if (p.rest) { if (solid(p.x, p.y + 1)) return null; p.rest = false; }
+  if (p.rest) { if (solid(p.x, p.y + 1) || (p.wedged && (solid(p.x - 2, p.y + 1) || solid(p.x + 2, p.y + 1)))) return null; p.rest = false; }
   if (!p.nograv) p.vy += G;
   if (p.wind) p.vx += wind * WIND_ACC;
   const n = Math.max(1, Math.ceil(Math.hypot(p.vx, p.vy) / 1.5));
@@ -562,7 +567,10 @@ function physStep(p, wind) {
       const [qx, qy] = normalAt(nx, ny), dot = p.vx * qx + p.vy * qy;
       if (dot < 0) { p.vx -= 2 * dot * qx; p.vy -= 2 * dot * qy; p.vx *= p.bounce; p.vy *= p.bounce; }
       else { p.vx *= -p.bounce; p.vy *= -p.bounce; }
-      if (Math.hypot(p.vx, p.vy) < .9 && qy < -.5) { p.vx = 0; p.vy = 0; p.rest = true; }
+      // it settles on flat-ish ground, or once it has been rattling around in a crack for a while
+      const slow = Math.hypot(p.vx, p.vy) < .9;
+      p.slow = slow ? (p.slow || 0) + 1 : 0;
+      if (slow && (qy < -.5 || p.slow > 30)) { p.vx = 0; p.vy = 0; p.rest = true; p.wedged = qy >= -.5; }
       break;
     }
     p.x = nx; p.y = ny;
@@ -591,6 +599,7 @@ function teamConfig() {
 }
 const pickCave = () => setup.map === 'cave' || (setup.map === 'mixed' && Math.random() < .5);
 function newGame(cfg, seed, cave) {
+  WATER = WATER0;
   genTerrain(seed, cave);
   const teams = cfg.map((t, i) => ({ idx: i, name: (t.name || '').trim() || TEAM_NAMES[i], color: TEAM_COLORS[i], type: t.type,
     peer: t.peer || null, cats: [], next: 0, weapon: 0, ammo: startAmmo(cave) }));
@@ -621,7 +630,8 @@ function makeCat(team, name, x, y, dir) {
 function blankGame(teams, cats, seed, per) {
   return { teams, cats, seed, per, projs: [], parts: [], texts: [], graves: [], crates: [], ops: [], state: 'intro', stateT: 0, turnTeam: -1, active: null,
     timer: 0, retreat: 0, wind: 0, power: 0, charging: false, cursor: null, ai: null, shake: 0, settleT: 0, settleGuard: 0,
-    frame: 0, focus: null, paused: false, over: false, replica: false, cave: false, turns: 0, gAng: 0, homeT: null, dropping: null };
+    frame: 0, focus: null, paused: false, over: false, replica: false, cave: false, turns: 0, gAng: 0, homeT: null, dropping: null,
+    sd: SD_ROUNDS, floods: 0, floodTurn: -1, waterGoal: WATER0 };
 }
 function findSpawn(cats) {
   for (let tries = 0; tries < 700; tries++) {
@@ -657,10 +667,13 @@ function nextTurn() {
   g.charging = false; g.power = 0; g.cursor = null; g.ai = null; g.focus = null; g.homeT = null; g.dropping = null;
   if (team.ammo[team.weapon] <= 0) team.weapon = 0;
   fx('sfx', 'turn');
+  const n = g.teams.length;
   if (++g.turns > 1 && g.crates.length < 4 && Math.random() < .42) {
     const k = makeCrate();
     if (k) { g.crates.push(k); g.dropping = k; g.state = 'drop'; g.stateT = 5; floatText(k.x, k.y - 16, 'CRATE!', '#ffd23f'); fx('sfx', 'chute'); }
   }
+  // rounds left until sudden death, 0 once the water is rising
+  g.sd = Math.max(0, Math.ceil((SD_ROUNDS * n - g.turns) / n));
 }
 function makeCrate() {
   const loot = CRATE_LOOT.filter(id => !(game.cave && id === 'airstrike'));
@@ -686,8 +699,20 @@ function toSettle() {
 const idleMine = p => p.type === 'mine' && p.fuse === Infinity && p.rest;
 const isSettled = () => game.projs.every(idleMine) && game.cats.every(c => !c.alive || c.grounded) && game.crates.every(k => !k.air);
 function resolveDeaths() {
-  if (game.cats.some(c => c.alive && c.hp <= 0)) { game.state = 'deaths'; game.stateT = .4; }
+  const g = game;
+  if (g.cats.some(c => c.alive && c.hp <= 0)) { g.state = 'deaths'; g.stateT = .4; }
+  else if (g.sd === 0 && g.floodTurn !== g.turns) startFlood();
   else nextTurn();
+}
+// sudden death: after every turn the sea comes up a bit more, faster each time
+function startFlood() {
+  const g = game;
+  // watch whoever is closest to getting wet
+  g.focus = g.cats.filter(c => c.alive).reduce((a, c) => !a || c.y > a.y ? c : a, null);
+  if (!g.floods && g.focus) { floatText(g.focus.x, g.focus.y - 50, 'SUDDEN DEATH!', '#ff4f6d'); fx('sfx', 'alarm'); }
+  g.floodTurn = g.turns;
+  g.waterGoal = Math.max(-40, WATER - Math.min(48, 16 + 8 * g.floods++));
+  g.state = 'flood';
 }
 function killNext() {
   const g = game, c = g.cats.find(k => k.alive && k.hp <= 0);
@@ -1336,21 +1361,78 @@ function aiPlan(c) {
   if (best.tx !== undefined) best.tx += randn() * na * 200;
   return best;
 }
+// no shot worth taking (walled off in a cave, or just too far): walk over, teleport next to
+// someone, or burn or drill a way through instead of lobbing another miss
+const AI_POOR = 12;
+function aiSafeStep(c, dir) {
+  const x = c.x + dir * 8;
+  if (x < 10 || x > W - 10) return false;
+  for (let y = c.y - 6; y < c.y + 40; y++) if (solid(x, y + 1) && !catBlocked(x, y)) return y < WATER - 16;
+  return false;
+}
+function teleportSpot(c, enemies) {
+  let best = null, bs = -1e9;
+  for (const e of enemies) for (let i = 0; i < 24; i++) {
+    const x = Math.round(e.x + (i % 2 ? 1 : -1) * (60 + (i >> 1) * 12));
+    if (x < 10 || x > W - 10) continue;
+    for (let y = Math.max(20, e.y - 120 | 0); y < Math.min(WATER - 40, e.y + 120); y++) {
+      if (!solid(x, y + 1) || catBlocked(x, y) || solid(x, y - 14)) continue;
+      if (game.cats.some(k => k.alive && Math.hypot(k.x - x, k.y - y) < 40)) continue;
+      if (!lineClear(x, y - 6, e.x, e.y - 5, null)) continue;
+      const s = -Math.abs(Math.hypot(e.x - x, e.y - y) - 110) - Math.max(0, 150 - (WATER - y)) + Math.random() * 20;
+      if (s > bs) { bs = s; best = { x, y }; }
+    }
+  }
+  return best;
+}
+function aiStuckPlan(c, ai) {
+  const g = game, team = c.team, enemies = g.cats.filter(k => k.alive && k.team !== team);
+  if (!enemies.length) return null;
+  const dist = k => Math.hypot(k.x - c.x, k.y - c.y), e = enemies.reduce((a, k) => dist(k) < dist(a) ? k : a);
+  const dx = e.x - c.x, dy = e.y - c.y, dir = dx < 0 ? -1 : 1;
+  if (dist(e) < 50) return null;
+  if (!ai.stuck && ai.walks < 3 && g.timer > 12 && Math.abs(dx) > 40 && aiSafeStep(c, dir)) return { walk: dir };
+  if (team.ammo[WI.teleport] > 0 && dist(e) > 260) {
+    const s = teleportSpot(c, enemies);
+    if (s) return { weapon: WI.teleport, tx: s.x, ty: s.y };
+  }
+  if (team.ammo[WI.drill] > 0 && dy > 50 && Math.abs(dx) < 40 && e.y < WATER - 40) return { weapon: WI.drill, dir, angle: c.aim };
+  if (team.ammo[WI.torch] > 0 && !lineClear(c.x, c.y - 6, e.x, e.y - 5, c))
+    return { weapon: WI.torch, dir, angle: clamp(Math.atan2(-dy, Math.abs(dx)), -.8, .8) };
+  return null;
+}
 function aiUpdate(c, team) {
   const g = game, ai = g.ai;
   if (!ai) return;
   if (ai.phase === 'think') {
     if (--ai.t > 0) return;
-    if (!ai.plan) { ai.plan = aiPlan(c); ai.t = 20; return; }
+    if (!ai.plan) {
+      ai.plan = aiPlan(c);
+      if (ai.plan.score < AI_POOR) ai.plan = aiStuckPlan(c, ai) || ai.plan;
+      ai.t = 20; return;
+    }
+    if (ai.plan.walk) { ai.phase = 'walk'; ai.t = 120; ai.x0 = c.x; ai.still = 0; return; }
     selectWeapon(ai.plan.weapon); ai.phase = 'aim'; return;
+  }
+  if (ai.phase === 'walk') {
+    if (!c.grounded) return;   // stepped off a ledge: wait until it lands
+    const x = c.x, go = ai.t-- > 0 && g.timer > 8 && aiSafeStep(c, ai.plan.walk);
+    if (go) walk(c, ai.plan.walk);
+    ai.still = c.x === x ? ai.still + 1 : 0;
+    if (!go || ai.still > 12) {
+      // look again from here; if that walk got nowhere, try something else next
+      ai.walks++; ai.stuck = Math.abs(c.x - ai.x0) < 15;
+      ai.phase = 'think'; ai.plan = null; ai.t = 10;
+    }
+    return;
   }
   const p = ai.plan, w = WEAPONS[p.weapon];
   if (ai.phase === 'aim') {
     if (w.kind === 'target') {
       const cur = g.cursor; if (!cur) { ai.phase = 'done'; return; }
-      const dx = p.tx - cur.x, dy = p.ty - cur.y, d = Math.hypot(dx, dy);
-      if (d < 6) { cur.x = p.tx; cur.y = p.ty; ai.phase = 'wait'; ai.t = 25; }
-      else { cur.x += dx / d * 6; cur.y += dy / d * 6; }
+      const dx = p.tx - cur.x, dy = p.ty - cur.y, d = Math.hypot(dx, dy), sp = Math.max(6, d / 20);
+      if (d < sp) { cur.x = p.tx; cur.y = p.ty; ai.phase = 'wait'; ai.t = 25; }
+      else { cur.x += dx / d * sp; cur.y += dy / d * sp; }
       return;
     }
     if (w.id === 'skip') { fire(c, team); ai.phase = 'done'; return; }
@@ -1359,6 +1441,7 @@ function aiUpdate(c, team) {
     c.aim += Math.sign(da) * Math.min(Math.abs(da), .035);
     if (Math.abs(da) < .001) {
       if (w.kind === 'charge') { g.charging = true; g.power = 0; ai.phase = 'charge'; }
+      else if (w.kind === 'tool') { if (c.grounded) { startDig(c, team); ai.phase = 'done'; } }
       else { fire(c, team); ai.phase = 'done'; }
     }
     return;
@@ -1426,7 +1509,7 @@ function update() {
         if (g.stateT <= 0) {
           g.state = 'aim';
           if (needsCursor(WEAPONS[team.weapon])) selectWeapon(team.weapon);
-          if (isCpu(team)) g.ai = { phase: 'think', t: 30, plan: null };
+          if (isCpu(team)) g.ai = { phase: 'think', t: 30, plan: null, walks: 0, stuck: false };
         }
         break;
       case 'aim':
@@ -1454,6 +1537,11 @@ function update() {
         g.stateT -= dt;
         if (g.stateT <= 0) killNext();
         break;
+      case 'flood':
+        WATER = Math.max(g.waterGoal, WATER - .6);
+        if (g.frame % 40 === 0) fx('sfx', 'splash');
+        if (WATER <= g.waterGoal) { g.state = 'settle'; g.settleT = 0; g.settleGuard = 0; }
+        break;
     }
   }
   for (const k of g.cats) updateCat(k);
@@ -1475,7 +1563,7 @@ function camTarget() {
   const flying = g.projs.find(p => watchable(p) && !p.rest) || g.projs.find(watchable);
   if (flying) return flying;
   if (g.cursor && g.state === 'aim') return g.cursor;
-  if (g.state === 'settle' || g.state === 'deaths') {
+  if (g.state === 'settle' || g.state === 'deaths' || g.state === 'flood') {
     const moving = g.cats.find(c => c.alive && !c.grounded);
     if (moving) return moving;
     if (g.focus) return g.focus;
@@ -1903,6 +1991,8 @@ function drawHUD() {
   ctx.strokeStyle = urgent && g.frame % 30 < 15 ? '#ff4f6d' : team.color; ctx.lineWidth = 2; ctx.strokeRect(VW / 2 - 22, 6, 44, 24);
   text(String(tv), VW / 2, 11, urgent ? '#ff4f6d' : g.state === 'retreat' ? '#a898cf' : '#efe6ff', 14, 'center', false);
   if (replayReady()) hudButton('▶ REPLAY', VW / 2 + 28, 6, 66, 24, '#7dff6a', () => startReplay(false));
+  if (g.sd === 0) text('SUDDEN DEATH', VW / 2, 35, g.frame % 60 < 40 ? '#ff4f6d' : '#a8324a', 6, 'center');
+  else if (g.sd <= 3) text(`SUDDEN DEATH IN ${g.sd}`, VW / 2, 35, '#a898cf', 6, 'center');
   // wind
   const wx = VW - 146, wy = 8, ww0 = 140;
   ctx.fillStyle = '#05020caa'; ctx.fillRect(wx - 2, wy, ww0 + 4, 22);
@@ -1940,6 +2030,7 @@ function drawHUD() {
     hint = isCpu(team) ? (g.ai && g.ai.phase === 'think' ? 'CPU IS THINKING' + '.'.repeat((g.frame >> 4) % 4) : '')
       : `${team.name.toUpperCase()} IS PLAYING`;
   } else if (g.state === 'drop') hint = 'A CRATE IS DROPPING IN!';
+  else if (g.state === 'flood') hint = 'SUDDEN DEATH: THE WATER IS RISING!';
   if (hint) text(hint, VW / 2, by - 31, '#efe6ff', 7, 'center');
   if (net.role !== 'offline') {
     const conn = net.role === 'host' ? `HOSTING ${net.code} · ${net.players.length} ONLINE` : `ONLINE · ROOM ${net.code}`;
@@ -2131,7 +2222,7 @@ function snapshot() {
     gr: g.graves.map(q => [r2(q.x), r2(q.y), q.color]),
     cr: g.crates.map(k => [k.kind, r2(k.x), r2(k.y), k.chute ? 1 : 0, k.air ? 1 : 0]),
     ga: g.gAng, ht: g.homeT ? [r2(g.homeT.x), r2(g.homeT.y)] : 0,
-    fo: g.focus ? g.cats.indexOf(g.focus) : -1, dr: g.dropping ? g.crates.indexOf(g.dropping) : -1 };
+    fo: g.focus ? g.cats.indexOf(g.focus) : -1, dr: g.dropping ? g.crates.indexOf(g.dropping) : -1, wl: r2(WATER), sd: g.sd };
 }
 function sendSnapshot() {
   if (!net.players.length) return;
@@ -2200,6 +2291,7 @@ function clientOnData(m) {
 }
 async function startClient(m) {
   await fontsReady;
+  WATER = WATER0;
   genTerrain(m.seed, !!m.cave);
   for (const op of m.ops || []) applyOp(op);
   const teams = m.teams.map((t, i) => ({ idx: i, name: t.name, color: TEAM_COLORS[i], type: t.type, cats: [], next: 0, weapon: 0,
@@ -2231,6 +2323,7 @@ function applySnapshot(m) {
   g.crates = (m.cr || []).map(d => ({ kind: d[0], x: d[1], y: d[2], chute: !!d[3], air: !!d[4] }));
   g.gAng = m.ga || 0; g.homeT = m.ht ? { x: m.ht[0], y: m.ht[1] } : null;
   g.focus = g.cats[m.fo] || null; g.dropping = g.crates[m.dr] || null;
+  WATER = m.wl ?? WATER0; g.sd = m.sd ?? SD_ROUNDS;
 }
 function clientUpdate() {
   const g = game;
@@ -2576,9 +2669,9 @@ function replaySource() {
 }
 const replayReady = () => !!replaySource();
 function withReplay(fn) {
-  const g = game;
-  game = replay.fake;
-  try { withTerrain(replay.view, fn); } finally { game = g; }
+  const g = game, live = WATER, R = replay;
+  game = R.fake; WATER = R.water;
+  try { withTerrain(R.view, fn); } finally { R.water = WATER; game = g; WATER = live; }
 }
 function startReplay(fromOver) {
   const g = game, r = replaySource();
@@ -2600,7 +2693,7 @@ function startReplay(fromOver) {
   // slow motion around every big bang
   const slow = [];
   frames.forEach((f, i) => { if (f.fx.some(([n, a]) => n === 'boom' && a[2] >= 20)) slow.push([i - 12, i + 55]); });
-  replay = { frames, view: replayView, fake, i: start - 1, pos: start, start, slow, fromOver, slowNow: false, cam: { ...cam } };
+  replay = { frames, view: replayView, fake, water: WATER, i: start - 1, pos: start, start, slow, fromOver, slowNow: false, cam: { ...cam } };
   for (const k in keys) keys[k] = false;
   sfx('replay');
   show(null);

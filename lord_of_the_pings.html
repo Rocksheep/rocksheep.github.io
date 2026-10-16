@@ -337,6 +337,7 @@ const UP_COSTS = [[[150, 100, 30], [260, 200, 40]], [[150, 100, 30], [260, 200, 
 const UP_HOME = ['lab', 'lab', 'mill'];
 const WOOD_PER_UP = 3;
 const CARRY = 10;
+const MINE_SLOTS = 3;     // workers inside a gold mine at once; the rest wait at the entrance
 
 const BASE = {
   worker:   { hp: 40, dmg: 4, arm: 0, rng: 0.6, cd: 1.2, spd: 2.6, sight: 5, g: 50, w: 0, t: 12, food: 1, r: 0.3 },
@@ -1179,8 +1180,33 @@ function mineDry(w, m) {
   removeEnt(w, m);
   for (const u of w.ents) if (u.res && u.res.mine === m.id) u.res = { mineNear: { x: m.x, y: m.y } };
 }
+// a mine's door: the free tile just below its middle, or the next best side if something's built there
+// which side a mine's door is on: towards the base it belongs to (b = bottom, l = left, r = right).
+// Worked out from the seeded map, so host and guests agree without sending it.
+function mineDoor(w, m) {
+  let best = null, bd = 12;
+  for (const st of w.starts) { const d = dist(st.x, st.y, m.bx + 1.5, m.by + 1.5); if (d < bd) { bd = d; best = st; } }
+  if (!best) return 'b';
+  const vx = best.x - (m.bx + 1.5), vy = best.y - (m.by + 1.5);
+  return vy > 0 && vy >= Math.abs(vx) ? 'b' : vx < 0 ? 'l' : 'r';
+}
+const DOOR_TILES = { b: [[1, 3], [0, 3], [2, 3]], l: [[-1, 1], [-1, 2], [-1, 0]], r: [[3, 1], [3, 2], [3, 0]] };
+function mineEntrance(w, m) {
+  const bx = m.bx, by = m.by, door = m.door || (m.door = mineDoor(w, m));
+  for (const [ox, oy] of [...DOOR_TILES[door], ...DOOR_TILES.b, ...DOOR_TILES.l, ...DOOR_TILES.r, [1, -1]])
+    if (walk(w, bx + ox, by + oy)) return { x: bx + ox + 0.5, y: by + oy + 0.5 };
+  return { x: bx + 1.5, y: by + 3.5 };
+}
+const mineCount = (w, m) => { let n = 0; for (const e of w.ents) if (e.inId === m.id) n++; return n; };
 function leaveInside(w, u, host) {
   u.hidden = false; u.inId = 0;
+  if (host && host.k === K.mine) {
+    // out through the door
+    const ent = mineEntrance(w, host);
+    u.x = ent.x + rand(-0.15, 0.15); u.y = ent.y + rand(-0.1, 0.1);
+    if (u.st === 'inside') u.st = 'idle';
+    return;
+  }
   const near = host ? (nearestHall(w, u.o, host.x, host.y) || host) : null;
   const spot = host ? freeSpotNear(w, host, near.x, near.y) : freeSpotNear(w, null, u.x, u.y);
   u.x = spot.x + 0.5; u.y = spot.y + 0.5;
@@ -1220,8 +1246,23 @@ function gatherTick(w, u, d, dt) {
   if (r.mine) {
     const m = w.byId.get(r.mine);
     if (!m) { u.res = { mineNear: { x: u.x, y: u.y } }; return; }
-    if (edgeDist(m, u.x, u.y) <= 1.2) { u.path = null; u.st = 'inside'; u.hidden = true; u.inId = m.id; u.timer = 1.4; return; }
-    if (!u.path || u.pi >= u.path.length) { if (u.tries > 3) { u.tries = 0; stopUnit(u); return; } u.tries = (u.tries || 0) + 1; pathTo(w, u, entGoal(m, 1.1), m.x, m.y); }
+    const ent = mineEntrance(w, m), de = dist(u.x, u.y, ent.x, ent.y);
+    if (de <= 1.8) {
+      // at the door: go in if there's room, otherwise hang about until someone comes out
+      if (mineCount(w, m) >= MINE_SLOTS) { u.path = null; u.waiting = true; return; }
+      u.waiting = false;
+      if (de <= 0.45) { u.path = null; u.st = 'inside'; u.hidden = true; u.inId = m.id; u.timer = 1.4; u.tries = 0; return; }
+      if (!u.path || u.pi >= u.path.length) { u.path = [{ x: ent.x, y: ent.y }]; u.pi = 0; }
+      follow(w, u, d, dt);
+      return;
+    }
+    u.waiting = false;
+    if (!u.path || u.pi >= u.path.length) {
+      if (u.tries > 3) { u.tries = 0; stopUnit(u); return; }
+      u.tries = (u.tries || 0) + 1;
+      const tx = Math.floor(ent.x), ty = Math.floor(ent.y);
+      pathTo(w, u, (x, y) => Math.abs(x - tx) <= 1 && Math.abs(y - ty) <= 1, tx, ty);
+    }
     follow(w, u, d, dt);
     return;
   }
@@ -1317,9 +1358,8 @@ function buildingTick(w, b, dt) {
       const u = w.byId.get(b.builder);
       if (u && u.inId === b.id) {
         leaveInside(w, u, b);
-        // a worker who builds a hall or farm next to a mine gets straight back to work
-        const m = nearestMine(w, u.x, u.y, 8);
-        if (m && P.ai) orderGather(w, u, { mine: m.id });
+        // CPU builders get straight back to work
+        if (P.ai) aiAssignWorker(w, P, u);
       }
       w.ev.push(['ready', b.o, b.k, +b.x.toFixed(1), +b.y.toFixed(1), 1]);
       recountFood(w);
@@ -1443,7 +1483,8 @@ function aiAssignWorker(w, P, u) {
   const m = nearestMine(w, base.x, base.y, 16);
   // mostly gold, but more on wood whenever wood is running behind
   const share = P.w < P.g * 0.6 ? 0.35 : 0.6;
-  if (m && (onGold < 3 || onGold < (onGold + onWood + 1) * share)) applyCmd(w, P.slot, { c: 'gather', ids: [u.id], id: m.id });
+  // only 3 fit in a mine at once, so more than 5 on gold just means queueing at the door
+  if (m && onGold < 5 && (onGold < 3 || onGold < (onGold + onWood + 1) * share)) applyCmd(w, P.slot, { c: 'gather', ids: [u.id], id: m.id });
   else {
     // chop near the mill if there is one
     let mill = null, md = 1e9;
@@ -2033,15 +2074,15 @@ function finishSprite(raw, outlinePx) {
 }
 function drawSprite(c, spr, x, y) { c.drawImage(spr, x, y, spr.width / spr.dpr, spr.height / spr.dpr); }
 const bldCache = new Map();
-function buildingSprite(race, k, color, s) {
-  const key = race + k + color + Math.round(s * 4) + DPR;
+function buildingSprite(race, k, color, s, variant = '') {
+  const key = race + k + color + Math.round(s * 4) + DPR + variant;
   let cvs = bldCache.get(key);
   if (cvs) return cvs;
   const n = k === K.mine ? 3 : BASE[KINDS[k]].size, top = s * 1.2;
   const raw = document.createElement('canvas'); raw.width = Math.ceil(n * s * DPR); raw.height = Math.ceil((n * s + top) * DPR); raw.dpr = DPR;
   const c = raw.getContext('2d');
   c.scale(DPR, DPR); c.translate(0, top); c.noShadow = true;
-  paintBuilding(c, race, k, color, n * s, s);
+  paintBuilding(c, race, k, color, n * s, s, variant);
   cvs = finishSprite(raw, Math.max(1, Math.round(DPR * s / 26)));
   bldCache.set(key, cvs);
   if (bldCache.size > 300) bldCache.delete(bldCache.keys().next().value);
@@ -2129,15 +2170,22 @@ function paintMill(c, race, color, W, u) {
     logPile(c, W * 0.06, W * 0.98, u, 2);
   }
 }
-function paintBuilding(c, race, k, color, W, s) {
+function paintBuilding(c, race, k, color, W, s, variant) {
   const u = s / 32, kind = KINDS[k], dk = shade(color, -0.35);
   if (!c.noShadow) ell(c, W / 2, W * 0.92, W * 0.48, W * 0.12, 'rgba(0,0,0,.3)');
   if (kind === 'mill') { paintMill(c, race, color, W, u); return; }
   if (kind === 'mine') {
     poly(c, '#6d6a72', W * 0.04, W * 0.95, W * 0.12, W * 0.35, W * 0.4, W * 0.12, W * 0.7, W * 0.2, W * 0.95, W * 0.55, W * 0.98, W * 0.95);
     poly(c, '#8a8790', W * 0.15, W * 0.45, W * 0.4, W * 0.17, W * 0.6, W * 0.3, W * 0.35, W * 0.55);
-    c.fillStyle = '#1a1208'; c.beginPath(); c.ellipse(W * 0.5, W * 0.95, W * 0.17, W * 0.25, 0, Math.PI, 0); c.fill();
-    box(c, W * 0.31, W * 0.68, W * 0.04, W * 0.27, '#7a5530'); box(c, W * 0.65, W * 0.68, W * 0.04, W * 0.27, '#7a5530'); box(c, W * 0.3, W * 0.66, W * 0.4, W * 0.05, '#7a5530');
+    if (variant === 'l' || variant === 'r') {
+      // the door is round the side, towards the base
+      const x = variant === 'l' ? W * 0.13 : W * 0.87, f = variant === 'l' ? 1 : -1;
+      c.fillStyle = '#1a1208'; c.beginPath(); c.ellipse(x, W * 0.72, W * 0.1, W * 0.2, 0, f > 0 ? -Math.PI / 2 : Math.PI / 2, f > 0 ? Math.PI / 2 : Math.PI * 1.5, true); c.fill();
+      box(c, x - W * 0.02, W * 0.5, W * 0.04, W * 0.42, '#7a5530'); box(c, x - W * 0.02 + f * W * 0.12, W * 0.5, W * 0.04, W * 0.42, '#7a5530'); box(c, Math.min(x, x + f * W * 0.14) - W * 0.02, W * 0.48, W * 0.18, W * 0.04, '#7a5530');
+    } else {
+      c.fillStyle = '#1a1208'; c.beginPath(); c.ellipse(W * 0.5, W * 0.95, W * 0.17, W * 0.25, 0, Math.PI, 0); c.fill();
+      box(c, W * 0.31, W * 0.68, W * 0.04, W * 0.27, '#7a5530'); box(c, W * 0.65, W * 0.68, W * 0.04, W * 0.27, '#7a5530'); box(c, W * 0.3, W * 0.66, W * 0.4, W * 0.05, '#7a5530');
+    }
     for (const [x, y] of [[0.22, 0.6], [0.75, 0.5], [0.55, 0.28], [0.3, 0.38], [0.82, 0.78], [0.12, 0.8]]) { ell(c, W * x, W * y, 3.5 * u, 3 * u, '#ffd23f'); ell(c, W * x - u, W * y - u, 1.2 * u, 1.2 * u, '#fff6c0'); }
     return;
   }
@@ -2262,7 +2310,7 @@ function drawBuildingAt(c, race, e, color, sx, sy, s, t) {
   const n = e.size, Wpx = n * s;
   ell(c, sx + Wpx * 0.52, sy + Wpx * 0.93, Wpx * 0.5, Wpx * 0.13, 'rgba(0,0,0,.3)');
   if (e.built || e.k === K.mine) {
-    drawSprite(c, buildingSprite(race, e.k, color, s), sx, sy - s * 1.2);
+    drawSprite(c, buildingSprite(race, e.k, color, s, e.k === K.mine ? (e.door || (e.door = mineDoor(G, e))) : ''), sx, sy - s * 1.2);
     if (!e.ghost) buildingLife(c, race, e, color, sx, sy, s, t);
     return;
   }
@@ -2290,7 +2338,7 @@ function buildingLife(c, race, e, color, sx, sy, s, t) {
     const k = Math.floor(ph * 1.5) % 6, spots = [[0.22, 0.6], [0.75, 0.5], [0.55, 0.28], [0.3, 0.38], [0.82, 0.78], [0.12, 0.8]];
     const fr = (ph * 1.5) % 1, [mx, my] = spots[k], r = Math.sin(fr * Math.PI) * 4 * u;
     line(c, sx + Wpx * mx - r, sy + Wpx * my, sx + Wpx * mx + r, sy + Wpx * my, '#fff', 1.5); line(c, sx + Wpx * mx, sy + Wpx * my - r, sx + Wpx * mx, sy + Wpx * my + r, '#fff', 1.5);
-    if (e.busy || G.ents.some(w => w.inId === e.id)) ell(c, sx + Wpx / 2, sy + Wpx * 0.85, s * 0.35, s * 0.3, `rgba(255,210,63,${0.25 + Math.sin(t * 6) * 0.1})`);
+    if (G.replica ? e.busy : G.ents.some(w => w.inId === e.id)) ell(c, sx + Wpx * (e.door === 'l' ? 0.13 : e.door === 'r' ? 0.87 : 0.5), sy + Wpx * (e.door === 'b' || !e.door ? 0.85 : 0.72), s * 0.3, s * 0.3, `rgba(255,210,63,${0.25 + Math.sin(t * 6) * 0.1})`);
     return;
   }
   // chimney smoke from halls and goblin shacks
@@ -2685,7 +2733,8 @@ function pickEnt(sx, sy) {
   for (const e of G.ents) {
     if (e.hidden || !seesEnt(G, e)) continue;
     if (e.size) {
-      if (x >= e.bx && x <= e.bx + e.size && y >= e.by - 0.6 && y <= e.by + e.size) { const d = 2 + dist(x, y, e.x, e.y) * 0.1; if (d < bd) { bd = d; best = e; } }
+      const mine = e.k === K.mine, ix = mine ? 0.3 : 0, top = mine ? 0.45 : -0.6, bot = mine ? 0.1 : 0;
+      if (x >= e.bx + ix && x <= e.bx + e.size - ix && y >= e.by + top && y <= e.by + e.size - bot) { const d = 2 + dist(x, y, e.x, e.y) * 0.1; if (d < bd) { bd = d; best = e; } }
     } else {
       const h = e.fly ? 1.2 : e.k === K.special ? 0.7 : 0.45, d = dist(x, y, e.x, e.y - h);
       if (d < e.r + 0.35 && d < bd) { bd = d; best = e; }
@@ -3115,7 +3164,7 @@ function renderInfo() {
   const list = [...selection].map(id => w.byId.get(id)).filter(e => e && !e.dead);
   if (list.length !== selection.size) { selection = new Set(list.map(e => e.id)); }
   const P = myP();
-  const sig = list.map(e => `${e.id}:${Math.ceil(e.hp)}:${e.carry || 0}:${e.built ? 1 : 0}:${Math.round((e.prog || 0) * 50)}:${(e.queue || []).join('.')}:${Math.round((e.qt || 0) * 4)}:${e.gold || 0}:${e.st === 'inside' ? 1 : 0}`).join(',') + (P ? P.up.join('') : '');
+  const sig = list.map(e => `${e.id}:${Math.ceil(e.hp)}:${e.carry || 0}:${e.built ? 1 : 0}:${Math.round((e.prog || 0) * 50)}:${(e.queue || []).join('.')}:${Math.round((e.qt || 0) * 4)}:${e.gold || 0}:${e.st === 'inside' ? 1 : 0}:${e.k === K.mine ? (w.replica ? e.busy : mineCount(w, e)) : ''}`).join(',') + (P ? P.up.join('') : '');
   const full = sig + (P || list.length ? '' : scoreSig(w) + '|' + (box.querySelector('.score') ? 's' : ''));
   if (full === infoSig) return;
   infoSig = full;
@@ -3154,7 +3203,7 @@ function renderInfo() {
   if (owner) nm.style.color = e.o === w.me ? 'var(--yellow)' : owner.color;
   txt.append(nm);
   if (e.k === K.mine) {
-    const s = document.createElement('div'); s.className = 'stats'; s.innerHTML = `<span>Gold left: <b>${e.gold}</b></span>`; txt.append(s);
+    const s = document.createElement('div'); s.className = 'stats'; s.innerHTML = `<span>Gold left: <b>${e.gold}</b></span><span>Inside: <b>${w.replica ? e.busy || 0 : mineCount(w, e)}/${MINE_SLOTS}</b></span>`; txt.append(s);
     const s2 = document.createElement('div'); s2.className = 'sub'; s2.textContent = P ? `Right-click it with ${RACES[P.race].workers} selected to start mining.` : 'Workers bring gold out of here.'; txt.append(s2);
   } else {
     const hb = document.createElement('div'); hb.className = 'hpbar'; const hi = document.createElement('i'); hi.style.width = clamp(e.hp / d.hp, 0, 1) * 100 + '%'; hb.append(hi);
@@ -3277,10 +3326,10 @@ $('menuBtn').onclick = () => { audio(); togglePause(); };
 // mine:     [id, 9, -1, bx, by, gold, busy]
 const F_MOVE = 1, F_ATK = 2, F_GOLD = 4, F_WOOD = 8, F_HIDDEN = 16, F_CHOP = 32, F_IDLE = 64;
 function encodeEnts(w) {
-  const busy = new Set();
-  for (const u of w.ents) if (u.inId) busy.add(u.inId);
+  const busy = new Map();
+  for (const u of w.ents) if (u.inId) busy.set(u.inId, (busy.get(u.inId) || 0) + 1);
   return w.ents.map(e => {
-    if (e.k === K.mine) return [e.id, e.k, -1, e.bx, e.by, e.gold, busy.has(e.id) ? 1 : 0];
+    if (e.k === K.mine) return [e.id, e.k, -1, e.bx, e.by, e.gold, busy.get(e.id) || 0];
     if (e.size) return [e.id, e.k, e.o, e.bx, e.by, Math.ceil(e.hp), e.built ? 1 : 0, Math.round(e.prog * 1000), e.queue.slice(), Math.round(e.qt * 10)];
     const f = (e.moving ? F_MOVE : 0) | (e.atkT > 0.15 ? F_ATK : 0) | (e.carry === 1 ? F_GOLD : 0) | (e.carry === 2 ? F_WOOD : 0) | (e.hidden ? F_HIDDEN : 0) | (e.chopping ? F_CHOP : 0) | (e.st === 'idle' ? F_IDLE : 0);
     return [e.id, e.k, e.o, Math.round(e.x * 20), Math.round(e.y * 20), Math.ceil(e.hp), f, e.face, e.cAmt || 0];
@@ -3317,7 +3366,7 @@ function applySnapshot(w, m) {
     e.o = o;
     if (k === K.mine || isBldK(k)) {
       e.size = BASE[KINDS[k]].size; e.bx = d[3] | 0; e.by = d[4] | 0; e.x = e.bx + e.size / 2; e.y = e.by + e.size / 2; e.r = e.size / 2;
-      if (k === K.mine) { e.gold = d[5] | 0; e.busy = !!d[6]; e.built = true; }
+      if (k === K.mine) { e.gold = d[5] | 0; e.busy = clamp(d[6] | 0, 0, MINE_SLOTS); e.built = true; }
       else { e.hp = +d[5] || 1; e.built = !!d[6]; e.prog = (+d[7] || 0) / 1000; e.queue = Array.isArray(d[8]) ? d[8].map(q => q | 0) : []; e.qt = (+d[9] || 0) / 10; }
     } else {
       const nx = (+d[3] || 0) / 20, ny = (+d[4] || 0) / 20;

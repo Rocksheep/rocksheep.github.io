@@ -222,7 +222,7 @@ details p{margin:10px 0}
   <div class="panel">
     <a class="back" href="index.html">◀ ARCADE</a>
     <h1>LORD OF THE<span>PINGS</span></h1>
-    <p class="kicker">Real-time strategy for Humans, Orcs, Goblins, Funguys and Bugs. Gather, build, conquer, blame lag.</p>
+    <p class="kicker">Real-time strategy for Humans, Orcs, Goblins, Funguys, Bugs and Undead. Gather, build, conquer, blame lag.</p>
     <div class="seg tabs" id="optMode" role="group" aria-label="How you play"></div>
 
     <div id="hostSide">
@@ -366,8 +366,8 @@ const TRAINS = { hall: ['worker'], barracks: ['melee', 'ranged', 'special'], lab
 
 const RACES = {
   humans: {
-    name: 'Humans', short: 'HUMANS', skin: '#f2c49b', dark: '#8a6a4a', proj: 'arrow', build: 1.3,
-    passive: 'Agile building: everything builds 30% faster.',
+    name: 'Humans', short: 'HUMANS', skin: '#f2c49b', dark: '#8a6a4a', proj: 'arrow', build: 1.3, repair: true, wallCost: 0.5, towerMul: 1.4, armBonus: 1,
+    passive: 'Builders: buildings go up 30% faster, Interns can repair, walls cost half, towers hit harder and every unit wears extra armour.',
     names: { worker: 'Intern', melee: 'Footman', ranged: 'Arch-er', special: 'Knight Who Says Ni', hall: 'Town Hall', farm: 'Farm', barracks: 'Barracks', lab: 'Library', tower: 'Guard Tower', mill: 'Lumber Mill', flyer: 'Gryphon Rider', siege: 'Trebuchet (Enterprise Edition)', ultimate: 'Root Wizard', wall: 'Stone Wall', workshop: 'Siege Workshop', altar: 'Wizard Tower' },
     desc: { worker: 'Mines, chops and builds. Unpaid.', melee: 'Sword, shield, strong opinions about tabs vs spaces.', ranged: 'Shoots arrows. Uses Arch, btw.', special: 'Fast, heavily armoured horseman. Demands a shrubbery.',
       lab: 'Researches upgrades. Unlocks the knight.', tower: 'Shoots arrows at anything that gets close.', flyer: 'Rides a gryphon over trees, water and walls, throwing hammers.', siege: 'Flings boulders over walls. Takes a while to load, worth the wait.', ultimate: 'Has sudo. Casts fireballs that burn everything near the target. Only one at a time.' },
@@ -377,8 +377,8 @@ const RACES = {
     workers: 'Interns', farms: 'Farms', ready: 'Job done!', alert: 'Our base is under attack! This is not a drill.', voice: 1.0,
   },
   orcs: {
-    name: 'Orcs', short: 'ORCS', skin: '#6aa33f', dark: '#3d6324', proj: 'spear', hp: 1.15,
-    passive: 'Thick skin: every unit has 15% more health.',
+    name: 'Orcs', short: 'ORCS', skin: '#6aa33f', dark: '#3d6324', proj: 'spear', hp: 1.2, rage: 0.55, plunder: 0.35,
+    passive: 'Bloodlust: wounded units attack much faster, everyone has 20% more health, and razing a building pays out gold.',
     names: { worker: 'Peon', melee: 'Grunt', ranged: 'Spear Chucker', special: 'Ogre-clocker', hall: 'Great Hall', farm: 'Pig Farm', barracks: 'War Camp', lab: 'Altar of Firmware', tower: 'Watch Tower', mill: 'Chop Shop', flyer: 'Wi-Fi-vern', siege: 'Catapult.exe', ultimate: 'Warchief Ctrl-Alt-Defeat', wall: 'Palisade', workshop: 'Smashworks', altar: 'Shrine of the Elder Admin' },
     desc: { worker: 'Work work.', melee: 'Big axe. Small vocabulary.', ranged: 'Throws spears. Retrieves none.', special: 'Two heads, running way past spec. Its swings hit everyone near the target.',
       lab: 'Researches upgrades. Unlocks the Ogre-clocker.', tower: 'Throws spears at anything that gets close.', flyer: 'A wyvern with full bars everywhere. Breathes fire from above.', siege: 'Throws skulls. Mostly rocks shaped like skulls.', ultimate: 'Enormous. His axe hits everyone around the target. Only one at a time.' },
@@ -388,8 +388,8 @@ const RACES = {
     workers: 'Peons', farms: 'Pig Farms', ready: 'Work complete!', alert: 'Enemies at the gate! Smash them!', voice: 0.7,
   },
   goblins: {
-    name: 'Goblins', short: 'GOBLINS', skin: '#a6c94a', dark: '#5f7a22', proj: 'zap', hp: 0.85, cost: 0.8, spd: 1.05,
-    passive: 'Cheap labour: everything costs 20% less, but gobs are a bit fragile.',
+    name: 'Goblins', short: 'GOBLINS', skin: '#a6c94a', dark: '#5f7a22', proj: 'zap', hp: 0.82, cost: 0.85, spd: 1.05, train: 1.1, blast: { dmg: 30, r: 2.2 },
+    passive: 'Mass production: everything is 15% cheaper and trains 10% faster, gobs are fragile, and goblin buildings blow up when destroyed.',
     names: { worker: 'Gobbo', melee: 'Stabby', ranged: 'Zapper', special: 'Kaboomer', hall: 'Junk Hall', farm: 'Rat Hutch', barracks: 'Scrapyard', lab: 'Tinker Shed', tower: 'Zap Tower', mill: 'Splinter Factory', flyer: 'Bomb Zeppelin', siege: 'Rocket Wagon', ultimate: 'Mecha-Gob 3000', wall: 'Scrap Fence', workshop: 'Boom Garage', altar: 'Big Red Button Room' },
     desc: { worker: 'Time is money, friend!', melee: 'Stabs things. Pokes things. Is a thing.', ranged: 'Homemade lightning gun. Mostly safe.', special: 'A barrel of boom on legs. Runs at the target and explodes, hurting everything nearby (buildings extra).',
       lab: 'Researches upgrades. Unlocks the Kaboomer.', tower: 'Zaps anything that gets close.', flyer: 'A balloon full of bombs. Drops them on whatever is underneath, but can\'t hit other flyers.', siege: 'Fires rockets. Aims roughly.', ultimate: 'A giant robot with a goblin in the cockpit and rockets on both arms. Only one at a time.' },
@@ -399,8 +399,8 @@ const RACES = {
     workers: 'Gobbos', farms: 'Rat Hutches', ready: 'Done! Don\'t lean on it.', alert: 'Somebody\'s smashing our stuff!', voice: 1.35,
   },
   funguys: {
-    name: 'Funguys', short: 'FUNGUYS', skin: '#f4ead6', dark: '#a8957a', proj: 'spore', regen: 0.8,
-    passive: 'Mycelium network: every unit slowly regrows lost health.',
+    name: 'Funguys', short: 'FUNGUYS', skin: '#f4ead6', dark: '#a8957a', proj: 'spore', regen: 1.2, myco: 6, bldRegen: 3, hp: 1.08,
+    passive: 'Mycelium: units are a bit sturdier and regrow health (much faster near your buildings), and buildings heal themselves.',
     names: { worker: 'Sporeling', melee: 'Shroomtrooper', ranged: 'Spore Shooter', special: 'Truffle Tank', hall: 'Mother Shroom', farm: 'Compost Heap', barracks: 'Fairy Ring', lab: 'Spore Lab', tower: 'Puffball Tower', mill: 'Rot Pile', flyer: 'Spore Balloon', siege: 'Spore Mortar', ultimate: 'Fungus Amongus', wall: 'Mushroom Hedge', workshop: 'Fermentory', altar: 'Sacred Grove' },
     desc: { worker: 'Small, cheerful, always growing on you.', melee: 'These aren\'t the shrooms you\'re looking for.', ranged: 'Fires spore puffs that splash on nearby enemies.', special: 'Big, slow and lumpy. Heals friendly units around it.',
       lab: 'Researches upgrades. Unlocks the Truffle Tank.', tower: 'Puffs spores at anything that gets close.', flyer: 'A puffball with ambitions. Drifts over anything and rains spores that splash.', siege: 'Lobs fat spore bombs a long way.', ultimate: 'A walking forest floor. Stomps everyone near the target and heals friends around it. Only one at a time.' },
@@ -410,8 +410,8 @@ const RACES = {
     workers: 'Sporelings', farms: 'Compost Heaps', ready: 'Fully grown!', alert: 'Somebody is stepping on our shrooms!', voice: 1.2,
   },
   bugs: {
-    name: 'Bugs', short: 'BUGS', skin: '#3a3328', dark: '#1d1914', proj: 'spit', hp: 0.9, spd: 1.2,
-    passive: 'Swarm: every unit moves 20% faster, but is a little squishy.',
+    name: 'Bugs', short: 'BUGS', skin: '#3a3328', dark: '#1d1914', proj: 'spit', hp: 0.9, spd: 1.15, carry: 1.2, hallCost: 0.6,
+    passive: 'Swarm: units move 15% faster but are squishy, Anterns carry 20% more, and new Hive Cores are cheap.',
     names: { worker: 'Antern', melee: 'Beetle Brawler', ranged: 'Spitter Wasp', special: 'Heisenbug', hall: 'Hive Core', farm: 'Aphid Ranch', barracks: 'Brood Chamber', lab: 'The Debugger', tower: 'Stinger Spire', mill: 'Termite Mound', flyer: 'Drone-fly', siege: 'Bombardier Beetle', ultimate: 'Bug Queen v1.0 (final_FINAL)', wall: 'Wax Wall', workshop: 'Gall Factory', altar: 'Royal Chamber' },
     desc: { worker: 'An ant intern. Carries ten times its weight, gets paid in sugar.', melee: 'Horned, armoured, mildly annoyed.', ranged: 'Spits acid from a safe distance.', special: 'You can know where it is or hit it, not both: dodges a third of all attacks.',
       lab: 'Researches upgrades. Unlocks the Heisenbug.', tower: 'Stings anything that gets close.', flyer: 'A dragonfly running quadcopter firmware. Very fast, spits acid.', siege: 'Sprays boiling acid from its rear end. Nature is wild.', ultimate: 'Spits acid and lays a new Beetle Brawler every 20 seconds (up to 4). Only one at a time.' },
@@ -419,6 +419,17 @@ const RACES = {
     ups: ['Sharper Mandibles', 'Harder Shells', 'Termite Turbo'],
     quips: ['It\'s not a bug, it\'s a feature.', 'Works on my machine.', 'Bzzzt. Acknowledged.', 'Off by one? Off by one.', '*clicks mandibles*', 'Segfault? Sounds tasty.', 'Can\'t reproduce.'],
     workers: 'Anterns', farms: 'Aphid Ranches', ready: 'Hatched!', alert: 'The hive is under attack! Swarm!', voice: 1.6,
+  },
+  undead: {
+    name: 'Undead', short: 'UNDEAD', skin: '#c9d1b8', dark: '#5a6050', proj: 'soul', spd: 0.95, raise: 0.4, noHeal: true,
+    passive: 'Raise dead: enemies who fall near your units can rise as Skeletons on your side for 45 seconds. Undead can\'t be healed.',
+    names: { worker: 'Ghoul', melee: 'Skeleton', ranged: 'Banshee', special: 'Bone Golem', hall: 'Necropolis', farm: 'Graveyard', barracks: 'Crypt', lab: 'Haunted Server Room', tower: 'Ziggurat', mill: 'Bone Mill', flyer: 'Gargoyle', siege: 'Meat Wagon', ultimate: 'Lich Kernel', wall: 'Bone Fence', workshop: 'Slaughterhouse', altar: 'Altar of /dev/null' },
+    desc: { worker: 'Mines, chops and builds. Never sleeps (literally).', melee: 'Rattly, cheap and surprisingly motivated.', ranged: 'Screams at things until they stop moving.', special: 'A heap of bones that hits like a truck. Slow.',
+      lab: 'Researches upgrades and raises the Gargoyle. Unlocks the Bone Golem.', tower: 'Zaps the living with green fire.', flyer: 'A stone gargoyle that swoops down to claw at things.', siege: 'Lobs... let\'s call them "materials". Great against buildings.', ultimate: 'A zombie process that refuses to terminate. Its freezing blasts splash around the target. Only one at a time.' },
+    over: { melee: { hp: 75, g: 55, w: 10, t: 12 }, ranged: { dmg: 9, rng: 4 }, special: { hp: 320, dmg: 18, spd: 1.8, arm: 5, cd: 1.6 }, flyer: { hp: 140, dmg: 12, rng: 0.7 }, siege: { shot: 'skull' }, ultimate: { hp: 650, dmg: 30, rng: 5.5, cd: 1.6, splash: 1.4, shot: 'frost' } },
+    ups: ['Sharper Bones', 'Thicker Coffins', 'Necrotic Axes'],
+    quips: ['rm -rf /life', 'Zombie process detected.', 'I\'m a daemon. Technically.', 'kill -9 me. I dare you.', 'Still running in the background.', 'Undead? I prefer "long-running".', 'Braaains. And coffee.'],
+    workers: 'Ghouls', farms: 'Graveyards', ready: 'It lives! Sort of.', alert: 'The living are attacking us!', voice: 0.55,
   },
 };
 const RACE_KEYS = Object.keys(RACES);
@@ -434,11 +445,14 @@ for (const rk of RACE_KEYS) {
       d.spd *= R.spd || 1;
       d.proj = d.shot || (d.rng > 1.5 ? R.proj : null);
       d.hitsAir = (d.rng > 1.5 || !!d.fly) && !d.groundOnly;
+      if (R.armBonus) d.arm += R.armBonus;
       if (R.regen) d.regen = R.regen;
     }
-    if (kind === 'tower') { d.proj = R.proj; d.hitsAir = true; }
-    if (d.g) { d.g = Math.round(d.g * (R.cost || 1)); d.w = Math.round(d.w * (R.cost || 1)); }
+    if (kind === 'tower') { d.proj = R.proj; d.hitsAir = true; if (R.towerMul) { d.dmg = Math.round(d.dmg * R.towerMul); d.hp = Math.round(d.hp * 1.25); } }
+    const cm = (R.cost || 1) * (kind === 'wall' ? R.wallCost || 1 : 1) * (kind === 'hall' ? R.hallCost || 1 : 1);
+    if (d.g || d.w) { d.g = Math.round(d.g * cm); d.w = Math.round(d.w * cm); }
     if (isBldK(k)) d.t /= R.build || 1;
+    if (isUnitK(k)) d.t /= R.train || 1;
     return d;
   });
 }
@@ -522,6 +536,9 @@ const SFX = {
   rocket() { noise(0.5, 0.16, 1500, 0, 'bandpass'); tone(300, 0.4, 'sawtooth', 0.05, 2.5); },
   sporebomb() { noise(0.3, 0.12, 500); tone(180, 0.2, 'sine', 0.08, 0.5); },
   acid() { noise(0.25, 0.1, 2500); },
+  soul() { tone(700, 0.3, 'sine', 0.05, 0.5); tone(720, 0.3, 'sine', 0.04, 0.45); },
+  skull() { noise(0.25, 0.16, 400); tone(140, 0.2, 'square', 0.06, 0.6); },
+  frost() { noise(0.3, 0.1, 4000, 0, 'highpass'); tone(1400, 0.2, 'sine', 0.04, 0.6); },
   chop() { noise(0.05, 0.1, 900); tone(140, 0.05, 'square', 0.05); },
   fell() { noise(0.5, 0.18, 500); tone(90, 0.4, 'sine', 0.12, 0.5); },
   die() { tone(rand(300, 380), 0.25, 'square', 0.06, 0.4); },
@@ -842,6 +859,12 @@ function applyCmd(w, slot, c) {
       break;
     }
     case 'return': for (const u of units) if (u.k === K.worker && u.carry) orderReturn(w, u); break;
+    case 'repair': {
+      const b = w.byId.get(c.id);
+      if (!b || !b.size || b.o !== slot || !b.built || !RACES[P.race].repair) return;
+      for (const u of units) if (u.k === K.worker) { stopUnit(u); u.hold = false; u.st = 'repair'; u.rep = b.id; }
+      break;
+    }
     case 'stop': for (const u of units) { stopUnit(u); u.hold = false; } break;
     case 'hold': for (const u of units) { stopUnit(u); u.hold = true; } break;
     case 'boom': for (const u of units) if (def(w, u).kaboom) explode(w, u); break;
@@ -1017,7 +1040,7 @@ function recountFood(w) {
   for (const e of w.ents) {
     if (e.o < 0) continue;
     const P = w.players[e.o], d = def(w, e);
-    if (isUnitK(e.k)) P.food += d.food;
+    if (isUnitK(e.k)) { if (!e.raised) P.food += d.food; }
     else if (e.built && d.cap) P.cap += d.cap;
     if (e.queue && e.queue[0] !== undefined && isUnitK(e.queue[0]) && e.qt > 0) P.food += DEFS[P.race][e.queue[0]].food;
   }
@@ -1054,9 +1077,12 @@ function unitTick(w, u, dt) {
       if (u.st === 'attack' && u.tgt) { b.st = 'attack'; b.tgt = u.tgt; b.forced = false; }
     }
   }
+  if (u.lifeT !== undefined && (u.lifeT -= dt) <= 0) { killUnit(w, u, null, true); return; }
+  const RU = RACES[d.race];
+  if (RU.myco && u.hp < d.hp && (w.frame + u.id) % 10 === 0 && w.ents.some(e => e.o === u.o && e.size && e.built && edgeDist(e, u.x, u.y) <= 4)) u.hp = Math.min(d.hp, u.hp + RU.myco * 0.5);
   if (d.aura && w.frame % 10 === 0) {
     for (const o of w.ents) if (o !== u && isUnitK(o.k) && allied(w, o.o, u.o) && o.hp > 0 && dist(o.x, o.y, u.x, u.y) <= d.aura) {
-      const od = def(w, o); if (o.hp < od.hp) { o.hp = Math.min(od.hp, o.hp + 2.5); if (Math.random() < 0.3) w.ev.push(['heal', o.x, o.y]); }
+      const od = def(w, o); if (o.hp < od.hp && !RACES[od.race].noHeal) { o.hp = Math.min(od.hp, o.hp + 2.5); if (Math.random() < 0.3) w.ev.push(['heal', o.x, o.y]); }
     }
   }
   switch (u.st) {
@@ -1087,13 +1113,14 @@ function unitTick(w, u, dt) {
     case 'gather': gatherTick(w, u, d, dt); break;
     case 'return': returnTick(w, u, d, dt); break;
     case 'build': buildTick(w, u, d, dt); break;
+    case 'repair': repairTick(w, u, d, dt); break;
     case 'inside': {
       const host = w.byId.get(u.inId);
       if (!host) { leaveInside(w, u, null); break; }
       if (host.k === K.mine) {
         if ((u.timer -= dt) <= 0) {
           const P = w.players[u.o], mul = P.ai ? AI_DIFF[P.diff].gather : 1;
-          const amt = Math.min(host.gold, Math.round(CARRY * mul));
+          const amt = Math.min(host.gold, Math.round(CARRY * mul * (RACES[P.race].carry || 1)));
           host.gold -= amt; u.carry = 1; u.cAmt = amt;
           if (host.gold <= 0) mineDry(w, host);
           leaveInside(w, u, host); u.st = 'return';
@@ -1161,7 +1188,7 @@ function attackTick(w, u, d, dt) {
     u.path = null;
     if (Math.abs(t.x - u.x) > 0.1) u.face = t.x > u.x ? 1 : -1;
     if (u.cd <= 0) {
-      u.cd = d.cd; u.atkT = 0.3;
+      u.cd = d.cd * (RACES[d.race].rage && u.hp < d.hp / 2 ? RACES[d.race].rage : 1); u.atkT = 0.3;
       if (d.kaboom) return explode(w, u);
       const dmg = d.dmg + upAtk(w, u), mods = d.bldMul || d.unitMul ? { bm: d.bldMul, um: d.unitMul } : null;
       if (d.proj) {
@@ -1221,14 +1248,34 @@ function damage(w, t, amount, fromId, fromOwner, mods) {
   }
   if (t.hp <= 0) {
     if (fromOwner >= 0 && fromOwner !== t.o) w.players[fromOwner].stats.kills++;
+    const PR = fromOwner >= 0 ? RACES[w.players[fromOwner].race] : null;
+    if (PR && PR.plunder && t.size && t.k !== K.wall && t.k !== K.mine && enemies(w, fromOwner, t.o)) {
+      const gain = Math.round((td.g + td.w) * PR.plunder);
+      w.players[fromOwner].g += gain; w.players[fromOwner].stats.gold += gain;
+      w.ev.push(['plunder', fromOwner, gain, +t.x.toFixed(1), +t.y.toFixed(1)]);
+    }
     if (t.size) destroyBuilding(w, t, true); else killUnit(w, t, fromOwner, false);
   }
 }
 function killUnit(w, u, by, quiet) {
   if (u.dead) return;
-  if (u.o >= 0) w.players[u.o].stats.lost++;
+  if (u.o >= 0 && !u.raised) w.players[u.o].stats.lost++;
   w.ev.push(['die', +u.x.toFixed(2), +u.y.toFixed(2), u.k, u.o]);
   removeEnt(w, u);
+  if (!quiet && u.o >= 0 && !u.fly) raiseDead(w, u);
+}
+// undead nearby may get the fallen back up, as a temporary Skeleton on their side
+function raiseDead(w, u) {
+  for (const P of w.players) {
+    const R = RACES[P.race];
+    if (!R.raise || !P.alive || !enemies(w, P.slot, u.o)) continue;
+    if (!w.ents.some(e => e.o === P.slot && isUnitK(e.k) && !e.hidden && dist(e.x, e.y, u.x, u.y) <= 5)) continue;
+    if (Math.random() >= R.raise) continue;
+    const sp = freeSpotNear(w, null, u.x, u.y), sk = spawn(w, K.melee, P.slot, sp.x, sp.y);
+    sk.raised = true; sk.lifeT = 45; sk.hp = Math.round(DEFS[P.race][K.melee].hp * 0.6);
+    w.ev.push(['raise', +sk.x.toFixed(2), +sk.y.toFixed(2), P.slot]);
+    return;
+  }
 }
 function destroyBuilding(w, b, byEnemy) {
   if (b.dead) return;
@@ -1236,6 +1283,12 @@ function destroyBuilding(w, b, byEnemy) {
   if (b.o >= 0 && byEnemy) w.players[b.o].stats.lost++;
   w.ev.push(['crumble', +b.x.toFixed(2), +b.y.toFixed(2), b.size, b.o]);
   removeEnt(w, b);
+  const bl = b.o >= 0 && byEnemy && b.k !== K.wall && RACES[w.players[b.o].race].blast;
+  if (bl) {
+    const r = bl.r + b.size / 2;
+    w.ev.push(['boom', +b.x.toFixed(2), +b.y.toFixed(2), r]);
+    for (const o of w.ents.slice()) if (!o.dead && !o.hidden && !o.fly && o.k !== K.mine && enemies(w, b.o, o.o) && edgeDist(o, b.x, b.y) <= r) damage(w, o, bl.dmg, 0, b.o);
+  }
 }
 function mineDry(w, m) {
   w.ev.push(['dry', +m.x.toFixed(1), +m.y.toFixed(1)]);
@@ -1373,7 +1426,7 @@ function gatherTick(w, u, d, dt) {
       w.wood[i]--;
       if (w.wood[i] <= 0) { w.ter[i] = T_STUMP; w.treeLog.push([w.frame, i]); w.ev.push(['fell', r.tx, r.ty]); }
       const P = w.players[u.o], mul = P.ai ? AI_DIFF[P.diff].gather : 1;
-      u.carry = 2; u.cAmt = Math.round((CARRY + P.up[2] * WOOD_PER_UP) * mul); u.st = 'return';
+      u.carry = 2; u.cAmt = Math.round((CARRY + P.up[2] * WOOD_PER_UP) * mul * (RACES[P.race].carry || 1)); u.st = 'return';
     }
     return;
   }
@@ -1447,6 +1500,22 @@ function nextBuild(w, u) {
   u.buildQ = null;
   return false;
 }
+// humans: walk up to a damaged building and patch it up (free, 30 health a second)
+function repairTick(w, u, d, dt) {
+  const b = w.byId.get(u.rep), bd = b && def(w, b);
+  if (!b || b.dead || !b.built || b.hp >= bd.hp) { u.rep = 0; u.st = 'idle'; u.path = null; return; }
+  if (edgeDist(b, u.x, u.y) <= 1.3) {
+    u.path = null; u.face = b.x > u.x ? 1 : -1;
+    b.hp = Math.min(bd.hp, b.hp + 30 * dt);
+    if ((w.frame + u.id) % 12 === 0) { u.atkT = 0.25; w.ev.push(['fix', +u.x.toFixed(2), +u.y.toFixed(2)]); }
+    return;
+  }
+  if (!u.path || u.pi >= u.path.length) {
+    if ((u.tries = (u.tries || 0) + 1) > 4) { u.tries = 0; u.st = 'idle'; return; }
+    pathTo(w, u, entGoal(b, 1.1), b.x, b.y);
+  }
+  follow(w, u, d, dt);
+}
 function freeSpotNearExcluding(w, rect, x, y) {
   for (let r = 1; r < 8; r++) for (let yy = Math.floor(y) - r; yy <= Math.floor(y) + r; yy++) for (let xx = Math.floor(x) - r; xx <= Math.floor(x) + r; xx++)
     if (walk(w, xx, yy) && edgeDist(rect, xx + 0.5, yy + 0.5) > 0.6) return { x: xx, y: yy };
@@ -1456,6 +1525,7 @@ function freeSpotNearExcluding(w, rect, x, y) {
 // ---------- buildings ----------
 function buildingTick(w, b, dt) {
   const d = def(w, b), P = w.players[b.o];
+  if (b.built && b.hp < d.hp && RACES[P.race].bldRegen) b.hp = Math.min(d.hp, b.hp + RACES[P.race].bldRegen * dt);
   if (!b.built) {
     b.prog += dt / d.t;
     b.hp = Math.min(d.hp, b.hp + d.hp * 0.9 * dt / d.t);
@@ -1659,6 +1729,15 @@ function aiThink(w, P) {
     if (workers.length && !pending(K.hall) && P.home) aiBuild(w, P, K.hall, { x: P.home.x, y: P.home.y, bx: P.home.x - 1, by: P.home.y - 1 }, workers);
     for (const u of army) if (u.st === 'idle') aiAttackWith(w, P, [u]);
     return;
+  }
+  // humans patch up damaged buildings (up to two workers at a time)
+  if (RACES[P.race].repair) {
+    const hurt = mine.find(e => e.size && e.built && e.k !== K.wall && e.hp < def(w, e).hp * 0.7);
+    const fixers = workers.filter(u => u.st === 'repair').length;
+    if (hurt && fixers < 2) {
+      const u = workers.filter(u => !u.hidden && !u.carry && u.st !== 'build' && u.st !== 'repair').sort((a, b) => dist(a.x, a.y, hurt.x, hurt.y) - dist(b.x, b.y, hurt.x, hurt.y))[0];
+      if (u) applyCmd(w, P.slot, { c: 'repair', ids: [u.id], id: hurt.id });
+    }
   }
   // idle workers back to work
   for (const u of workers) if (u.st === 'idle' && !u.hidden) aiAssignWorker(w, P, u);
@@ -2036,6 +2115,13 @@ function drawFlyer(c, race, color, u, t, swing, R) {
     c.save(); c.translate(0, y0 - 2 * u);
     for (const sy of [1]) { c.save(); c.rotate(-sy * wingA * 0.8); ell(c, 4 * u, -6 * u, 3.5 * u, 10 * u, 'rgba(230,250,255,.6)'); c.restore(); }
     c.restore();
+  } else if (race === 'undead') {
+    // gargoyle: stone body, bat wings, horns
+    poly(c, '#5a5868', -2 * u, y0 - 2 * u, -20 * u, y0 - 12 * u - fl * 10 * u, -16 * u, y0 + 2 * u, -8 * u, y0 + 3 * u);
+    ell(c, 0, y0 + 1 * u, 9 * u, 6 * u, '#7a7888'); box(c, -6 * u, y0 + 5 * u, 3 * u, 5 * u, '#5a5868'); box(c, 4 * u, y0 + 5 * u, 3 * u, 5 * u, '#5a5868');
+    ell(c, 8 * u, y0 - 6 * u, 5 * u, 5 * u, '#8a8898'); poly(c, '#5a5868', 5 * u, y0 - 10 * u, 4 * u, y0 - 16 * u, 8 * u, y0 - 11 * u); poly(c, '#5a5868', 10 * u, y0 - 10 * u, 12 * u, y0 - 16 * u, 12 * u, y0 - 9 * u);
+    box(c, 9 * u, y0 - 7 * u, 2 * u, 2 * u, '#7dff6a'); box(c, -6 * u, y0 - 1 * u, 12 * u, 2.5 * u, color);
+    poly(c, '#6a6878', -2 * u, y0 - 2 * u, -16 * u, y0 - 15 * u + fl * 9 * u, -10 * u, y0 + 2 * u);
   }
 }
 
@@ -2087,6 +2173,12 @@ function drawSiege(c, race, color, u, t, swing, walkPh, R) {
     c.save(); c.translate(-14 * u, -14 * u); c.rotate(0.6 + swing * 0.4);
     ell(c, 0, -8 * u, 6 * u, 9 * u, '#5a4a2a'); ell(c, 0, -16 * u, 3 * u, 3 * u, '#9bdc3a');
     c.restore();
+  } else if (race === 'undead') {
+    // meat wagon: a rickety cart with a catapult arm and a pile of... cargo
+    box(c, -16 * u, -12 * u, 32 * u, 7 * u, '#4a3a3a'); wheel(-11 * u, 5 * u); wheel(11 * u, 5 * u);
+    for (const [x, y] of [[-10, -15], [-4, -17], [3, -15], [-7, -19]]) { ell(c, x * u, y * u, 3.5 * u, 3 * u, '#c9d1b8'); box(c, x * u - u, y * u - u, 1.2 * u, 1.2 * u, '#222'); }
+    c.save(); c.translate(6 * u, -14 * u); c.rotate(-0.4 - swing * 1.3); line(c, 0, 0, 16 * u, -8 * u, '#3a2a2a', 3 * u); ell(c, 17 * u, -9 * u, 4 * u, 3 * u, '#3a2a2a'); c.restore();
+    box(c, -16 * u, -10 * u, 32 * u, 2 * u, color);
   }
 }
 // ultimate units: big, and each race's one is unmistakable
@@ -2148,6 +2240,17 @@ function drawUltimate(c, race, color, u, t, swing, walkPh, R) {
     box(c, 16 * u, -25 * u, 2.5 * u, 2.5 * u, '#ff4f4f');
     poly(c, '#ffd23f', 9 * u, -28 * u, 9 * u, -34 * u, 12 * u, -30 * u, 15 * u, -36 * u, 18 * u, -30 * u, 21 * u, -34 * u, 21 * u, -28 * u);
     line(c, 18 * u, -26 * u, 26 * u, -34 * u, '#2a2440', 1.2 * u); line(c, 15 * u, -27 * u, 20 * u, -38 * u, '#2a2440', 1.2 * u);
+  } else if (race === 'undead') {
+    // the Lich Kernel: robed skeleton king with an icy staff
+    poly(c, '#2a2440', -12 * u, -4 * u, -8 * u, -36 * u, 8 * u, -36 * u, 12 * u, -4 * u);
+    poly(c, color, -12 * u, -4 * u, -10 * u, -16 * u, 10 * u, -16 * u, 12 * u, -4 * u);
+    ell(c, 0, -42 * u, 7 * u, 7 * u, '#e8eadf'); box(c, -4 * u, -44 * u, 3 * u, 3 * u, '#3ff0ff'); box(c, 2 * u, -44 * u, 3 * u, 3 * u, '#3ff0ff'); box(c, -3 * u, -38 * u, 6 * u, 1.5 * u, '#222');
+    poly(c, '#9fe8ff', -7 * u, -47 * u, -7 * u, -54 * u, -3 * u, -50 * u, 0, -57 * u, 3 * u, -50 * u, 7 * u, -54 * u, 7 * u, -47 * u);
+    for (let i = 0; i < 3; i++) box(c, -6 * u, -30 * u + i * 5 * u, 12 * u, 1.5 * u, '#e8eadf');
+    c.save(); c.translate(11 * u, -24 * u); c.rotate(-0.15 + swing * 0.6);
+    line(c, 0, 20 * u, 0, -24 * u, '#c9d1b8', 2.5 * u); poly(c, '#9fe8ff', 0, -34 * u, 5 * u, -26 * u, 0, -20 * u, -5 * u, -26 * u);
+    c.restore();
+    for (let i = 0; i < 3; i++) { const a = t * 2 + i * 2.1; ell(c, Math.cos(a) * 16 * u, -24 * u + Math.sin(a) * 6 * u, 1.6 * u, 1.6 * u, 'rgba(159,232,255,.8)'); }
   }
 }
 // px, py = where the feet touch the ground; s = pixels per tile
@@ -2289,6 +2392,40 @@ function drawUnit(c, race, k, color, px, py, s, a) {
       c.restore();
       if (k === K.worker) carry();
     }
+  } else if (race === 'undead') {
+    const bone = '#e8eadf', sock = '#1a1420';
+    if (k === K.special) {
+      // bone golem: a heap of bones in a rough body shape
+      legs(9, bone, 5);
+      ell(c, 0, -22 * u, 13 * u, 14 * u, '#d8dacc'); for (let i = 0; i < 4; i++) line(c, -10 * u, -30 * u + i * 6 * u, 10 * u, -28 * u + i * 6 * u, '#b8baa8', 2 * u);
+      box(c, -12 * u, -20 * u, 24 * u, 4 * u, color);
+      ell(c, 0, -38 * u, 6 * u, 6 * u, bone); box(c, -3 * u, -40 * u, 2 * u, 2 * u, '#7dff6a'); box(c, 1.5 * u, -40 * u, 2 * u, 2 * u, '#7dff6a');
+      tool(18, '#d8dacc', (x, y) => ell(c, x, y, 5 * u, 4 * u, bone));
+    } else if (k === K.ranged) {
+      // banshee: a floating wail with a team-coloured veil
+      const fl = Math.sin(t * 4) * 2 * u;
+      c.translate(0, -4 * u + fl);
+      c.globalAlpha *= 0.85;
+      poly(c, 'rgba(200,230,220,.75)', -7 * u, -6 * u, -5 * u, -22 * u, 5 * u, -22 * u, 7 * u, -6 * u, 4 * u, -2 * u, 0, -6 * u, -4 * u, -2 * u);
+      poly(c, color, -6 * u, -20 * u, -4 * u, -28 * u, 4 * u, -28 * u, 6 * u, -20 * u);
+      ell(c, 0, -24 * u, 4.5 * u, 4.5 * u, '#e8f4ee'); ell(c, -1.5 * u, -24 * u, 1.2 * u, 1.6 * u, sock); ell(c, 1.8 * u, -24 * u, 1.2 * u, 1.6 * u, sock);
+      ell(c, 0.3 * u, -21.5 * u, 1.2 * u, a.atk > 0 ? 2 * u : 0.8 * u, sock);
+    } else {
+      const sc2 = k === K.worker ? 0.9 : 1;
+      legs(6, bone, 2.5);
+      if (k === K.worker) {
+        // ghoul: hunched, grey-green, with a pick
+        ell(c, 0, -13 * u, 6 * u, 7 * u, '#8a9878'); box(c, -5 * u, -11 * u, 10 * u, 2 * u, color);
+        ell(c, 3 * u, -20 * u, 5 * u, 4.5 * u, '#9aa888'); box(c, 4 * u, -21 * u, 1.6 * u, 1.6 * u, '#ff4f4f'); box(c, 5 * u, -18 * u, 3 * u, 1 * u, '#3a2a2a');
+        tool(13, '#5a4a3a', (x, y) => line(c, x - 5 * u, y, x + 5 * u, y + 2 * u, '#9aa2ad', 2.5 * u)); carry();
+      } else {
+        // skeleton with a rusty sword and a team-coloured shield
+        box(c, -1 * u, -16 * u * sc2, 2 * u, 10 * u, bone); for (let i = 0; i < 3; i++) box(c, -4 * u, -15 * u + i * 3 * u, 8 * u, 1.5 * u, bone);
+        ell(c, 0, -20 * u, 5 * u, 5 * u, bone); ell(c, -1.8 * u, -20.5 * u, 1.3 * u, 1.5 * u, sock); ell(c, 2 * u, -20.5 * u, 1.3 * u, 1.5 * u, sock); box(c, -2 * u, -17 * u, 4 * u, 1 * u, sock);
+        tool(12, '#a08a6a', (x, y) => line(c, x - 2 * u, y + 10 * u, x + 2 * u, y + 10 * u, '#5a4a3a', 2 * u));
+        ell(c, -5 * u, -11 * u, 4 * u, 5 * u, color); box(c, -6 * u, -12 * u, 2 * u, 2 * u, bone);
+      }
+    }
   }
   c.restore();
 }
@@ -2389,6 +2526,11 @@ function paintWall(c, race, color, W, u) {
     box(c, 0, W * 0.12, W, W * 0.86, '#c9962a');
     for (let r = 0; r < 3; r++) for (let i = 0; i < 3; i++) { const cx = W * (0.18 + i * 0.32 + (r % 2) * 0.16), cy = W * (0.28 + r * 0.26); c.fillStyle = r % 2 ? '#e0b040' : '#f0c050'; c.beginPath(); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3 + Math.PI / 6; c.lineTo(cx + Math.cos(a) * W * 0.14, cy + Math.sin(a) * W * 0.14); } c.closePath(); c.fill(); }
     box(c, 0, W * 0.12, W, W * 0.06, color);
+  } else if (race === 'undead') {
+    // a fence of big bones with a skull on top
+    for (let i = 0; i < 4; i++) { const x = W * (0.1 + i * 0.26); box(c, x - 2 * u, W * 0.2, 4 * u, W * 0.75, '#e8eadf'); ell(c, x - 2 * u, W * 0.2, 2.5 * u, 2.5 * u, '#e8eadf'); ell(c, x + 2 * u, W * 0.2, 2.5 * u, 2.5 * u, '#e8eadf'); }
+    box(c, 0, W * 0.45, W, W * 0.07, '#d0d2c4'); box(c, 0, W * 0.75, W, W * 0.07, color);
+    ell(c, W * 0.5, W * 0.1, 5 * u, 4.5 * u, '#e8eadf'); box(c, W * 0.5 - 3 * u, W * 0.08, 2 * u, 2 * u, '#1a1420'); box(c, W * 0.5 + 1 * u, W * 0.08, 2 * u, 2 * u, '#1a1420');
   }
 }
 function paintMill(c, race, color, W, u) {
@@ -2429,6 +2571,12 @@ function paintMill(c, race, color, W, u) {
     }
     box(c, W * 0.1, W * 0.86, W * 0.8, W * 0.06, color);
     logPile(c, W * 0.06, W * 0.98, u, 2);
+  } else if (race === 'undead') {
+    // bone mill: a crooked shed, a grinding wheel and a stack of logs and bones
+    box(c, W * 0.06, W * 0.36, W * 0.58, W * 0.56, '#4a4458'); poly(c, color, W * 0.0, W * 0.38, W * 0.35, W * 0.06, W * 0.7, W * 0.38);
+    box(c, W * 0.28, W * 0.62, W * 0.14, W * 0.3, '#1a1420'); box(c, W * 0.14, W * 0.48, W * 0.08, W * 0.08, '#7dff6a');
+    ell(c, W * 0.8, W * 0.62, W * 0.16, W * 0.16, '#8a8898'); ell(c, W * 0.8, W * 0.62, W * 0.05, W * 0.05, '#333');
+    logPile(c, W * 0.62, W * 0.95, u, 2); box(c, W * 0.66, W * 0.68, W * 0.2, 2.5 * u, '#e8eadf');
   }
 }
 function paintBuilding(c, race, k, color, W, s, variant) {
@@ -2589,6 +2737,33 @@ function paintBuilding(c, race, k, color, W, s, variant) {
     box(c, W * 0.12, W * 0.88, W * 0.76, W * 0.06, color);
     for (const x of [0.2, 0.8]) { line(c, W * x, W * 0.6, W * x + (x < 0.5 ? -1 : 1) * W * 0.1, W * 0.2, '#3a2a1a', 2 * u); ell(c, W * x + (x < 0.5 ? -1 : 1) * W * 0.1, W * 0.2, 3 * u, 3 * u, color); }
     emblem();
+  } else if (race === 'undead') {
+    const stone = '#4a4458', glow = '#7dff6a';
+    if (kind === 'tower') {
+      // ziggurat: stepped pyramid with a green fire on top
+      for (let i = 0; i < 4; i++) box(c, W * (0.1 + i * 0.08), W * (0.95 - (i + 1) * 0.28), W * (0.8 - i * 0.16), W * 0.3, i % 2 ? '#3e3a4c' : stone);
+      box(c, W * 0.38, W * 0.75, W * 0.24, W * 0.2, '#1a1420');
+      poly(c, glow, W * 0.42, -W * 0.18, W * 0.5, -W * 0.45, W * 0.58, -W * 0.18); poly(c, '#d0ffc0', W * 0.46, -W * 0.18, W * 0.5, -W * 0.32, W * 0.54, -W * 0.18);
+      box(c, W * 0.1, W * 0.9, W * 0.8, W * 0.05, color);
+      return;
+    }
+    if (kind === 'farm') {
+      // graveyard: tombstones behind an iron fence
+      box(c, W * 0.05, W * 0.3, W * 0.9, W * 0.65, '#3d3a2e');
+      for (const [x, y] of [[0.2, 0.45], [0.45, 0.4], [0.7, 0.48], [0.32, 0.7], [0.6, 0.72]]) { box(c, W * x - 4 * u, W * y - 6 * u, 8 * u, 10 * u, '#8a8898'); ell(c, W * x, W * y - 6 * u, 4 * u, 3 * u, '#8a8898'); box(c, W * x - 0.6 * u, W * y - 5 * u, 1.2 * u, 5 * u, '#5a5868'); }
+      for (let i = 0; i <= 8; i++) line(c, W * (0.05 + i * 0.1125), W * 0.95, W * (0.05 + i * 0.1125), W * 0.78, '#222', 1.5 * u);
+      box(c, W * 0.05, W * 0.8, W * 0.9, 1.5 * u, color);
+      return;
+    }
+    // everything else: dark gothic stone with spires and glowing windows
+    const tall = kind === 'hall' ? 1 : 0.8;
+    box(c, W * 0.08, W * (0.95 - 0.6 * tall), W * 0.84, W * 0.6 * tall, stone);
+    for (const x of [0.08, 0.76]) { box(c, W * x, W * (0.95 - 0.85 * tall), W * 0.16, W * 0.85 * tall, '#3e3a4c'); poly(c, color, W * (x - 0.02), W * (0.95 - 0.85 * tall), W * (x + 0.08), W * (0.95 - 1.15 * tall), W * (x + 0.18), W * (0.95 - 0.85 * tall)); }
+    poly(c, shade(color, -0.3), W * 0.24, W * (0.95 - 0.6 * tall), W * 0.5, W * (0.95 - 0.95 * tall), W * 0.76, W * (0.95 - 0.6 * tall));
+    c.fillStyle = '#1a1420'; c.beginPath(); c.ellipse(W * 0.5, W * 0.95, W * 0.1, W * 0.2, 0, Math.PI, 0); c.fill();
+    for (const x of [0.3, 0.62]) { box(c, W * x, W * (0.95 - 0.42 * tall), W * 0.08, W * 0.12, glow); }
+    if (kind === 'hall') { ell(c, W * 0.5, W * 0.18, 6 * u, 5.5 * u, '#e8eadf'); box(c, W * 0.5 - 3 * u, W * 0.17, 2 * u, 2 * u, '#1a1420'); box(c, W * 0.5 + 1 * u, W * 0.17, 2 * u, 2 * u, '#1a1420'); }
+    emblem();
   }
 }
 function drawBuildingAt(c, race, e, color, sx, sy, s, t) {
@@ -2671,7 +2846,7 @@ const PROJ = {
   arrow: { col: '#e8dcc0', arc: 0.6 }, spear: { col: '#cfa070', arc: 0.8 }, zap: { col: '#3ff0ff', arc: 0 },
   spore: { col: '#b7f07a', arc: 1.0 }, spit: { col: '#9bdc3a', arc: 0.5 }, bolt: { col: '#fff', arc: 0.4 },
   hammer: { col: '#b8bec8', arc: 0.4 }, fire: { col: '#ff9a3c', arc: 0.1 }, bomb: { col: '#2a2a2a', arc: 0 },
-  rock: { col: '#8a8790', arc: 2.2 }, magic: { col: '#c77dff', arc: 0.3 }, rocket: { col: '#ff9a3c', arc: 0.6 }, sporebomb: { col: '#9bdc3a', arc: 2.4 }, acid: { col: '#b6f03a', arc: 1.2 },
+  rock: { col: '#8a8790', arc: 2.2 }, soul: { col: '#b9ffd8', arc: 0.2 }, skull: { col: '#e8eadf', arc: 2.2 }, frost: { col: '#9fe8ff', arc: 0.3 }, magic: { col: '#c77dff', arc: 0.3 }, rocket: { col: '#ff9a3c', arc: 0.6 }, sporebomb: { col: '#9bdc3a', arc: 2.4 }, acid: { col: '#b6f03a', arc: 1.2 },
 };
 // events from the simulation: sounds and sparkles on every screen, messages only for the owner
 function runEvents(w, list) {
@@ -2690,9 +2865,12 @@ function runEvent(w, [n, ...a]) {
       else { w.fx.rings.push({ x, y, r, life: 0.4, max: 0.4, col: '#c8ff9a', wd: 3 }); addParts(w, x, y, 6, '#c8ff9a', 1.2, 0.6, 4, -0.5); }
       break; }
     case 'hatch': { const [x, y] = a; if (onScreen(x, y)) { addParts(w, x, y, 10, '#d9c27a', 1.5, 0.6, 3); sfx('spit'); } break; }
+    case 'plunder': { const [o, gain, x, y] = a; floatText(w, x, y - 0.8, `+${gain} GOLD`, '#ffd23f'); if (o === me) { sfx('coin'); msg(`Plundered ${gain} gold!`, '#ffd23f'); } break; }
+    case 'raise': { const [x, y] = a; if (onScreen(x, y)) { addParts(w, x, y, 14, '#7dff6a', 1.5, 0.9, 3, -1.5); w.fx.rings.push({ x, y, r: 0.8, life: 0.6, max: 0.6, col: '#7dff6a', wd: 3 }); sfx('spore'); } break; }
+    case 'fix': { const [x, y] = a; if (onScreen(x, y)) { addParts(w, x, y - 0.3, 2, '#ffd23f', 1, 0.3, 2); if (Math.random() < 0.4) sfx('sword'); } break; }
     case 'miss': { const [x, y] = a; floatText(w, x, y - 0.6, 'MISS', '#3ff0ff'); break; }
     case 'heal': { const [x, y] = a; addParts(w, x, y - 0.3, 1, '#7dff6a', 0.3, 0.8, 3, -1); break; }
-    case 'die': { const [x, y, k, o] = a; if (onScreen(x, y)) { addParts(w, x, y, 10, w.players[o] ? w.players[o].race === 'funguys' ? '#f4ead6' : w.players[o].race === 'bugs' ? '#9bdc3a' : '#c22' : '#c22', 2.5, 0.7, 3); sfx('die'); }
+    case 'die': { const [x, y, k, o] = a; if (onScreen(x, y)) { addParts(w, x, y, 10, w.players[o] ? w.players[o].race === 'funguys' || w.players[o].race === 'undead' ? '#e8eadf' : w.players[o].race === 'bugs' ? '#9bdc3a' : '#c22' : '#c22', 2.5, 0.7, 3); sfx('die'); }
       w.fx.marks.push({ x, y, t: 0, life: 10, corpse: true, k, o }); if (w.fx.marks.length > 160) w.fx.marks.shift(); break; }
     case 'crumble': { const [x, y, size] = a; w.fx.rings.push({ x, y: y + size * 0.3, r: size * 0.8, life: 0.7, max: 0.7, col: '#c8b08a', wd: 5 }); if (onScreen(x, y)) { for (let i = 0; i < 4; i++) addParts(w, x + rand(-size / 2, size / 2), y + rand(-size / 2, size / 2), 8, pick(['#8a8790', '#6a5236', '#ff9a3c', '#333']), 3, 1.1, 4); sfx('crumble'); } break; }
     case 'boom': { const [x, y, r] = a; w.fx.rings.push({ x, y, r: r * 1.2, life: 0.6, max: 0.6, col: '#ffd23f', wd: 6, flash: true }); addParts(w, x, y, 40, '#ff9a3c', 5 * r / 1.8, 0.9, 5); addParts(w, x, y, 20, '#ffd23f', 3, 0.6, 4); addParts(w, x, y, 14, '#444', 2, 1.4, 6, -2); sfx('boom'); shake = Math.max(shake, 0.4); break; }
@@ -2777,7 +2955,7 @@ function render(w, now) {
       if (eyeOf(w) >= 0 && !seesTile(w, m.x, m.y)) continue;
       const fade = clamp((m.life - m.t) / 2, 0, 1), P = w.players[m.o];
       ctx.globalAlpha = fade * 0.75;
-      if (P && P.race !== 'funguys') ell(ctx, mx, my, 0.32 * s, 0.13 * s, P.race === 'bugs' ? '#5d8a2a' : '#5a1010');
+      if (P && P.race !== 'funguys' && P.race !== 'undead') ell(ctx, mx, my, 0.32 * s, 0.13 * s, P.race === 'bugs' ? '#5d8a2a' : '#5a1010');
       if (P) { ctx.save(); ctx.translate(mx, my - 0.05 * s); ctx.rotate(Math.PI / 2 * (m.k % 2 ? 1 : -1)); const spr = unitFrame(P.race, m.k, P.color, s * 1.2, { t: 0 }); ctx.drawImage(spr, -spr.ox, -spr.oy * 0.55, spr.width / spr.dpr, spr.height / spr.dpr); ctx.restore(); }
       ctx.globalAlpha = 1; continue;
     }
@@ -2820,9 +2998,12 @@ function render(w, now) {
       ctx.globalAlpha = 1;
     } else {
       const [px, py] = toScreen(e.rx, e.ry), d = def(w, e);
-      const a = { t: t + e.id * 0.37, mv: e.moving, atk: e.atkT, carry: e.carry, face: e.face, chop: e.chopping };
+      const a = { t: t + e.id * 0.37, mv: e.moving, atk: e.atkT, carry: e.carry, face: e.face, chop: e.chopping || e.st === 'repair' };
       if (d.aura) { ctx.strokeStyle = 'rgba(125,255,106,.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(px, py, d.aura * s * (0.95 + Math.sin(t * 3) * 0.05), d.aura * s * 0.5, 0, 0, 7); ctx.stroke(); }
+      // raised skeletons glow green and are a bit see-through
+      if (e.raised) { ell(ctx, px, py, s * 0.4, s * 0.16, 'rgba(125,255,106,.35)'); ctx.globalAlpha = 0.72; }
       drawUnitFast(ctx, race, e.k, color, px, py + e.r * s * 0.3, s * 1.2, a);
+      ctx.globalAlpha = 1;
       // kicked-up dust
       if (e.moving && !e.fly && !(race === 'bugs' && e.k === K.ranged) && Math.random() < frameDt * 2) addParts(w, e.rx, e.ry + 0.2, 1, w.theme.snow ? '#ffffff' : '#c8b08a', 0.3, 0.45, 3, 0);
     }
@@ -2857,8 +3038,8 @@ function render(w, now) {
       continue;
     }
     const [tx, ty] = projAt(p, P, Math.max(0, k - 0.18)), [qx, qy] = toScreen(tx, ty);
-    if (p.kind === 'spore' || p.kind === 'spit' || p.kind === 'fire' || p.kind === 'bomb' || p.kind === 'rock' || p.kind === 'magic' || p.kind === 'sporebomb' || p.kind === 'acid') {
-      const big = p.kind === 'rock' || p.kind === 'sporebomb' ? 1.8 : 1;
+    if (p.kind === 'spore' || p.kind === 'spit' || p.kind === 'fire' || p.kind === 'bomb' || p.kind === 'rock' || p.kind === 'magic' || p.kind === 'sporebomb' || p.kind === 'acid' || p.kind === 'soul' || p.kind === 'skull' || p.kind === 'frost') {
+      const big = p.kind === 'rock' || p.kind === 'sporebomb' || p.kind === 'skull' ? 1.8 : 1;
       if (big > 1) { ctx.save(); ctx.translate(px, py); ctx.scale(big, big); ctx.translate(-px, -py); }
       ctx.globalAlpha = 0.35; ell(ctx, qx, qy, s * 0.09, s * 0.09, P.col); ctx.globalAlpha = 1;
       ell(ctx, px, py, s * 0.14, s * 0.14, shade(P.col, -0.4)); ell(ctx, px, py, s * 0.11, s * 0.11, P.col); ell(ctx, px - s * 0.04, py - s * 0.04, s * 0.04, s * 0.04, '#fff');
@@ -3106,6 +3287,11 @@ function smartWorld(sel, x, y, t) {
   const ids = units.map(u => u.id), workers = units.filter(u => u.k === K.worker), others = units.filter(u => u.k !== K.worker);
   if (t && t.o >= 0 && enemies(G, G.me, t.o)) { issue({ c: 'attack', ids, id: t.id }); mark(t.x, t.y, '#ff4f4f'); ack(units, true); return; }
   const tree = !t && treeAt(x, y);
+  if (workers.length && t && t.size && t.o === G.me && t.built && t.k !== K.mine && t.hp < def(G, t).hp && RACES[myP().race].repair) {
+    issue({ c: 'repair', ids: workers.map(u => u.id), id: t.id });
+    if (others.length) issue({ c: 'move', ids: others.map(u => u.id), x, y });
+    mark(t.x, t.y, '#7dff6a'); ack(units); return;
+  }
   if (workers.length && ((t && t.k === K.mine) || tree || (t && t.k === K.hall && t.o === G.me && workers.some(u => u.carry)))) {
     if (t) issue({ c: 'gather', ids: workers.map(u => u.id), id: t.id });
     else issue({ c: 'gather', ids: workers.map(u => u.id), tx: tree.tx, ty: tree.ty });
@@ -3132,6 +3318,10 @@ function doTarget(sx, sy) {
     mark(x, y, '#ffd23f');
   }
   if (mode === 'rally') smartWorld(sel.filter(e => e.size), x, y, t);
+  if (mode === 'repair') {
+    if (t && t.size && t.o === G.me && t.built) issue({ c: 'repair', ids: sel.filter(e => e.k === K.worker).map(e => e.id), id: t.id });
+    else { msg('Pick one of your buildings.', '#ff4fa3'); sfx('nope'); return; }
+  }
   ack(sel);
   refreshHud(true);
 }
@@ -3386,6 +3576,7 @@ function drawIcon(c, name, S, w) {
     case 'build': line(c, 14 * u, 36 * u, 30 * u, 16 * u, '#7a5530', 4 * u); box(c, 22 * u, 8 * u, 18 * u, 9 * u, '#9aa2ad'); break;
     case 'back': poly(c, '#ffd23f', 8 * u, 23 * u, 22 * u, 10 * u, 22 * u, 18 * u, 38 * u, 18 * u, 38 * u, 28 * u, 22 * u, 28 * u, 22 * u, 36 * u); break;
     case 'boom': poly(c, '#ff9a3c', ...Array.from({ length: 20 }, (_, i) => { const a = (i >> 1) / 10 * 6.28 + (i & 1 ? 0 : 0), r = ((i >> 1) % 2 ? 9 : 19) * u; return i & 1 ? 23 * u + Math.sin(a) * r : 23 * u + Math.cos(a) * r; })); ell(c, 23 * u, 23 * u, 7 * u, 7 * u, '#ffd23f'); break;
+    case 'repair': line(c, 12 * u, 36 * u, 30 * u, 16 * u, '#9aa2ad', 5 * u); c.strokeStyle = '#9aa2ad'; c.lineWidth = 5 * u; c.beginPath(); c.arc(32 * u, 13 * u, 7 * u, 0.6, 5.2); c.stroke(); box(c, 30 * u, 26 * u, 12 * u, 4 * u, '#7dff6a'); box(c, 34 * u, 22 * u, 4 * u, 12 * u, '#7dff6a'); break;
     case 'rally': line(c, 16 * u, 38 * u, 16 * u, 8 * u, '#ddd', 3 * u); poly(c, P ? P.color : '#7dff6a', 17 * u, 8 * u, 36 * u, 14 * u, 17 * u, 21 * u); break;
     case 'cancel': line(c, 12 * u, 12 * u, 34 * u, 34 * u, '#ff4f4f', 6 * u); line(c, 34 * u, 12 * u, 12 * u, 34 * u, '#ff4f4f', 6 * u); break;
     case 'upAtk': line(c, 10 * u, 36 * u, 30 * u, 14 * u, '#dfe6ee', 5 * u); line(c, 14 * u, 26 * u, 20 * u, 32 * u, '#c9a85a', 4 * u); box(c, 30 * u, 26 * u, 12 * u, 4 * u, '#7dff6a'); box(c, 34 * u, 22 * u, 4 * u, 12 * u, '#7dff6a'); break;
@@ -3420,6 +3611,7 @@ function buildCards() {
       cards.push(card('gather', 'G', 'Gather', 'Mine a gold mine or chop a tree.', setT('gather'), { on2: targeting === 'gather' }));
       cards.push(card('return', 'R', 'Return cargo', `Bring what you carry back to the ${R.names.hall}.`, () => issue({ c: 'return', ids: workers.map(u => u.id) }), { disabled: !workers.some(u => u.carry) }));
       cards.push(card('build', 'B', 'Build', 'Open the build menu.', () => { buildMenu = true; refreshHud(true); }));
+      if (R.repair) cards.push(card('repair', 'E', 'Repair', 'Patch up a damaged building, for free. (Or just right-click it.)', setT('repair'), { on2: targeting === 'repair' }));
     }
     const boomers = units.filter(u => def(w, u).kaboom);
     if (boomers.length) cards.push(card('boom', 'D', 'Detonate', 'Blow up right here, right now.', () => issue({ c: 'boom', ids: boomers.map(u => u.id) })));
@@ -3657,14 +3849,14 @@ $('menuBtn').onclick = () => { audio(); togglePause(); };
 // unit:     [id, kind, owner, x*20, y*20, hp, flags, face, carried]
 // building: [id, kind, owner, bx, by, hp, built, prog*1000, queue, qt*10]
 // mine:     [id, 9, -1, bx, by, gold, busy]
-const F_MOVE = 1, F_ATK = 2, F_GOLD = 4, F_WOOD = 8, F_HIDDEN = 16, F_CHOP = 32, F_IDLE = 64;
+const F_MOVE = 1, F_ATK = 2, F_GOLD = 4, F_WOOD = 8, F_HIDDEN = 16, F_CHOP = 32, F_IDLE = 64, F_RAISED = 128;
 function encodeEnts(w) {
   const busy = new Map();
   for (const u of w.ents) if (u.inId) busy.set(u.inId, (busy.get(u.inId) || 0) + 1);
   return w.ents.map(e => {
     if (e.k === K.mine) return [e.id, e.k, -1, e.bx, e.by, e.gold, busy.get(e.id) || 0];
     if (e.size) return [e.id, e.k, e.o, e.bx, e.by, Math.ceil(e.hp), e.built ? 1 : 0, Math.round(e.prog * 1000), e.queue.slice(), Math.round(e.qt * 10)];
-    const f = (e.moving ? F_MOVE : 0) | (e.atkT > 0.15 ? F_ATK : 0) | (e.carry === 1 ? F_GOLD : 0) | (e.carry === 2 ? F_WOOD : 0) | (e.hidden ? F_HIDDEN : 0) | (e.chopping ? F_CHOP : 0) | (e.st === 'idle' ? F_IDLE : 0);
+    const f = (e.moving ? F_MOVE : 0) | (e.atkT > 0.15 ? F_ATK : 0) | (e.carry === 1 ? F_GOLD : 0) | (e.carry === 2 ? F_WOOD : 0) | (e.hidden ? F_HIDDEN : 0) | (e.chopping || e.st === 'repair' ? F_CHOP : 0) | (e.st === 'idle' ? F_IDLE : 0) | (e.raised ? F_RAISED : 0);
     return [e.id, e.k, e.o, Math.round(e.x * 20), Math.round(e.y * 20), Math.ceil(e.hp), f, e.face, e.cAmt || 0];
   });
 }
@@ -3708,7 +3900,7 @@ function applySnapshot(w, m) {
       e.fresh = false; e.lerp = 0;
       e.hp = +d[5] || 1; const f = d[6] | 0;
       e.moving = !!(f & F_MOVE); if (f & F_ATK) e.atkT = 0.3;
-      e.carry = f & F_GOLD ? 1 : f & F_WOOD ? 2 : 0; e.hidden = !!(f & F_HIDDEN); e.chopping = !!(f & F_CHOP); e.st = f & F_IDLE ? 'idle' : 'busy';
+      e.carry = f & F_GOLD ? 1 : f & F_WOOD ? 2 : 0; e.hidden = !!(f & F_HIDDEN); e.chopping = !!(f & F_CHOP); e.st = f & F_IDLE ? 'idle' : 'busy'; e.raised = !!(f & F_RAISED);
       e.face = d[7] < 0 ? -1 : 1; e.cAmt = d[8] | 0;
       e.r = def(w, e).r; e.fly = !!def(w, e).fly;
     }

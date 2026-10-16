@@ -131,7 +131,9 @@ sections in this order:
   farm, barracks, lab, tower, mine, mill, flyer, siege, ultimate, wall, workshop, altar; the index in `KINDS` goes over the network,
   so add new kinds at the end) and `RACES` (Humans, Orcs, Goblins, Funguys, Bugs) with
   names, jokes, a passive and per-kind overrides (`over`). `DEFS[race][kindIndex]` is the
-  merged result. Balance changes go in `BASE`/`RACES`, not in the simulation code. `AI_DIFF`
+  merged result. Each race also has a signature rule set by flags on its `RACES` entry
+  (`repair`, `rage`, `plunder`, `train`, `blast`, `myco`, `carry`, `raise`, ...) that the
+  simulation checks by name. Balance changes go in `BASE`/`RACES`, not in the simulation code. `AI_DIFF`
   tunes the CPU levels.
 - **Map generation**: `genMap(seed, size, players)`, seeded and deterministic (see above).
 - **The world**: `makeWorld(cfg, replica)` → `G`. Entities live in `G.ents` / `G.byId`;
@@ -162,6 +164,9 @@ into a Node file, add a stub `endBattle`, and run `makeWorld` + `step` with CPU 
 A useful check after touching movement: flag units that are busy (move, gather, return, build)
 but haven't changed state, cargo or position for 8 seconds. Sample every step or two, not
 once a second, or a 2-second mining loop looks stuck.
+For balance, run a round-robin: every race against every other race, CPU hard vs hard,
+several seeds with both start corners, and compare win rates. Aim for every race between
+roughly 40% and 60%.
 
 ## Commits
 

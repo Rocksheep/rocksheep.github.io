@@ -159,6 +159,9 @@ sections in this order:
 
 To test the simulation without a browser, cut the script from "Constants" up to "Drawing:"
 into a Node file, add a stub `endBattle`, and run `makeWorld` + `step` with CPU players.
+A useful check after touching movement: flag units that are busy (move, gather, return, build)
+but haven't changed state, cargo or position for 8 seconds. Sample every step or two, not
+once a second, or a 2-second mining loop looks stuck.
 
 ## Commits
 

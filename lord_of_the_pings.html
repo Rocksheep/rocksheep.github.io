@@ -698,8 +698,8 @@ function freeSpotNear(w, around, tx, ty) {
 
 // ---------- A* on the tile grid ----------
 let pfStamp = null, pfG = null, pfFrom = null, pfOpen = null, pfGen = 0, pfFound = false;
-function findPath(w, sx, sy, goal, gx, gy, limit = 2500) {
-  const N = w.N, W = w.W;
+function findPath(w, sx, sy, goal, gx, gy, limit = 6000) {
+  const N = w.N, W = w.W, fx = sx, fy = sy;
   if (!pfStamp || pfStamp.length !== N) { pfStamp = new Int32Array(N); pfG = new Float32Array(N); pfFrom = new Int32Array(N); pfOpen = new Int32Array(N); }
   pfGen++;
   sx = clamp(Math.floor(sx), 0, W - 1); sy = clamp(Math.floor(sy), 0, w.H - 1);
@@ -754,7 +754,7 @@ function findPath(w, sx, sy, goal, gx, gy, limit = 2500) {
   const path = [];
   for (let c = end; c !== start && c >= 0; c = pfFrom[c]) path.push(c);
   path.reverse();
-  return smoothPath(w, sx + 0.5, sy + 0.5, path);
+  return smoothPath(w, fx, fy, sx + 0.5, sy + 0.5, path);
 }
 function lineClear(w, ax, ay, bx, by) {
   const d = dist(ax, ay, bx, by), n = Math.ceil(d / 0.3);
@@ -765,13 +765,17 @@ function lineClear(w, ax, ay, bx, by) {
   }
   return true;
 }
-function smoothPath(w, sx, sy, path) {
+// (fx, fy) is where the unit really stands, (cx, cy) the middle of its tile. A unit standing
+// off-centre could clip a tree corner on the way to the first step, so then it steps to the
+// middle of its own tile first.
+function smoothPath(w, fx, fy, cx, cy, path) {
   const pts = path.map(i => ({ x: i % w.W + 0.5, y: (i / w.W | 0) + 0.5 }));
   const out = [];
-  let ax = sx, ay = sy, i = 0;
+  let ax = fx, ay = fy, i = 0;
   while (i < pts.length) {
     let j = Math.min(pts.length - 1, i + 8);
     while (j > i && !lineClear(w, ax, ay, pts[j].x, pts[j].y)) j--;
+    if (j === i && !out.length && (ax !== cx || ay !== cy) && !lineClear(w, ax, ay, pts[i].x, pts[i].y)) { out.push({ x: cx, y: cy }); ax = cx; ay = cy; continue; }
     out.push(pts[j]); ax = pts[j].x; ay = pts[j].y; i = j + 1;
   }
   return out;
@@ -908,7 +912,7 @@ function formation(w, units, tx, ty) {
   return out;
 }
 function stopUnit(u) {
-  u.st = 'idle'; u.path = null; u.tries = 0; u.failT = 0; u.tgt = 0; u.amove = null; u.res = null; u.bld = null; u.after = null;
+  u.st = 'idle'; u.path = null; u.tries = 0; u.failT = 0; u.reroutes = 0; u.blocked = false; u.blockT = 0; u.tgt = 0; u.amove = null; u.res = null; u.bld = null; u.after = null;
 }
 function pathTo(w, u, goal, gx, gy) {
   u.path = findPath(w, u.x, u.y, goal, Math.floor(gx), Math.floor(gy));
@@ -1007,6 +1011,7 @@ const upArm = (w, e) => e.o >= 0 && isUnitK(e.k) ? w.players[e.o].up[1] * 2 : 0;
 function unitTick(w, u, dt) {
   const d = def(w, u);
   u.cd -= dt; u.atkT = Math.max(0, u.atkT - dt); u.moving = false;
+  if (u.ghostT > 0) u.ghostT -= dt;
   if (d.regen && u.hp < d.hp) u.hp = Math.min(d.hp, u.hp + d.regen * dt);
   if (d.aura && w.frame % 10 === 0) {
     for (const o of w.ents) if (o !== u && isUnitK(o.k) && allied(w, o.o, u.o) && o.hp > 0 && dist(o.x, o.y, u.x, u.y) <= d.aura) {
@@ -1028,7 +1033,13 @@ function unitTick(w, u, dt) {
         const t = findEnemy(w, u, Math.max(d.sight, d.rng + 1));
         if (t) { u.after = { x: u.amove.x, y: u.amove.y }; u.st = 'attack'; u.tgt = t.id; u.forced = false; break; }
       }
-      if (follow(w, u, d, dt)) { const a = u.amove; u.st = 'idle'; u.path = null; if (a) u.amove = null; }
+      if (follow(w, u, d, dt)) {
+        if (u.blocked && u.goal && (u.reroutes || 0) < 3) {
+          const g = u.goal, n = (u.reroutes || 0) + 1;
+          orderMove(w, u, g.x, g.y, !!u.amove); u.reroutes = n;
+        } else { u.st = 'idle'; u.path = null; u.amove = null; u.reroutes = 0; }
+        u.blocked = false;
+      }
       break;
     }
     case 'attack': attackTick(w, u, d, dt); break;
@@ -1072,21 +1083,25 @@ function follow(w, u, d, dt) {
   u.moving = true;
   if (dd < 0.01) { u.pi++; return u.pi >= u.path.length; }
   const nx = (tx - u.x) / dd, ny = (ty - u.y) / dd;
+  u.dx = nx; u.dy = ny;
   if (Math.abs(nx) > 0.2) u.face = nx > 0 ? 1 : -1;
   if (dd <= stepLen) { u.x = tx; u.y = ty; u.pi++; }
   else {
     const mx = u.x + nx * stepLen, my = u.y + ny * stepLen;
-    if (u.fly || walk(w, Math.floor(mx), Math.floor(my))) { u.x = mx; u.y = my; }
-    else { u.stuckT = (u.stuckT || 0) + 1; }
+    if (u.fly || canNudge(w, u, mx, my)) { u.x = mx; u.y = my; u.blockT = 0; }
+    // clipped a corner: slide along it instead of standing still
+    else if (canNudge(w, u, mx, u.y)) { u.x = mx; u.blockT = 0; }
+    else if (canNudge(w, u, u.x, my)) { u.y = my; u.blockT = 0; }
+    else if ((u.blockT = (u.blockT || 0) + dt) > 0.4) { u.blockT = 0; u.path = null; u.blocked = true; return true; }
   }
   // stuck behind something that appeared (a new building)? look for a new way
   u.stuckCheck = (u.stuckCheck || 0) + dt;
   if (u.stuckCheck > 1) {
     u.stuckCheck = 0;
     const now = dist(u.x, u.y, tx, ty);
-    if (now > (u.lastD || 1e9) - 0.2) u.stuckT = (u.stuckT || 0) + 1; else u.stuckT = 0;
+    if (now > (u.lastD || 1e9) - 0.2) { u.stuckT = (u.stuckT || 0) + 1; u.ghostT = 2.5; } else u.stuckT = 0;
     u.lastD = now;
-    if (u.stuckT >= 3) { u.stuckT = 0; return true; }
+    if (u.stuckT >= 3) { u.stuckT = 0; u.path = null; u.blocked = true; return true; }
   }
   return u.pi >= u.path.length;
 }
@@ -1239,6 +1254,29 @@ function nearestTree(w, x, y, maxR = 12) {
   }
   return null;
 }
+// the closest tree a unit at (x, y) can actually walk up to (flood fill over open ground)
+let bfsSeen = null, bfsQ = null, bfsGen = 0;
+function nearestReachableTree(w, x, y, skip, maxVisit = 4000) {
+  if (!bfsSeen || bfsSeen.length !== w.N) { bfsSeen = new Int32Array(w.N); bfsQ = new Int32Array(w.N); }
+  bfsGen++;
+  const W = w.W, sx = clamp(Math.floor(x), 0, W - 1), sy = clamp(Math.floor(y), 0, w.H - 1);
+  let head = 0, tail = 0;
+  bfsQ[tail++] = sy * W + sx; bfsSeen[sy * W + sx] = bfsGen;
+  while (head < tail && head < maxVisit) {
+    const cur = bfsQ[head++], cx = cur % W, cy = (cur / W) | 0;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      if (!ox && !oy) continue;
+      const nx = cx + ox, ny = cy + oy;
+      if (!inMap(w, nx, ny)) continue;
+      const ni = ny * W + nx;
+      if (w.ter[ni] === T_TREE && !(skip && skip.tx === nx && skip.ty === ny)) return { tx: nx, ty: ny };
+      if (bfsSeen[ni] === bfsGen || !walk(w, nx, ny)) continue;
+      if (ox && oy && (!walk(w, cx + ox, cy) || !walk(w, cx, cy + oy))) continue;
+      bfsSeen[ni] = bfsGen; bfsQ[tail++] = ni;
+    }
+  }
+  return null;
+}
 function gatherTick(w, u, d, dt) {
   const r = u.res;
   if (!r) { u.st = 'idle'; return; }
@@ -1268,7 +1306,7 @@ function gatherTick(w, u, d, dt) {
   }
   // wood
   if (!inMap(w, r.tx, r.ty) || w.ter[r.ty * w.W + r.tx] !== T_TREE) {
-    const t = nearestTree(w, r.tx, r.ty, 10);
+    const t = nearestReachableTree(w, u.x, u.y);
     if (!t) { stopUnit(u); return; }
     u.res = { tx: t.tx, ty: t.ty }; u.path = null; u.chopT = 0; return;
   }
@@ -1291,8 +1329,8 @@ function gatherTick(w, u, d, dt) {
   if (!u.path || u.pi >= u.path.length) {
     if ((u.tries = (u.tries || 0) + 1) > 4) {
       // can't reach this one: try another tree nearby
-      u.tries = 0; const t = nearestTree(w, u.x, u.y, 12);
-      if (!t || (t.tx === r.tx && t.ty === r.ty)) { stopUnit(u); return; }
+      u.tries = 0; const t = nearestReachableTree(w, u.x, u.y, r);
+      if (!t) { stopUnit(u); return; }
       u.res = { tx: t.tx, ty: t.ty }; return;
     }
     pathTo(w, u, (x, y) => Math.max(Math.abs(x - r.tx), Math.abs(y - r.ty)) <= 1, r.tx, r.ty);
@@ -1440,6 +1478,10 @@ function separate(w) {
       const a = cell.get(cx + ox + (cy + oy) * 4096); if (!a) continue;
       for (const o of a) {
         if (o.id <= u.id) continue;
+        // a unit that's been making no headway squeezes past instead of shoving (narrow gaps, head-on meetings)
+        if (u.ghostT > 0 || o.ghostT > 0) continue;
+        // two units walking into each other just pass
+        if (u.moving && o.moving && (u.dx || 0) * (o.dx || 0) + (u.dy || 0) * (o.dy || 0) < -0.3) continue;
         const dx = o.x - u.x, dy = o.y - u.y, dd = Math.hypot(dx, dy), min = (u.r + o.r) * 0.85;
         if (dd >= min) continue;
         const push = (min - dd) * 0.35, nx = dd > 0.001 ? dx / dd : Math.random() - 0.5, ny = dd > 0.001 ? dy / dd : Math.random() - 0.5;
@@ -1490,7 +1532,8 @@ function aiAssignWorker(w, P, u) {
     let mill = null, md = 1e9;
     for (const e of w.ents) if (e.o === P.slot && e.k === K.mill && e.built) { const dd = dist(e.x, e.y, base.x, base.y); if (dd < md) { md = dd; mill = e; } }
     const from = mill || base;
-    const t = nearestTree(w, from.x, from.y, 18);
+    const st = freeSpotNear(w, from.size ? from : null, from.x, from.y + (from.size ? from.size / 2 : 0));
+    const t = nearestReachableTree(w, st.x + 0.5, st.y + 0.5);
     if (t) applyCmd(w, P.slot, { c: 'gather', ids: [u.id], tx: t.tx, ty: t.ty });
     else if (m) applyCmd(w, P.slot, { c: 'gather', ids: [u.id], id: m.id });
   }
@@ -1558,7 +1601,7 @@ function aiThink(w, P) {
   if (w.t > 120 && (aiThink.n = (aiThink.n || 0) + 1) % 3 === 0) {
     const toWood = P.w < 150 && P.g > 400, toGold = P.g < 120 && P.w > 500;
     const from = workers.find(u => !u.carry && !u.hidden && u.res && (toWood ? u.res.mine : toGold ? u.res.tx !== undefined : false));
-    if (from) { from.res = null; from.st = 'idle'; if (toWood) { const t = nearestTree(w, hall.x, hall.y, 18); if (t) applyCmd(w, P.slot, { c: 'gather', ids: [from.id], tx: t.tx, ty: t.ty }); } else aiAssignWorker(w, P, from); }
+    if (from) { from.res = null; from.st = 'idle'; if (toWood) { const st = freeSpotNear(w, hall, hall.x, hall.y + 2), t = nearestReachableTree(w, st.x + 0.5, st.y + 0.5); if (t) applyCmd(w, P.slot, { c: 'gather', ids: [from.id], tx: t.tx, ty: t.ty }); } else aiAssignWorker(w, P, from); }
   }
   // the home mine ran dry: put a new hall next to the closest mine
   if (hall.built && !halls.some(h => nearestMine(w, h.x, h.y, 12)) && !pending(K.hall) && workers.length) {

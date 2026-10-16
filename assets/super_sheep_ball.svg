@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="640" height="400">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f8fff"/>
+      <stop offset="1" stop-color="#cfe8ff"/>
+    </linearGradient>
+    <pattern id="check" width="20" height="20" patternUnits="userSpaceOnUse">
+      <rect width="20" height="20" fill="#86d96a"/>
+      <rect width="10" height="10" fill="#6cc456"/>
+      <rect x="10" y="10" width="10" height="10" fill="#6cc456"/>
+    </pattern>
+    <radialGradient id="shell" cx=".38" cy=".32" r=".7">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".75"/>
+      <stop offset=".35" stop-color="#ff8080" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#ff4f4f" stop-opacity=".75"/>
+    </radialGradient>
+    <g id="coin"><ellipse rx="6" ry="7" fill="#ffd23f" stroke="#b07a00" stroke-width="1.5"/><ellipse rx="2.5" ry="3.5" fill="#fff1a0"/></g>
+  </defs>
+
+  <rect width="320" height="200" fill="url(#sky)"/>
+
+  <!-- clouds far below -->
+  <g fill="#fff" opacity=".9">
+    <ellipse cx="40" cy="172" rx="30" ry="10"/><ellipse cx="62" cy="166" rx="20" ry="10"/>
+    <ellipse cx="282" cy="160" rx="34" ry="11"/><ellipse cx="258" cy="154" rx="18" ry="9"/>
+    <ellipse cx="270" cy="40" rx="22" ry="7"/><ellipse cx="288" cy="36" rx="14" ry="6"/>
+    <ellipse cx="46" cy="44" rx="18" ry="6"/>
+  </g>
+
+  <!-- the floating track, running away from us -->
+  <path d="M60 200 L140 70 L180 70 L260 200 Z" fill="url(#check)"/>
+  <path d="M60 200 L140 70 L136 70 L52 200 Z" fill="#8a5a3c"/>
+  <path d="M260 200 L180 70 L184 70 L268 200 Z" fill="#8a5a3c"/>
+  <path d="M60 200 L140 70" stroke="#f4f0e6" stroke-width="5"/>
+  <path d="M260 200 L180 70" stroke="#f4f0e6" stroke-width="5"/>
+
+  <!-- goal gate -->
+  <g transform="translate(160 62)">
+    <rect x="-22" y="-26" width="4" height="30" fill="#fff"/>
+    <rect x="18" y="-26" width="4" height="30" fill="#fff"/>
+    <rect x="-24" y="-32" width="48" height="10" fill="#ff4fa3"/>
+    <text x="0" y="-24.5" font-family="monospace" font-weight="bold" font-size="8" fill="#fff" text-anchor="middle">GOAL</text>
+  </g>
+
+  <!-- coins -->
+  <use href="#coin" transform="translate(160 96) scale(.6)"/>
+  <use href="#coin" transform="translate(160 112) scale(.75)"/>
+  <use href="#coin" transform="translate(160 132) scale(.9)"/>
+
+  <!-- a faded rival ahead -->
+  <g opacity=".45">
+    <circle cx="186" cy="92" r="11" fill="#3f8cff"/>
+    <circle cx="186" cy="92" r="11" fill="none" stroke="#fff" stroke-width="1.5"/>
+  </g>
+
+  <!-- our sheep in its ball -->
+  <ellipse cx="160" cy="194" rx="34" ry="7" fill="#000" opacity=".22"/>
+  <g transform="translate(160 160)">
+    <!-- wool -->
+    <g fill="#f8f4ea">
+      <circle cx="0" cy="6" r="14"/><circle cx="-11" cy="0" r="9"/><circle cx="11" cy="0" r="9"/>
+      <circle cx="-6" cy="-7" r="9"/><circle cx="7" cy="-7" r="9"/>
+    </g>
+    <!-- face -->
+    <ellipse cx="0" cy="2" rx="7.5" ry="9" fill="#2a2230"/>
+    <circle cx="0" cy="-8" r="5" fill="#f8f4ea"/>
+    <ellipse cx="-10" cy="-1" rx="5" ry="2.2" fill="#2a2230" transform="rotate(-20 -10 -1)"/>
+    <ellipse cx="10" cy="-1" rx="5" ry="2.2" fill="#2a2230" transform="rotate(20 10 -1)"/>
+    <circle cx="-3" cy="1" r="2.4" fill="#fff"/><circle cx="3" cy="1" r="2.4" fill="#fff"/>
+    <circle cx="-3" cy="1.4" r="1.1" fill="#111"/><circle cx="3" cy="1.4" r="1.1" fill="#111"/>
+    <rect x="-6" y="10" width="12" height="3" rx="1.5" fill="#ff4f4f"/>
+    <!-- the ball -->
+    <circle r="32" fill="url(#shell)"/>
+    <path d="M-32 0 A32 12 0 0 0 32 0" fill="none" stroke="#4a4a4a" stroke-opacity=".45" stroke-width="3"/>
+    <circle cx="-14" cy="-22" r="3" fill="#4a4a4a" opacity=".35"/>
+    <circle cx="18" cy="16" r="3" fill="#4a4a4a" opacity=".35"/>
+    <ellipse cx="-12" cy="-16" rx="9" ry="5" fill="#fff" opacity=".7" transform="rotate(-35 -12 -16)"/>
+    <circle r="32" fill="none" stroke="#ff4f4f" stroke-width="2"/>
+  </g>
+</svg>

@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="640" height="400">
+  <defs>
+    <pattern id="grass" width="16" height="16" patternUnits="userSpaceOnUse">
+      <rect width="16" height="16" fill="#4f8a3a"/>
+      <rect width="8" height="8" fill="#55923e"/>
+      <rect x="8" y="8" width="8" height="8" fill="#4a8336"/>
+      <rect x="3" y="11" width="2" height="2" fill="#62a248"/>
+      <rect x="12" y="3" width="2" height="2" fill="#3f7530"/>
+    </pattern>
+    <g id="tree">
+      <ellipse cx="0" cy="11" rx="9" ry="3" fill="#000" fill-opacity=".25"/>
+      <rect x="-2" y="2" width="4" height="9" fill="#5a3a1e"/>
+      <circle cx="-5" cy="0" r="7" fill="#285f28"/><circle cx="5" cy="0" r="7" fill="#285f28"/>
+      <circle cx="0" cy="-4" r="8" fill="#2e6b2e"/><circle cx="-2" cy="-7" r="4" fill="#357a33"/>
+    </g>
+    <g id="spot"><circle r="2.2" fill="#fff"/></g>
+  </defs>
+
+  <rect width="320" height="200" fill="url(#grass)"/>
+  <!-- river in the corner -->
+  <path d="M232 0 C228 30 252 46 262 70 C272 92 300 104 320 104 L320 0Z" fill="#2d5f9a"/>
+  <path d="M232 0 C228 30 252 46 262 70 C272 92 300 104 320 104" fill="none" stroke="#c9b783" stroke-width="3"/>
+  <g fill="#3a72b0"><rect x="262" y="18" width="12" height="2"/><rect x="284" y="40" width="10" height="2"/><rect x="296" y="72" width="12" height="2"/></g>
+  <!-- dirt road -->
+  <path d="M0 150 C60 140 110 120 160 118 C210 116 250 130 320 150" fill="none" stroke="#8a6a3e" stroke-width="16" stroke-opacity=".7"/>
+
+  <!-- forest -->
+  <use href="#tree" x="12" y="12"/><use href="#tree" x="30" y="8"/><use href="#tree" x="50" y="14"/><use href="#tree" x="22" y="28"/>
+  <use href="#tree" x="104" y="10"/><use href="#tree" x="122" y="16"/><use href="#tree" x="214" y="16"/><use href="#tree" x="206" y="36"/>
+  <use href="#tree" x="10" y="180"/><use href="#tree" x="30" y="190"/><use href="#tree" x="296" y="178"/><use href="#tree" x="306" y="160"/>
+  <use href="#tree" x="276" y="190"/>
+
+  <!-- gold mine -->
+  <g transform="translate(140 22)">
+    <ellipse cx="22" cy="40" rx="24" ry="6" fill="#000" fill-opacity=".3"/>
+    <path d="M0 40 L4 14 L16 2 L30 6 L42 22 L44 40Z" fill="#6d6a72"/>
+    <path d="M6 18 L16 6 L26 10 L14 24Z" fill="#8a8790"/>
+    <path d="M14 40 A8 11 0 0 1 30 40Z" fill="#1a1208"/>
+    <g fill="#ffd23f"><rect x="8" y="26" width="4" height="3"/><rect x="34" y="20" width="4" height="3"/><rect x="24" y="12" width="3" height="3"/><rect x="36" y="32" width="3" height="3"/></g>
+  </g>
+
+  <!-- the Funguys' Mother Shroom -->
+  <g transform="translate(46 70)">
+    <ellipse cx="0" cy="44" rx="28" ry="6" fill="#000" fill-opacity=".3"/>
+    <rect x="-11" y="10" width="22" height="34" fill="#efe3c8"/><rect x="-11" y="10" width="5" height="34" fill="#d8c8a6"/>
+    <rect x="-4" y="30" width="8" height="14" fill="#4a3420"/>
+    <rect x="-6" y="18" width="4" height="4" fill="#ffd23f"/><rect x="3" y="22" width="4" height="4" fill="#ffd23f"/>
+    <path d="M-32 12 A32 26 0 0 1 32 12Z" fill="#ff4f4f"/>
+    <rect x="-32" y="10" width="64" height="3" fill="#a83030"/>
+    <use href="#spot" x="-16" y="0" transform="scale(1)"/><circle cx="-16" cy="-2" r="5" fill="#fff"/><circle cx="6" cy="-8" r="4" fill="#fff"/><circle cx="20" cy="2" r="3.5" fill="#fff"/><circle cx="-3" cy="4" r="2.5" fill="#fff"/>
+  </g>
+
+  <!-- the Humans' Town Hall -->
+  <g transform="translate(264 120)">
+    <ellipse cx="0" cy="42" rx="30" ry="6" fill="#000" fill-opacity=".3"/>
+    <rect x="-28" y="32" width="56" height="10" fill="#8a8790"/>
+    <rect x="-25" y="12" width="50" height="22" fill="#e3cf9f"/>
+    <path d="M-30 14 L0 -6 L30 14Z" fill="#3f8cff"/><path d="M0 -6 L30 14 L0 14Z" fill="#2a5fb0"/>
+    <rect x="-4" y="22" width="8" height="12" fill="#5a3a1e"/>
+    <rect x="-18" y="18" width="7" height="5" fill="#3a5a8a"/><rect x="11" y="18" width="7" height="5" fill="#3a5a8a"/>
+    <rect x="-5" y="-24" width="10" height="20" fill="#e3cf9f"/><path d="M-7 -23 L0 -34 L7 -23Z" fill="#3f8cff"/>
+    <rect x="-0.5" y="-46" width="1.5" height="13" fill="#5a3a1e"/><path d="M1 -46 L12 -42 L1 -38Z" fill="#ffd23f"/>
+  </g>
+
+  <!-- an orc hut on the far side of the river -->
+  <g transform="translate(298 48)">
+    <ellipse cx="0" cy="24" rx="20" ry="4" fill="#000" fill-opacity=".3"/>
+    <rect x="-16" y="6" width="32" height="18" fill="#7a5530"/>
+    <path d="M-20 8 L0 -14 L20 8Z" fill="#b08a5a"/>
+    <path d="M-12 -2 L-8 8 M0 -6 L2 8 M10 -2 L8 8" stroke="#ff4f4f" stroke-width="2"/>
+    <path d="M-20 10 L-26 2 L-17 7Z M20 10 L26 2 L17 7Z" fill="#e8e0cc"/>
+    <rect x="-3" y="14" width="6" height="10" fill="#2a1a0a"/>
+  </g>
+
+  <!-- the brawl in the middle -->
+  <!-- selection box around the shroomtroopers -->
+  <rect x="86" y="104" width="62" height="44" fill="#7dff6a" fill-opacity=".08" stroke="#7dff6a" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <g id="trooper">
+    <ellipse cx="100" cy="128" rx="7" ry="2.5" fill="none" stroke="#7dff6a" stroke-width="1.2"/>
+    <rect x="97" y="117" width="7" height="11" fill="#f4ead6"/>
+    <rect x="101" y="120" width="1.5" height="1.5" fill="#111"/><rect x="103" y="120" width="1.5" height="1.5" fill="#111"/>
+    <path d="M90 118 A11 9 0 0 1 112 118Z" fill="#ff4f4f"/><circle cx="96" cy="113" r="2" fill="#fff"/><circle cx="104" cy="111" r="1.6" fill="#fff"/>
+    <path d="M106 122 L114 112" stroke="#8a6a3e" stroke-width="2"/>
+  </g>
+  <use href="#trooper" x="20" y="-6"/><use href="#trooper" x="12" y="14"/><use href="#trooper" x="-2" y="10"/>
+
+  <!-- beetle brawler -->
+  <g transform="translate(176 118)">
+    <ellipse cx="0" cy="8" rx="10" ry="3" fill="#000" fill-opacity=".3"/>
+    <path d="M-8 4 L-11 9 M-2 5 L-4 10 M4 5 L6 10" stroke="#1a1510" stroke-width="1.5"/>
+    <ellipse cx="-4" cy="0" rx="9" ry="7" fill="#c77dff"/><path d="M-4 -6 L-4 6" stroke="#000" stroke-opacity=".35"/>
+    <circle cx="6" cy="-1" r="4.5" fill="#2a241c"/><circle cx="10" cy="-2" r="4" fill="#3a3328"/>
+    <path d="M12 -4 L20 -12 L14 0Z" fill="#d9d2c0"/><rect x="11" y="-4" width="2" height="2" fill="#ff4f4f"/>
+  </g>
+
+  <!-- orc grunt swinging -->
+  <g transform="translate(160 150)">
+    <ellipse cx="0" cy="12" rx="9" ry="3" fill="#000" fill-opacity=".3"/>
+    <rect x="-6" y="4" width="4" height="8" fill="#4a3a2a"/><rect x="2" y="4" width="4" height="8" fill="#4a3a2a"/>
+    <rect x="-8" y="-12" width="16" height="16" fill="#ffd23f"/>
+    <circle cx="0" cy="-16" r="7" fill="#6aa33f"/><rect x="2" y="-19" width="2" height="2" fill="#c22"/>
+    <rect x="0" y="-13" width="2" height="3" fill="#fff"/><rect x="4" y="-13" width="2" height="3" fill="#fff"/>
+    <path d="M-8 -20 L-12 -28 L-4 -21Z M6 -20 L10 -28 L3 -21Z" fill="#d9d2c0"/>
+    <path d="M6 -8 L-6 -30" stroke="#6a4426" stroke-width="2.5"/><path d="M-6 -30 L4 -34 L4 -26Z" fill="#b8bec8"/>
+  </g>
+
+  <!-- a Kaboomer doing what Kaboomers do -->
+  <g transform="translate(206 150)">
+    <circle cx="0" cy="-6" r="22" fill="#ff9a3c" fill-opacity=".35"/>
+    <path d="M0 -30 L5 -14 L22 -20 L10 -6 L26 2 L8 4 L12 20 L0 8 L-12 20 L-8 4 L-26 2 L-10 -6 L-22 -20 L-5 -14Z" fill="#ff9a3c"/>
+    <path d="M0 -18 L3 -9 L12 -12 L6 -4 L14 0 L4 2 L6 10 L0 4 L-6 10 L-4 2 L-14 0 L-6 -4 L-12 -12 L-3 -9Z" fill="#ffd23f"/>
+    <circle cx="0" cy="-3" r="4" fill="#fff6c0"/>
+    <g fill="#8a5a2b"><rect x="-30" y="-24" width="5" height="4"/><rect x="26" y="-28" width="4" height="3"/><rect x="22" y="14" width="5" height="4"/></g>
+  </g>
+
+  <!-- spitter wasp hovering in -->
+  <g transform="translate(236 86)">
+    <ellipse cx="0" cy="22" rx="8" ry="2.5" fill="#000" fill-opacity=".2"/>
+    <ellipse cx="-2" cy="-5" rx="7" ry="3" fill="#dcf0ff" fill-opacity=".7"/><ellipse cx="4" cy="-5" rx="7" ry="3" fill="#dcf0ff" fill-opacity=".7"/>
+    <ellipse cx="-6" cy="2" rx="7" ry="4.5" fill="#ffd23f"/><rect x="-9" y="-2" width="2" height="8" fill="#222"/><rect x="-5" y="-2" width="2" height="8" fill="#222"/>
+    <ellipse cx="2" cy="1" rx="4" ry="3.5" fill="#c77dff"/><circle cx="7" cy="0" r="3.5" fill="#3a3328"/><rect x="8" y="-1.5" width="2" height="2" fill="#ff4f4f"/>
+  </g>
+  <!-- spit and spores flying -->
+  <circle cx="214" cy="100" r="3" fill="#9bdc3a"/><circle cx="200" cy="106" r="2" fill="#9bdc3a" fill-opacity=".6"/>
+  <circle cx="150" cy="96" r="3" fill="#b7f07a"/><circle cx="142" cy="100" r="2" fill="#b7f07a" fill-opacity=".6"/>
+
+  <!-- goblin zapper on the hill -->
+  <g transform="translate(118 176)">
+    <ellipse cx="0" cy="6" rx="7" ry="2.5" fill="#000" fill-opacity=".3"/>
+    <rect x="-5" y="-6" width="10" height="10" fill="#3f8cff"/>
+    <circle cx="0" cy="-10" r="6" fill="#a6c94a"/>
+    <path d="M-5 -11 L-14 -16 L-5 -7Z M5 -11 L14 -16 L5 -7Z" fill="#a6c94a"/>
+    <rect x="-6" y="-13" width="12" height="3" fill="#333"/><circle cx="1" cy="-11.5" r="2" fill="#7fe0ff"/><circle cx="5" cy="-11.5" r="2" fill="#7fe0ff"/>
+    <rect x="2" y="-4" width="12" height="3.5" fill="#555"/>
+  </g>
+  <path d="M132 174 L140 166 L136 165 L148 152 L144 151 L154 140" fill="none" stroke="#3ff0ff" stroke-width="2"/>
+
+  <!-- a tiny HUD so you know it's that kind of game -->
+  <rect x="0" y="0" width="98" height="16" fill="#0f0820" fill-opacity=".85"/>
+  <rect x="5" y="4" width="8" height="8" fill="#ffd23f"/><rect x="16" y="6" width="22" height="4" fill="#efe6ff" fill-opacity=".8"/>
+  <rect x="44" y="4" width="8" height="8" fill="#8a5a2b"/><rect x="55" y="6" width="18" height="4" fill="#efe6ff" fill-opacity=".8"/>
+  <rect x="78" y="4" width="8" height="8" fill="#7dff6a"/><rect x="89" y="6" width="6" height="4" fill="#efe6ff" fill-opacity=".8"/>
+</svg>

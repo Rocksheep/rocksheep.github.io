@@ -207,6 +207,7 @@ details p{margin:10px 0}
   <span class="sp"></span>
   <button class="tbtn mineOnly" style="--c:var(--yellow)" id="idleBtn" type="button" title="Select a worker with nothing to do (.)">IDLE <b id="idleN">0</b></button>
   <button class="tbtn mineOnly" style="--c:var(--orange)" id="armyBtn" type="button" title="Select your whole army (,)">ARMY</button>
+  <button class="tbtn" style="--c:var(--pink)" id="grimBtn" type="button" title="Switch between the cheerful and the grimdark look (only on your screen)">GRIM</button>
   <button class="tbtn" style="--c:var(--cyan)" id="muteBtn" type="button" title="Sound on/off">SND</button>
   <button class="tbtn" style="--c:var(--pink)" id="menuBtn" type="button" title="Menu (F10)">MENU</button>
 </div>
@@ -229,6 +230,7 @@ details p{margin:10px 0}
       <div class="row"><label>MAP SIZE</label><div class="seg" id="optSize"></div></div>
       <div class="row"><label>LAND</label><div class="seg" id="optTheme"></div></div>
       <div class="row"><label>START WITH</label><div class="seg" id="optRes"></div></div>
+      <div class="row"><label>LOOK</label><div class="seg" id="optLook"></div></div>
       <div class="row"><label>PLAYERS</label><div class="seg" id="optN"></div></div>
       <div class="teams" id="playerRows"></div>
       <div class="room" id="roomBox" hidden>
@@ -479,6 +481,8 @@ const THEMES = [
     leaf: ['#2f5a4a', '#386a56', '#284e40'], trunk: '#4a3524', stump: '#6a5038', snow: true, mini: { g: '#dfe7ef', t: '#2f5a4a', w: '#4f7fae', r: '#7d8590', d: '#a3a6ad' } },
   { name: 'BOG STANDARD', grass: ['#56653a', '#5c6c3e', '#4f5e35'], dirt: '#5e4a2e', water: '#3c5a48', water2: '#4b6c56', rock: '#5f5c58', rock2: '#77736c',
     leaf: ['#33502a', '#3c5c30', '#2b4524'], trunk: '#3e2c1a', stump: '#5a4128', mini: { g: '#56653a', t: '#2b4524', w: '#3c5a48', r: '#5f5c58', d: '#5e4a2e' } },
+  { name: 'GRIMDARK', grass: ['#615c44', '#6a654b', '#58533d'], dirt: '#5e4a34', water: '#2e3a38', water2: '#3e4a48', rock: '#5e5a5c', rock2: '#77727a',
+    leaf: ['#3a4430', '#434d36', '#323b29'], trunk: '#3a2a1c', stump: '#4a3826', grim: true, mini: { g: '#615c44', t: '#323b29', w: '#2e3a38', r: '#5e5a5c', d: '#5e4a34' } },
 ];
 const SIZES = [[48, 'SMALL'], [64, 'MEDIUM'], [80, 'LARGE']];
 const START_RES = [[300, 150, 'A LITTLE'], [500, 300, 'NORMAL'], [1500, 1000, 'LOADS']];
@@ -658,7 +662,7 @@ function makeWorld(cfg, replica) {
       stats: { made: 0, kills: 0, lost: 0, gold: 0, wood: 0, built: 0 }, ai: null,
     })),
     vis: new Uint8Array(N), exp: new Uint8Array(N), fogT: 0,
-    fx: { proj: [], parts: [], texts: [], bubbles: [], pings: [], marks: [], rings: [] },
+    fx: { proj: [], parts: [], texts: [], bubbles: [], pings: [], marks: [], rings: [], scars: [] },
     seen: new Map(),       // enemy buildings you saw once, still drawn in the fog
   };
   if (!replica) {
@@ -1940,6 +1944,13 @@ function paintRegion(w, x0, y0, x1, y1) {
       c.strokeStyle = v & 1 ? dark : light; c.lineWidth = 1;
       c.beginPath(); c.moveTo(tx, ty); c.lineTo(tx - 2, ty - 4); c.moveTo(tx, ty); c.lineTo(tx + 1, ty - 5); c.moveTo(tx, ty); c.lineTo(tx + 3, ty - 3); c.stroke();
     }
+    if (th.grim) {
+      // no flowers here: old bones, a skull now and then, and puddles of mud
+      if (d > 236) { box(c, px + 8 + d % 9, py + 18, 10, 2, '#b8b29a'); ell(c, px + 8 + d % 9, py + 19, 2, 2, '#b8b29a'); ell(c, px + 18 + d % 9, py + 19, 2, 2, '#b8b29a'); }
+      if (d > 250) { ell(c, px + 16, py + 12, 4, 3.5, '#c8c2aa'); box(c, px + 14, py + 11, 1.5, 1.5, '#222'); box(c, px + 17, py + 11, 1.5, 1.5, '#222'); }
+      if (d > 20 && d < 30) ell(c, px + 16, py + 20, 9, 4, 'rgba(40,30,20,.45)');
+      continue;
+    }
     if (d > 238) for (let k = 0; k < 3; k++) { c.fillStyle = th.snow ? ['#bfe0ff', '#fff'][k % 2] : ['#ffd23f', '#ff8fc8', '#fff'][k]; c.fillRect(px + 6 + k * 8 + (d % 5), py + 10 + ((d >> k) % 12), 3, 3); }
     if (d < 10) { c.fillStyle = shade(th.rock, 0.1); c.beginPath(); c.ellipse(px + 10 + d, py + 20, 3, 2, 0, 0, 7); c.fill(); }
   }
@@ -1980,6 +1991,13 @@ function paintStump(c, th, x, y, d) {
 function paintTree(c, th, x, y, d) {
   const lf = th.leaf, o = (d % 5) - 2, h = (d >> 3) % 4;
   ell(c, x + 20, y + 28, 15, 5, 'rgba(0,0,0,.3)');
+  if (th.grim && d % 3 === 0) {
+    // a dead tree: bare, twisted branches
+    const tc = shade(th.trunk, 0.15);
+    line(c, x + 16 + o, y + 29, x + 15 + o, y + 6 - h, tc, 4);
+    for (const [bx, by, ex, ey] of [[15, 16, 6, 6], [15, 12, 26, 3], [15, 20, 25, 13], [15, 9, 10, -2], [24, 8, 29, 0]]) line(c, x + bx + o, y + by - h, x + ex + o, y + ey - h, tc, 2);
+    return;
+  }
   box(c, x + 13 + o, y + 17, 6, 12, shade(th.trunk, -0.3)); box(c, x + 14 + o, y + 17, 3, 12, th.trunk);
   if (th.snow) {
     for (let k = 0; k < 3; k++) {
@@ -2771,6 +2789,16 @@ function drawBuildingAt(c, race, e, color, sx, sy, s, t) {
   ell(c, sx + Wpx * 0.52, sy + Wpx * 0.93, Wpx * 0.5, Wpx * 0.13, 'rgba(0,0,0,.3)');
   if (e.built || e.k === K.mine) {
     drawSprite(c, buildingSprite(race, e.k, color, s, e.k === K.mine ? (e.door || (e.door = mineDoor(G, e))) : ''), sx, sy - s * 1.2);
+    // grim: soot and scorch creep over a building as it takes damage
+    if (G && !e.ghost && e.k !== K.mine && grimOn(G)) {
+      const f = e.hp / def(G, e).hp;
+      if (f < 0.95) for (let i = 0; i < 5; i++) {
+        const rx = ((e.id * 37 + i * 53) % 100) / 100, ry = ((e.id * 71 + i * 29) % 100) / 100;
+        c.globalAlpha = clamp((0.95 - f) * 1.4 - i * 0.12, 0, 0.6);
+        ell(c, sx + Wpx * (0.15 + rx * 0.7), sy + Wpx * (0.2 + ry * 0.65), Wpx * 0.14, Wpx * 0.1, '#140e0a');
+      }
+      c.globalAlpha = 1;
+    }
     if (!e.ghost) buildingLife(c, race, e, color, sx, sy, s, t);
     return;
   }
@@ -2861,7 +2889,7 @@ function runEvent(w, [n, ...a]) {
     case 'proj': { const [x1, y1, x2, y2, kind, dur] = a; w.fx.proj.push({ x1, y1, x2, y2, kind, dur: Math.max(0.05, dur), t: 0 }); if (onScreen(x1, y1)) sfx(kind === 'arrow' || kind === 'bolt' ? 'arrow' : kind); break; }
     case 'hit': { const [x, y, hard] = a; if (onScreen(x, y)) { addParts(w, x, y - 0.3, 4, hard ? '#ff4f6d' : '#ddd', 1.5, 0.35, 2); w.fx.rings.push({ x, y: y - 0.2, r: 0.35, life: 0.18, max: 0.18, col: '#fff', wd: 2 }); sfx('sword'); } break; }
     case 'splash': { const [x, y, r] = a; if (!onScreen(x, y)) break;
-      if (r >= 1.2) { w.fx.rings.push({ x, y, r, life: 0.4, max: 0.4, col: '#ff9a3c', wd: 4, flash: true }); addParts(w, x, y, 16, '#ff9a3c', 3, 0.6, 4); addParts(w, x, y, 8, '#444', 1.5, 1, 5, -1.5); sfx('boom'); }
+      if (r >= 1.2) { addScar(w, x, y, r * 0.6, 'crater'); w.fx.rings.push({ x, y, r, life: 0.4, max: 0.4, col: '#ff9a3c', wd: 4, flash: true }); addParts(w, x, y, 16, '#ff9a3c', 3, 0.6, 4); addParts(w, x, y, 8, '#444', 1.5, 1, 5, -1.5); sfx('boom'); }
       else { w.fx.rings.push({ x, y, r, life: 0.4, max: 0.4, col: '#c8ff9a', wd: 3 }); addParts(w, x, y, 6, '#c8ff9a', 1.2, 0.6, 4, -0.5); }
       break; }
     case 'hatch': { const [x, y] = a; if (onScreen(x, y)) { addParts(w, x, y, 10, '#d9c27a', 1.5, 0.6, 3); sfx('spit'); } break; }
@@ -2870,10 +2898,10 @@ function runEvent(w, [n, ...a]) {
     case 'fix': { const [x, y] = a; if (onScreen(x, y)) { addParts(w, x, y - 0.3, 2, '#ffd23f', 1, 0.3, 2); if (Math.random() < 0.4) sfx('sword'); } break; }
     case 'miss': { const [x, y] = a; floatText(w, x, y - 0.6, 'MISS', '#3ff0ff'); break; }
     case 'heal': { const [x, y] = a; addParts(w, x, y - 0.3, 1, '#7dff6a', 0.3, 0.8, 3, -1); break; }
-    case 'die': { const [x, y, k, o] = a; if (onScreen(x, y)) { addParts(w, x, y, 10, w.players[o] ? w.players[o].race === 'funguys' || w.players[o].race === 'undead' ? '#e8eadf' : w.players[o].race === 'bugs' ? '#9bdc3a' : '#c22' : '#c22', 2.5, 0.7, 3); sfx('die'); }
+    case 'die': { const [x, y, k, o] = a; const dr = w.players[o] && w.players[o].race; addScar(w, x, y + 0.1, k === K.ultimate ? 1 : 0.55, dr === 'undead' || dr === 'funguys' ? 'bonedust' : 'blood'); if (onScreen(x, y)) { addParts(w, x, y, 10, w.players[o] ? w.players[o].race === 'funguys' || w.players[o].race === 'undead' ? '#e8eadf' : w.players[o].race === 'bugs' ? '#9bdc3a' : '#c22' : '#c22', 2.5, 0.7, 3); sfx('die'); }
       w.fx.marks.push({ x, y, t: 0, life: 10, corpse: true, k, o }); if (w.fx.marks.length > 160) w.fx.marks.shift(); break; }
-    case 'crumble': { const [x, y, size] = a; w.fx.rings.push({ x, y: y + size * 0.3, r: size * 0.8, life: 0.7, max: 0.7, col: '#c8b08a', wd: 5 }); if (onScreen(x, y)) { for (let i = 0; i < 4; i++) addParts(w, x + rand(-size / 2, size / 2), y + rand(-size / 2, size / 2), 8, pick(['#8a8790', '#6a5236', '#ff9a3c', '#333']), 3, 1.1, 4); sfx('crumble'); } break; }
-    case 'boom': { const [x, y, r] = a; w.fx.rings.push({ x, y, r: r * 1.2, life: 0.6, max: 0.6, col: '#ffd23f', wd: 6, flash: true }); addParts(w, x, y, 40, '#ff9a3c', 5 * r / 1.8, 0.9, 5); addParts(w, x, y, 20, '#ffd23f', 3, 0.6, 4); addParts(w, x, y, 14, '#444', 2, 1.4, 6, -2); sfx('boom'); shake = Math.max(shake, 0.4); break; }
+    case 'crumble': { const [x, y, size] = a; addScar(w, x, y + size * 0.2, size * 0.75, 'scorch'); w.fx.rings.push({ x, y: y + size * 0.3, r: size * 0.8, life: 0.7, max: 0.7, col: '#c8b08a', wd: 5 }); if (onScreen(x, y)) { for (let i = 0; i < 4; i++) addParts(w, x + rand(-size / 2, size / 2), y + rand(-size / 2, size / 2), 8, pick(['#8a8790', '#6a5236', '#ff9a3c', '#333']), 3, 1.1, 4); sfx('crumble'); } break; }
+    case 'boom': { const [x, y, r] = a; addScar(w, x, y, r * 0.9, 'scorch'); addScar(w, x, y, r * 0.5, 'crater'); w.fx.rings.push({ x, y, r: r * 1.2, life: 0.6, max: 0.6, col: '#ffd23f', wd: 6, flash: true }); addParts(w, x, y, 40, '#ff9a3c', 5 * r / 1.8, 0.9, 5); addParts(w, x, y, 20, '#ffd23f', 3, 0.6, 4); addParts(w, x, y, 14, '#444', 2, 1.4, 6, -2); sfx('boom'); shake = Math.max(shake, 0.4); break; }
     case 'chop': { const [x, y] = a; if (onScreen(x, y)) { addParts(w, x, y, 2, '#c9a06a', 1.2, 0.4, 2); if (Math.random() < 0.5) sfx('chop'); } break; }
     case 'fell': { const [tx, ty] = a; const i = ty * w.W + tx; if (w.replica) { w.ter[i] = T_STUMP; w.wood[i] = 0; } repaintAround(w, tx, ty); if (onScreen(tx + 0.5, ty + 0.5)) { addParts(w, tx + 0.5, ty + 0.5, 12, w.theme.leaf[0], 2, 0.8, 4); sfx('fell'); } break; }
     case 'dry': { const [x, y] = a; addParts(w, x, y, 20, '#8a8790', 3, 1, 4); if (onScreen(x, y)) sfx('crumble'); msg('A gold mine has run dry.', '#ffd23f'); break; }
@@ -2912,10 +2940,95 @@ function tickFx(w, dt) {
   for (const p of f.pings) p.life -= dt;
   f.pings = f.pings.filter(p => p.life > 0);
   for (const m of f.marks) { m.t += dt; }
+  for (const sc of f.scars) sc.life -= dt;
+  f.scars = f.scars.filter(sc => sc.life > 0);
   for (const r of f.rings) r.life -= dt;
   f.rings = f.rings.filter(r => r.life > 0);
   f.marks = f.marks.filter(m => m.t < m.life);
   shake = Math.max(0, shake - dt);
+}
+
+
+// ---------- the grimdark look ----------
+// Only changes how things are drawn on this screen; the battle itself is the same.
+const grimOn = w => !w.demo && (setup.look === 'grim' || !!w.theme.grim) || (w.demo && !!w.theme.grim);
+let grainPat = null, glowSpr = null;
+function grimAssets() {
+  if (!grainPat) {
+    const g = document.createElement('canvas'); g.width = g.height = 160;
+    const c = g.getContext('2d'), img = c.createImageData(160, 160);
+    for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() < 0.5 ? 0 : 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = Math.random() * 20; }
+    c.putImageData(img, 0, 0);
+    grainPat = ctx.createPattern(g, 'repeat');
+  }
+  if (!glowSpr) {
+    glowSpr = document.createElement('canvas'); glowSpr.width = glowSpr.height = 128;
+    const c = glowSpr.getContext('2d'), gr = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(255,170,70,.55)'); gr.addColorStop(0.4, 'rgba(255,110,30,.22)'); gr.addColorStop(1, 'rgba(255,80,20,0)');
+    c.fillStyle = gr; c.fillRect(0, 0, 128, 128);
+  }
+}
+// drain the colour, darken, and push the shadows towards a cold blue-grey
+function grimGrade() {
+  ctx.save();
+  ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = 'rgba(128,128,128,.55)'; ctx.fillRect(-20, -20, VW + 40, VH + 40);
+  ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#c8c0b2'; ctx.fillRect(-20, -20, VW + 40, VH + 40);
+  ctx.globalCompositeOperation = 'soft-light'; ctx.fillStyle = 'rgba(30,40,62,.35)'; ctx.fillRect(-20, -20, VW + 40, VH + 40);
+  ctx.restore();
+}
+// warm firelight: burning buildings, torches by the doors, and every explosion
+function grimLights(w, list, s, t) {
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const glow = (x, y, r, a) => { const [px, py] = toScreen(x, y), R = r * s; ctx.globalAlpha = a; ctx.drawImage(glowSpr, px - R, py - R, R * 2, R * 2); };
+  for (const e of list) {
+    if (!e.size || e.ghost || e.k === K.mine || e.k === K.wall) continue;
+    const f = e.hp / def(w, e).hp, fl = 0.85 + Math.sin(t * 13 + e.id) * 0.15;
+    if (f < 0.6) glow(e.x, e.y - 0.3, 1.6 + (0.6 - f) * 3, 0.9 * fl);
+    if (e.built && (e.k === K.hall || e.k === K.tower || e.k === K.barracks)) { glow(e.bx - 0.1, e.by + e.size - 0.6, 1.1, 0.55 * fl); glow(e.bx + e.size + 0.1, e.by + e.size - 0.6, 1.1, 0.55 * fl); }
+  }
+  for (const r of w.fx.rings) if (r.flash) glow(r.x, r.y, r.r * 2.5, r.life / r.max);
+  for (const p of w.fx.proj) if (p.kind === 'fire' || p.kind === 'magic' || p.kind === 'rocket' || p.kind === 'zap') { const k = clamp(p.t / p.dur, 0, 1); glow(p.x1 + (p.x2 - p.x1) * k, p.y1 + (p.y2 - p.y1) * k - 0.4, 0.8, 0.6); }
+  ctx.restore();
+}
+// ash drifting down everywhere, embers rising off fires
+function grimWeather(w, list) {
+  if (w.fx.parts.length > 500) return;
+  const s = TS * cam.z;
+  if (Math.random() < frameDt * 14) w.fx.parts.push({ x: cam.x + Math.random() * VW / s, y: cam.y + Math.random() * VH / s, z: 3, vx: rand(-0.25, 0.1), vy: rand(0.05, 0.25), vz: -0.35, life: 6, max: 6, col: pick(['#8a8478', '#6e6a62', '#a49c8c']), size: 2, grav: 0 });
+  for (const e of list) if (e.size && !e.ghost && e.k !== K.mine && e.hp < def(w, e).hp * 0.6 && Math.random() < frameDt * 4)
+    w.fx.parts.push({ x: e.x + rand(-0.6, 0.6), y: e.y, z: 0.6, vx: rand(-0.2, 0.2), vy: rand(-0.1, 0.1), vz: rand(0.8, 1.6), life: 1.6, max: 1.6, col: pick(['#ff9a3c', '#ffd23f', '#ff5a2a']), size: 2, grav: -0.2 });
+}
+// slow banks of fog rolling across the map, then film grain and a heavy vignette
+function grimOverlay(w, t) {
+  const s = TS * cam.z;
+  ctx.save();
+  for (let i = 0; i < 7; i++) {
+    const fx = ((i * 37.3 + t * (0.25 + i * 0.03)) % (w.W + 20)) - 10, fy = (i * 23.7) % w.H + Math.sin(t * 0.1 + i) * 3;
+    const [px, py] = toScreen(fx, fy);
+    ctx.fillStyle = 'rgba(150,150,140,.07)'; ctx.beginPath(); ctx.ellipse(px, py, 9 * s, 3.5 * s, 0, 0, 7); ctx.fill();
+  }
+  ctx.translate(-((t * 997) % 160), -((t * 613) % 160));
+  ctx.fillStyle = grainPat; ctx.fillRect(0, 0, VW + 160, VH + 160);
+  ctx.restore();
+}
+// scorch marks, craters and blood that stay on the ground after a fight
+function addScar(w, x, y, r, kind) {
+  if (!grimOn(w)) return;
+  w.fx.scars.push({ x, y, r, kind, life: 120, rot: Math.random() * 6.28 });
+  if (w.fx.scars.length > 220) w.fx.scars.shift();
+}
+function drawScars(w, s) {
+  for (const sc of w.fx.scars) {
+    if (eyeOf(w) >= 0 && !(w.exp[Math.floor(sc.y) * w.W + Math.floor(sc.x)])) continue;
+    const [px, py] = toScreen(sc.x, sc.y), a = clamp(sc.life / 20, 0, 1), R = sc.r * s;
+    if (px < -R || py < -R || px > VW + R || py > VH + R) continue;
+    ctx.globalAlpha = a;
+    if (sc.kind === 'scorch') { ell(ctx, px, py, R, R * 0.6, 'rgba(18,14,12,.38)'); ell(ctx, px, py, R * 0.55, R * 0.33, 'rgba(10,8,8,.35)'); }
+    else if (sc.kind === 'crater') { ell(ctx, px, py, R, R * 0.55, 'rgba(40,30,22,.42)'); ctx.strokeStyle = 'rgba(90,80,70,.45)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(px, py, R, R * 0.55, 0, Math.PI, 0); ctx.stroke(); }
+    else if (sc.kind === 'blood') { for (let i = 0; i < 4; i++) { const a2 = sc.rot + i * 1.7, d = R * (i ? 0.7 : 0); ell(ctx, px + Math.cos(a2) * d, py + Math.sin(a2) * d * 0.5, R * (i ? 0.25 : 0.5), R * (i ? 0.13 : 0.28), 'rgba(70,8,10,.65)'); } }
+    else if (sc.kind === 'bonedust') ell(ctx, px, py, R * 0.5, R * 0.25, 'rgba(200,196,180,.35)');
+  }
+  ctx.globalAlpha = 1;
 }
 
 // ---------- the whole frame ----------
@@ -2933,7 +3046,7 @@ function render(w, now) {
   ctx.drawImage(w.terCv, sx, sy, sw, sh, 0, 0, VW, VH);
   const tx0 = Math.max(0, Math.floor(cam.x)), ty0 = Math.max(0, Math.floor(cam.y)), tx1 = Math.min(w.W - 1, Math.ceil(cam.x + VW / s)), ty1 = Math.min(w.H - 1, Math.ceil(cam.y + VH / s));
   // light rippling over the water
-  ctx.fillStyle = 'rgba(255,255,255,.22)';
+  ctx.fillStyle = grimOn(w) ? 'rgba(200,210,200,.08)' : 'rgba(255,255,255,.22)';
   for (let y = ty0; y <= ty1; y++) for (let x = tx0; x <= tx1; x++) {
     const i = y * w.W + x; if (w.ter[i] !== T_WATER) continue;
     const d = w.deco[i], ph = (t * 0.6 + d / 64) % 1, [px, py] = toScreen(x, y);
@@ -2948,6 +3061,8 @@ function render(w, now) {
     if (!w.replica && e.ox !== undefined && Math.abs(e.x - e.ox) < 1.5 && Math.abs(e.y - e.oy) < 1.5) { e.rx = e.ox + (e.x - e.ox) * alpha; e.ry = e.oy + (e.y - e.oy) * alpha; }
     else { e.rx = e.x; e.ry = e.y; }
   }
+  const grim = grimOn(w);
+  if (grim) { grimAssets(); drawScars(w, s); }
   // command markers and the fallen
   for (const m of w.fx.marks) {
     const [mx, my] = toScreen(m.x, m.y);
@@ -3008,6 +3123,7 @@ function render(w, now) {
       if (e.moving && !e.fly && !(race === 'bugs' && e.k === K.ranged) && Math.random() < frameDt * 2) addParts(w, e.rx, e.ry + 0.2, 1, w.theme.snow ? '#ffffff' : '#c8b08a', 0.3, 0.45, 3, 0);
     }
   }
+  if (grim) grimGrade();
   // health bars
   for (const e of list) {
     if (e.k === K.mine || e.ghost) continue;
@@ -3071,6 +3187,7 @@ function render(w, now) {
     if (sz > 4) { ctx.beginPath(); ctx.arc(px, py, sz / 2, 0, 7); ctx.fill(); } else ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
   }
   ctx.globalAlpha = 1;
+  if (grim) { grimLights(w, list, s, t); grimWeather(w, list); }
   // fog (only the part on screen)
   ctx.imageSmoothingEnabled = true;
   const fx0 = Math.max(0, tx0 - 2), fy0 = Math.max(0, ty0 - 2), fx1 = Math.min(w.W, tx1 + 3), fy1 = Math.min(w.H, ty1 + 3);
@@ -3098,11 +3215,12 @@ function render(w, now) {
   ctx.globalAlpha = 1;
   drawOverlays(w, s, t);
   ctx.restore();
-  // soft dark edges around the view
-  if (!vignette || vignette.w !== VW || vignette.h !== VH) {
-    const g = ctx.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * 0.35, VW / 2, VH / 2, Math.max(VW, VH) * 0.75);
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(8,2,20,.45)');
-    vignette = { w: VW, h: VH, g };
+  // soft dark edges around the view (much darker when grim)
+  if (grim) grimOverlay(w, t);
+  if (!vignette || vignette.w !== VW || vignette.h !== VH || vignette.grim !== grim) {
+    const g = ctx.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * (grim ? 0.3 : 0.35), VW / 2, VH / 2, Math.max(VW, VH) * (grim ? 0.72 : 0.75));
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, grim ? 'rgba(4,2,6,.68)' : 'rgba(8,2,20,.45)');
+    vignette = { w: VW, h: VH, g, grim };
   }
   ctx.fillStyle = vignette.g; ctx.fillRect(0, 0, VW, VH);
 }
@@ -3840,6 +3958,11 @@ function refreshHud(force) {
 }
 $('idleBtn').onclick = () => { audio(); selectIdle(); };
 $('armyBtn').onclick = () => { audio(); selectArmy(); };
+$('grimBtn').onclick = () => {
+  setup.look = setup.look === 'grim' ? 'cheerful' : 'grim'; save();
+  if (G && G.theme.grim) msg('This land is always grim.', '#a898cf');
+  else msg(setup.look === 'grim' ? 'Grimdark. Everything is worse now.' : 'Cheerful again. Phew.', '#ff4fa3');
+};
 $('muteBtn').onclick = () => { audio(); muted = !muted; $('muteBtn').style.textDecoration = muted ? 'line-through' : ''; };
 $('menuBtn').onclick = () => { audio(); togglePause(); };
 
@@ -4073,7 +4196,7 @@ const defaultSlots = () => [
   { name: 'Bugsy Malone', ctrl: 'normal', race: 'bugs', team: 4 },
 ];
 function load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } }
-const setup = Object.assign({ mode: 'local', size: 1, theme: 0, res: 1, n: 2, myName: '', myRace: 'humans' }, load());
+const setup = Object.assign({ mode: 'local', size: 1, theme: 0, res: 1, n: 2, myName: '', myRace: 'humans', look: 'cheerful' }, load());
 if (!Array.isArray(setup.slots) || setup.slots.length < MAX_P) setup.slots = defaultSlots();
 if (setup.slots.length === MAX_P) setup.slots.push(defaultSlots()[MAX_P]);
 setup.slots.length = MAX_P + 1;
@@ -4110,6 +4233,7 @@ function renderSetup() {
   if (join) { renderLobby(); return; }
   seg('optSize', SIZES.map(([, l], i) => [i, l]), setup.size, v => { setup.size = v; });
   seg('optTheme', THEMES.map((t, i) => [i, t.name]), setup.theme, v => { setup.theme = v; }, 'var(--green)');
+  seg('optLook', [['cheerful', 'CHEERFUL'], ['grim', 'GRIMDARK']], setup.look, v => { setup.look = v; }, 'var(--pink)');
   seg('optRes', START_RES.map((r, i) => [i, r[2]]), setup.res, v => { setup.res = v; }, 'var(--yellow)');
   seg('optN', [2, 3, 4].map(n => [n, String(n)]), setup.n, v => { setup.n = v; if (net.role === 'host') assignSlots(); }, 'var(--orange)');
   renderSlots();
@@ -4169,7 +4293,7 @@ function renderLobby() {
   const L = net.lobby;
   $('joinBtn').hidden = net.role === 'client';
   $('lobbyRows').replaceChildren(...(L ? [
-    (() => { const d = document.createElement('div'); d.className = 'lbl'; d.style.margin = '14px 0 4px'; d.textContent = `${SIZES[clamp(L.size | 0, 0, 2)][1]} MAP · ${THEMES[clamp(L.theme | 0, 0, 2)].name}${L.watch ? ' · THE HOST IS WATCHING' : ''}`; return d; })(),
+    (() => { const d = document.createElement('div'); d.className = 'lbl'; d.style.margin = '14px 0 4px'; d.textContent = `${SIZES[clamp(L.size | 0, 0, 2)][1]} MAP · ${THEMES[clamp(L.theme | 0, 0, THEMES.length - 1)].name}${L.watch ? ' · THE HOST IS WATCHING' : ''}`; return d; })(),
     ...L.rows.map(r => {
       const row = document.createElement('div'); row.className = 'team'; row.style.gridTemplateColumns = '18px minmax(0,1fr) auto auto';
       const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = r.color;

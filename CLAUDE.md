@@ -129,7 +129,7 @@ sections in this order:
 
 - **Constants and game data**: `BASE` stats per kind (worker, melee, ranged, special, hall,
   farm, barracks, lab, tower, mine, mill, flyer, siege, ultimate, wall, workshop, altar; the index in `KINDS` goes over the network,
-  so add new kinds at the end) and `RACES` (Humans, Orcs, Goblins, Funguys, Bugs) with
+  so add new kinds at the end) and `RACES` (Humans, Orcs, Goblins, Funguys, Bugs, Undead) with
   names, jokes, a passive and per-kind overrides (`over`). `DEFS[race][kindIndex]` is the
   merged result. Each race also has a signature rule set by flags on its `RACES` entry
   (`repair`, `rage`, `plunder`, `train`, `blast`, `myco`, `carry`, `raise`, ...) that the
@@ -153,7 +153,10 @@ sections in this order:
   by `runEvent()`, on the host and on guests alike.
 - **CPU players**: `aiThink()` once a second per CPU, issuing commands through `applyCmd`.
 - **Drawing**: everything is drawn with canvas calls (`drawUnit`, `paintBuilding`,
-  `paintTile`), no image files. Building sprites are cached per race/colour/zoom.
+  `paintRegion`), no image files. Unit and building sprites are cached per race/colour/zoom.
+  The grimdark look (`grimOn(w)`: the GRIMDARK land, or LOOK set to GRIMDARK) is purely
+  visual and per screen: colour grading, firelight, ash, fog, grain and battle scars on top
+  of the normal drawing.
 - **Online**: host-authoritative. Guests send `{ t: 'cmd', c: <command> }`; the host sends
   snapshots (`encodeEnts`/`applySnapshot`, compact arrays per entity, felled trees as a
   delta per guest). Guests who join mid-battle spectate; a guest who leaves is replaced by a

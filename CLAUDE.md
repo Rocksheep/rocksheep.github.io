@@ -143,6 +143,9 @@ sections in this order:
 - **Simulation**: `step(w)` at 20 steps a second; units are small state machines
   (`unitTick`: idle, move, attack, gather, return, build, inside). Flyers (`e.fly`) skip
   pathfinding and fly straight; `canHit()` decides who can hit them (`hitsAir` on a def).
+  Watching: `cfg.you = -1` makes you a spectator (player 1 set to YOU WATCH, or a guest
+  without a seat). `eyeOf(w)` says whose fog is shown (`w.pov`, -1 = everything) and
+  `G.speed` speeds up the host's simulation.
   Upgrades are queue items `UP_ATK`/`UP_ARM` (lab) and `UP_WOOD` (mill), levels in `P.up`. Things the screen should
   show (sounds, projectiles, messages) are pushed to `w.ev` as `[name, ...args]` and played
   by `runEvent()`, on the host and on guests alike.

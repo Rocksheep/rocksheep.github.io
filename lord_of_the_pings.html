@@ -79,6 +79,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hi
 #msgs{position:fixed;left:50%;transform:translateX(-50%);top:58px;z-index:3;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;width:min(90vw,640px)}
 #msgs div{background:rgba(5,2,12,.7);padding:2px 10px;text-align:center;font-size:22px;transition:opacity .6s}
 #idleBtn b{color:var(--yellow);font-weight:400}
+#top.spec .mineOnly,#top:not(.spec) .specOnly{display:none}
+#speedBtns{gap:4px}
+#speedBtns .tbtn[aria-pressed="true"]{background:var(--c);color:var(--bg)}
+.score{display:grid;gap:0;width:100%;align-content:start;overflow:hidden}
+.score button{display:grid;grid-template-columns:12px minmax(0,1fr) repeat(4,minmax(34px,auto));gap:8px;align-items:center;text-align:left;
+  font-family:'VT323',ui-monospace,monospace;font-size:18px;line-height:1;color:var(--ink);background:transparent;border:1px solid transparent;padding:1px 5px;cursor:pointer}
+.score button:hover{border-color:var(--line)}
+.score button.on{border-color:var(--cyan);background:rgba(63,240,255,.08)}
+.score button.out{opacity:.45}
+.score .sw{width:12px;height:12px}
+.score .pn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score span:not(.pn):not(.sw){text-align:right;color:var(--dim)}
+.score span b{font-weight:400;color:var(--ink)}
+.score .head{cursor:default;font-family:'Press Start 2P',monospace;font-size:7px;color:var(--dim)}
+.score .head:hover{border-color:transparent}
+@media (max-width:600px){ .score button{grid-template-columns:12px minmax(0,1fr) repeat(2,minmax(30px,auto))} .score .wide{display:none} }
 
 @media (max-width:760px){
   :root{--hud:128px}
@@ -181,14 +197,16 @@ details p{margin:10px 0}
 <canvas id="game" aria-label="Lord of the Pings battlefield"></canvas>
 
 <div id="top" hidden>
-  <span class="res" title="Gold"><i class="gold"></i><span id="rGold">0</span></span>
-  <span class="res" title="Wood"><i class="wood"></i><span id="rWood">0</span></span>
-  <span class="res" id="foodRes" title="Food used / food you have."><i class="food"></i><span id="rFood">0/0</span></span>
+  <span class="res mineOnly" title="Gold"><i class="gold"></i><span id="rGold">0</span></span>
+  <span class="res mineOnly" title="Wood"><i class="wood"></i><span id="rWood">0</span></span>
+  <span class="res mineOnly" id="foodRes" title="Food used / food you have."><i class="food"></i><span id="rFood">0/0</span></span>
+  <span class="specOnly pixel" id="specLabel" style="font-size:9px;color:var(--cyan)">WATCHING</span>
+  <span class="specOnly seg" id="speedBtns" role="group" aria-label="Game speed"></span>
   <span id="clock">00:00</span>
   <span id="netInfo"></span>
   <span class="sp"></span>
-  <button class="tbtn" style="--c:var(--yellow)" id="idleBtn" type="button" title="Select a worker with nothing to do (.)">IDLE <b id="idleN">0</b></button>
-  <button class="tbtn" style="--c:var(--orange)" id="armyBtn" type="button" title="Select your whole army (,)">ARMY</button>
+  <button class="tbtn mineOnly" style="--c:var(--yellow)" id="idleBtn" type="button" title="Select a worker with nothing to do (.)">IDLE <b id="idleN">0</b></button>
+  <button class="tbtn mineOnly" style="--c:var(--orange)" id="armyBtn" type="button" title="Select your whole army (,)">ARMY</button>
   <button class="tbtn" style="--c:var(--cyan)" id="muteBtn" type="button" title="Sound on/off">SND</button>
   <button class="tbtn" style="--c:var(--pink)" id="menuBtn" type="button" title="Menu (F10)">MENU</button>
 </div>
@@ -1742,35 +1760,51 @@ function paintTree(c, th, x, y, d) {
 function repaintAround(w, tx, ty) { paintRegion(w, Math.max(0, tx - 1), Math.max(0, ty - 1), Math.min(w.W - 1, tx + 1), Math.min(w.H - 1, ty + 1)); }
 
 // ---------- fog of war ----------
-function updateFog(w) {
-  const spect = w.me < 0 || w.over || !w.players[w.me].alive;
-  const vis = w.vis;
-  if (spect) { vis.fill(1); w.exp.fill(1); }
-  else {
-    vis.fill(0);
-    for (const e of w.ents) {
-      if (e.o < 0 || !allied(w, e.o, w.me) || e.hidden) continue;
-      const d = def(w, e), r = d.sight + (e.size ? e.size / 2 : 0);
-      if (e.size && !e.built && e.prog < 0.05) continue;
-      const x0 = Math.max(0, Math.floor(e.x - r)), x1 = Math.min(w.W - 1, Math.floor(e.x + r)), y0 = Math.max(0, Math.floor(e.y - r)), y1 = Math.min(w.H - 1, Math.floor(e.y + r));
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if ((x + 0.5 - e.x) ** 2 + (y + 0.5 - e.y) ** 2 <= r * r) vis[y * w.W + x] = 1;
-    }
-    for (let i = 0; i < w.N; i++) if (vis[i]) w.exp[i] = 1;
+// whose eyes the screen sees through: your own, or (when watching) one player's, or -1 for everything
+const eyeOf = w => w.over ? -1 : w.me >= 0 ? (w.players[w.me].alive ? w.me : -1) : (w.pov >= 0 && w.players[w.pov] && w.players[w.pov].alive ? w.pov : -1);
+function visFor(w, who, vis) {
+  vis.fill(0);
+  for (const e of w.ents) {
+    if (e.o < 0 || !allied(w, e.o, who) || e.hidden) continue;
+    const d = def(w, e), r = d.sight + (e.size ? e.size / 2 : 0);
+    if (e.size && !e.built && e.prog < 0.05) continue;
+    const x0 = Math.max(0, Math.floor(e.x - r)), x1 = Math.min(w.W - 1, Math.floor(e.x + r)), y0 = Math.max(0, Math.floor(e.y - r)), y1 = Math.min(w.H - 1, Math.floor(e.y + r));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if ((x + 0.5 - e.x) ** 2 + (y + 0.5 - e.y) ** 2 <= r * r) vis[y * w.W + x] = 1;
   }
+}
+function updateFog(w) {
+  const eye = eyeOf(w), vis = w.vis;
+  if (!w.expMine) w.expMine = w.exp;
+  if (w.me < 0 && !w.demo && !w.over) {
+    // a spectator keeps track of what every player has explored, so switching view shows the right map
+    if (!w.expAll) { w.expAll = w.players.map(() => new Uint8Array(w.N)); w.visTmp = new Uint8Array(w.N); }
+    w.players.forEach((P, i) => {
+      if (!P.alive) return;
+      visFor(w, i, w.visTmp);
+      const ex = w.expAll[i];
+      for (let j = 0; j < w.N; j++) if (w.visTmp[j]) ex[j] = 1;
+      if (i === eye) vis.set(w.visTmp);
+    });
+  }
+  if (eye < 0) { vis.fill(1); w.exp = w.expFull || (w.expFull = new Uint8Array(w.N).fill(1)); }
+  else if (w.me >= 0) { visFor(w, eye, vis); w.exp = w.expMine; for (let i = 0; i < w.N; i++) if (vis[i]) w.exp[i] = 1; }
+  else w.exp = w.expAll[eye];
   const px = w.fogImg.data;
   for (let i = 0; i < w.N; i++) { px[i * 4 + 3] = vis[i] ? 0 : w.exp[i] ? 140 : 255; }
   w.fogCtx.putImageData(w.fogImg, 0, 0);
   // remember enemy buildings we've seen, so they stay on the map in the fog
-  if (!spect) {
-    for (const e of w.ents) if (e.size && e.k !== K.mine && !allied(w, e.o, w.me) && seesTile(w, e.x, e.y)) w.seen.set(e.id, { id: e.id, k: e.k, o: e.o, bx: e.bx, by: e.by, size: e.size, x: e.x, y: e.y, built: e.built, prog: e.prog, hp: e.hp });
-    for (const [id, s] of w.seen) if (seesTile(w, s.x, s.y) && !w.byId.has(id)) w.seen.delete(id);
+  if (eye >= 0) {
+    if (w.seenFor !== eye) { w.seen.clear(); w.seenFor = eye; }
+    for (const e of w.ents) if (e.size && e.k !== K.mine && !allied(w, e.o, eye) && seesTile(w, e.x, e.y)) w.seen.set(e.id, { id: e.id, k: e.k, o: e.o, bx: e.bx, by: e.by, size: e.size, x: e.x, y: e.y, built: e.built, prog: e.prog, hp: e.hp });
+    for (const [id, g] of w.seen) if (seesTile(w, g.x, g.y) && !w.byId.has(id)) w.seen.delete(id);
   }
 }
 const seesTile = (w, x, y) => { const i = Math.floor(y) * w.W + Math.floor(x); return i >= 0 && i < w.N && w.vis[i] === 1; };
 function seesEnt(w, e) {
-  if (w.me < 0 || w.over || !w.players[w.me].alive) return true;
+  const eye = eyeOf(w);
+  if (eye < 0) return true;
   if (e.k === K.mine) return w.exp[Math.floor(e.y) * w.W + Math.floor(e.x)] === 1;
-  if (allied(w, e.o, w.me)) return true;
+  if (allied(w, e.o, eye)) return true;
   if (e.hidden) return false;
   if (e.size) return seesTile(w, e.x, e.y) || seesTile(w, e.bx + 0.5, e.by + 0.5) || seesTile(w, e.bx + e.size - 0.5, e.by + e.size - 0.5);
   return seesTile(w, e.x, e.y);
@@ -2313,7 +2347,7 @@ function runEvents(w, list) {
 }
 function runEvent(w, [n, ...a]) {
   const me = w.me, mine = o => o === me;
-  const onScreen = (x, y) => { const [sx, sy] = toScreen(x, y); return sx > -50 && sy > -50 && sx < VW + 50 && sy < VH + 50 && (me < 0 || w.over || seesTile(w, x, y)); };
+  const onScreen = (x, y) => { const [sx, sy] = toScreen(x, y); return sx > -50 && sy > -50 && sx < VW + 50 && sy < VH + 50 && (eyeOf(w) < 0 || seesTile(w, x, y)); };
   switch (n) {
     case 'proj': { const [x1, y1, x2, y2, kind, dur] = a; w.fx.proj.push({ x1, y1, x2, y2, kind, dur: Math.max(0.05, dur), t: 0 }); if (onScreen(x1, y1)) sfx(kind === 'arrow' || kind === 'bolt' ? 'arrow' : kind); break; }
     case 'hit': { const [x, y, hard] = a; if (onScreen(x, y)) { addParts(w, x, y - 0.3, 4, hard ? '#ff4f6d' : '#ddd', 1.5, 0.35, 2); w.fx.rings.push({ x, y: y - 0.2, r: 0.35, life: 0.18, max: 0.18, col: '#fff', wd: 2 }); sfx('sword'); } break; }
@@ -2405,7 +2439,7 @@ function render(w, now) {
   for (const m of w.fx.marks) {
     const [mx, my] = toScreen(m.x, m.y);
     if (m.corpse) {
-      if (w.me >= 0 && !w.over && !seesTile(w, m.x, m.y)) continue;
+      if (eyeOf(w) >= 0 && !seesTile(w, m.x, m.y)) continue;
       const fade = clamp((m.life - m.t) / 2, 0, 1), P = w.players[m.o];
       ctx.globalAlpha = fade * 0.75;
       if (P && P.race !== 'funguys') ell(ctx, mx, my, 0.32 * s, 0.13 * s, P.race === 'bugs' ? '#5d8a2a' : '#5a1010');
@@ -2423,7 +2457,7 @@ function render(w, now) {
     if (!seesEnt(w, e)) continue;
     list.push(e);
   }
-  if (w.me >= 0 && !w.over) for (const g of w.seen.values()) if (!w.byId.has(g.id) || !seesEnt(w, w.byId.get(g.id))) { if (g.x > x0 && g.x < x1 && g.y > y0 && g.y < y1) list.push({ ...g, ghost: true }); }
+  if (eyeOf(w) >= 0) for (const g of w.seen.values()) if (!w.byId.has(g.id) || !seesEnt(w, w.byId.get(g.id))) { if (g.x > x0 && g.x < x1 && g.y > y0 && g.y < y1) list.push({ ...g, ghost: true }); }
   const ey = e => e.size ? e.by + e.size - 0.3 : e.ry + (e.fly ? 1000 : 0);
   list.sort((a, b) => ey(a) - ey(b));
   const selSet = selection;
@@ -2431,7 +2465,7 @@ function render(w, now) {
   // selection rings under everything
   for (const e of list) {
     if (!selSet.has(e.id) && e.id !== hoverId) continue;
-    const col = e.o === w.me ? '#7dff6a' : e.o < 0 ? '#ffd23f' : allied(w, e.o, w.me) ? '#3ff0ff' : '#ff4f4f';
+    const col = w.me < 0 ? (e.o >= 0 ? w.players[e.o].color : '#ffd23f') : e.o === w.me ? '#7dff6a' : e.o < 0 ? '#ffd23f' : allied(w, e.o, w.me) ? '#3ff0ff' : '#ff4f4f';
     const [ex, eyy] = toScreen(ux(e), uy(e));
     ctx.strokeStyle = col; ctx.lineWidth = selSet.has(e.id) ? 2 : 1; ctx.globalAlpha = selSet.has(e.id) ? 1 : 0.6;
     if (e.size) { const [bx, by] = toScreen(e.bx, e.by), L = s * 0.5, W = e.size * s; ctx.beginPath();
@@ -2476,7 +2510,7 @@ function render(w, now) {
   for (const p of w.fx.proj) {
     const k = clamp(p.t / p.dur, 0, 1), P = PROJ[p.kind] || PROJ.arrow;
     const [x, y] = projAt(p, P, k);
-    if (w.me >= 0 && !w.over && !seesTile(w, x, y + 0.4)) continue;
+    if (eyeOf(w) >= 0 && !seesTile(w, x, y + 0.4)) continue;
     const [px, py] = toScreen(x, y);
     if (p.kind === 'zap') {
       const [ax, ay] = toScreen(p.x1, p.y1 - 0.4), [bx, by] = toScreen(p.x2, p.y2 - 0.4);
@@ -2502,7 +2536,7 @@ function render(w, now) {
   }
   // shockwaves and hit flashes
   for (const r of w.fx.rings) {
-    if (w.me >= 0 && !w.over && !seesTile(w, r.x, r.y)) continue;
+    if (eyeOf(w) >= 0 && !seesTile(w, r.x, r.y)) continue;
     const k = 1 - r.life / r.max, [px, py] = toScreen(r.x, r.y);
     ctx.globalAlpha = (1 - k) * 0.9; ctx.strokeStyle = r.col; ctx.lineWidth = r.wd * (1 - k) + 1;
     ctx.beginPath(); ctx.ellipse(px, py, r.r * s * (0.3 + k * 0.7), r.r * s * (0.3 + k * 0.7) * 0.6, 0, 0, 7); ctx.stroke();
@@ -2511,7 +2545,7 @@ function render(w, now) {
   ctx.globalAlpha = 1;
   // particles
   for (const p of w.fx.parts) {
-    if (w.me >= 0 && !w.over && !seesTile(w, p.x, p.y)) continue;
+    if (eyeOf(w) >= 0 && !seesTile(w, p.x, p.y)) continue;
     const [px, py] = toScreen(p.x, p.y - p.z * 0.3);
     ctx.globalAlpha = clamp(p.life / p.max * 1.5, 0, 1) * (p.grav < 0 ? 0.6 : 1); ctx.fillStyle = p.col;
     const sz = p.size * cam.z * (p.grav < 0 ? 1 + (1 - p.life / p.max) * 1.5 : 1);
@@ -2604,7 +2638,7 @@ function renderMini(w) {
     if (e.size) mctx.fillRect(e.bx * k, e.by * k, Math.max(2, e.size * k), Math.max(2, e.size * k));
     else mctx.fillRect(e.x * k - 1, e.y * k - 1, Math.max(2, k * 0.9), Math.max(2, k * 0.9));
   }
-  if (w.me >= 0 && !w.over) for (const g of w.seen.values()) if (!w.byId.has(g.id) || !seesTile(w, g.x, g.y)) { mctx.fillStyle = w.players[g.o].color; mctx.fillRect(g.bx * k, g.by * k, g.size * k, g.size * k); }
+  if (eyeOf(w) >= 0) for (const g of w.seen.values()) if (!w.byId.has(g.id) || !seesTile(w, g.x, g.y)) { mctx.fillStyle = w.players[g.o].color; mctx.fillRect(g.bx * k, g.by * k, g.size * k, g.size * k); }
   mctx.imageSmoothingEnabled = true;
   mctx.drawImage(w.fogCv, 0, 0, w.W, w.H, 0, 0, MW, MH);
   for (const p of w.fx.pings) { mctx.strokeStyle = (p.life * 4 | 0) % 2 ? '#ff4f4f' : '#fff'; mctx.lineWidth = 2; mctx.beginPath(); mctx.arc(p.x * k, p.y * k, 6, 0, 7); mctx.stroke(); }
@@ -2885,6 +2919,11 @@ addEventListener('keydown', e => {
   if (!$('pause').hidden) return;
   if (e.key.startsWith('Arrow')) { e.preventDefault(); return; }
   const n = /^Digit([0-9])$/.exec(e.code);
+  if (n && G.me < 0) { setPov(+n[1] - 1); return; }
+  if (G.me < 0 && !G.replica && (e.key === '[' || e.key === ']')) {
+    const sp = [1, 2, 4, 8], i = sp.indexOf(G.speed || 1);
+    G.speed = sp[clamp(i + (e.key === ']' ? 1 : -1), 0, sp.length - 1)]; renderSpeed(); msg(`Speed ${G.speed}×`, '#7dff6a'); return;
+  }
   if (n) {
     const k = +n[1];
     if (e.ctrlKey || e.metaKey) { groups[k] = [...selection]; msg(`Group ${k} saved`, '#3ff0ff'); e.preventDefault(); return; }
@@ -3077,8 +3116,9 @@ function renderInfo() {
   if (list.length !== selection.size) { selection = new Set(list.map(e => e.id)); }
   const P = myP();
   const sig = list.map(e => `${e.id}:${Math.ceil(e.hp)}:${e.carry || 0}:${e.built ? 1 : 0}:${Math.round((e.prog || 0) * 50)}:${(e.queue || []).join('.')}:${Math.round((e.qt || 0) * 4)}:${e.gold || 0}:${e.st === 'inside' ? 1 : 0}`).join(',') + (P ? P.up.join('') : '');
-  if (sig === infoSig) return;
-  infoSig = sig;
+  const full = sig + (P || list.length ? '' : scoreSig(w) + '|' + (box.querySelector('.score') ? 's' : ''));
+  if (full === infoSig) return;
+  infoSig = full;
   if (!list.length) {
     const d = document.createElement('div'); d.className = 'txt';
     if (P) {
@@ -3088,7 +3128,12 @@ function renderInfo() {
       const s = document.createElement('div'); s.className = 'sub'; s.textContent = R.passive;
       const s2 = document.createElement('div'); s2.className = 'sub'; s2.textContent = `Select something. Drag a box, or press . for an idle ${R.names.worker}.`;
       d.append(n, s, s2);
-    } else { const n = document.createElement('div'); n.className = 'nm'; n.textContent = 'SPECTATING'; d.append(n); }
+    } else {
+      // keep the same rows and only refresh the numbers, so clicks never land on a row being replaced
+      const cur = box.querySelector('.score');
+      if (cur && cur.dataset.eye === String(eyeOf(w))) fillScore(w, cur); else box.replaceChildren(scoreboard(w));
+      return;
+    }
     box.replaceChildren(d); return;
   }
   if (list.length > 1) {
@@ -3149,6 +3194,56 @@ function renderInfo() {
   }
   box.replaceChildren(pic, txt);
 }
+// while watching: one row per player, click a row to see through their eyes
+function scoreSig(w) {
+  return w.players.map(P => { const m = w.ents.filter(e => e.o === P.slot); return [P.alive ? 1 : 0, m.filter(e => isUnitK(e.k) && e.k !== K.worker).length, m.filter(e => e.k === K.worker).length, Math.floor(P.g / 10), Math.floor(P.w / 10), P.food, P.cap].join('.'); }).join('|') + '|' + eyeOf(w);
+}
+function scoreboard(w) {
+  const box = document.createElement('div'); box.className = 'score';
+  const head = document.createElement('button'); head.type = 'button'; head.className = 'head';
+  head.innerHTML = '<span></span><span>PLAYER (CLICK TO VIEW)</span><span>ARMY</span><span>WORK</span><span class="wide">GOLD</span><span class="wide">WOOD</span>';
+  const all = document.createElement('button'); all.type = 'button'; all.className = eyeOf(w) < 0 ? 'on' : '';
+  all.innerHTML = '<span class="sw" style="background:#efe6ff"></span><span class="pn">Everyone, no fog · 0</span><span></span><span></span><span class="wide"></span><span class="wide"></span>';
+  all.onpointerdown = ev => { ev.preventDefault(); setPov(-1); };
+  box.append(head, all);
+  w.players.forEach((P, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = eyeOf(w) === i ? 'on' : '';
+    b.innerHTML = `<span class="sw" style="background:${P.color}"></span><span class="pn"></span>` + [0, 1, 2, 3].map(k => `<span class="${k > 1 ? 'wide' : ''}"><b></b></span>`).join('');
+    b.querySelector('.pn').textContent = `${i + 1}. ${P.name} · ${RACES[P.race].name} · team ${P.team}`;
+    b.onpointerdown = ev => { ev.preventDefault(); setPov(eyeOf(w) === i ? -1 : i); };
+    box.append(b);
+  });
+  box.dataset.eye = String(eyeOf(w));
+  fillScore(w, box);
+  return box;
+}
+function fillScore(w, box) {
+  const rows = box.querySelectorAll('button:not(.head)');
+  w.players.forEach((P, i) => {
+    const b = rows[i + 1]; if (!b) return;
+    const m = w.ents.filter(e => e.o === i);
+    const cells = [P.alive ? m.filter(e => isUnitK(e.k) && e.k !== K.worker).length : 'OUT', m.filter(e => e.k === K.worker).length, Math.floor(P.g), Math.floor(P.w)];
+    b.querySelectorAll('b').forEach((el, k) => { el.textContent = cells[k]; });
+    b.classList.toggle('out', !P.alive);
+    b.title = `${P.name}: ${P.food}/${P.cap} food`;
+  });
+}
+function setPov(i) {
+  if (!G || G.me >= 0) return;
+  G.pov = i >= 0 && G.players[i] && G.players[i].alive ? i : -1;
+  updateFog(G); infoSig = ''; refreshHud(true);
+  if (G.pov >= 0) { const P = G.players[G.pov]; msg(`Watching through ${P.name}'s eyes.`, P.color); const s = G.starts[G.pov]; if (s) centerOn(s.x, s.y); }
+  else msg('Watching everything.', '#efe6ff');
+}
+function renderSpeed() {
+  const can = G && !G.replica && G.me < 0;
+  $('speedBtns').replaceChildren(...(can ? [1, 2, 4, 8] : []).map(v => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tbtn'; b.style.setProperty('--c', 'var(--green)');
+    b.textContent = v + '×'; b.setAttribute('aria-pressed', (G.speed || 1) === v); b.title = `Game speed ${v}× ([ and ] change it)`;
+    b.onclick = () => { G.speed = v; renderSpeed(); };
+    return b;
+  }));
+}
 function renderTop() {
   const P = myP(), w = G;
   if (P) {
@@ -3161,6 +3256,8 @@ function renderTop() {
   $('clock').textContent = `${mm}:${ss}`;
   $('netInfo').textContent = net.role === 'host' ? `ROOM ${net.code} · ${net.players.length} ONLINE` : net.role === 'client' ? `ONLINE · ${net.code}${G.me < 0 ? ' · SPECTATING' : ''}` : '';
   for (const id of ['idleBtn', 'armyBtn']) $(id).disabled = !P;
+  $('top').classList.toggle('spec', !P);
+  if (!P) { const e = eyeOf(w); $('specLabel').textContent = e >= 0 ? `VIEW: ${w.players[e].name.toUpperCase()}` : 'VIEW: EVERYONE'; $('specLabel').style.color = e >= 0 ? w.players[e].color : 'var(--cyan)'; }
 }
 function refreshHud(force) {
   if (!G) return;
@@ -3261,9 +3358,13 @@ function replicaTick(w, dt) {
 // ====================================================================
 //  Starting and ending battles
 // ====================================================================
+// player 1 can sit out and watch; the rows below it are then the players
+const watching = () => setup.slots[0].ctrl === 'watch';
+const rowCount = () => setup.n + (watching() ? 1 : 0);
+const rowColor = i => watching() ? (i ? COLORS[i - 1] : '#a898cf') : COLORS[i];
+const fighterRows = () => setup.slots.slice(0, rowCount()).map((s, i) => ({ s, i })).filter(r => !(r.i === 0 && watching()));
 function battleConfig() {
-  const slots = setup.slots.slice(0, setup.n);
-  const players = slots.map((s, i) => {
+  const players = fighterRows().map(({ s, i }) => {
     const race = s.race === 'random' ? pick(RACE_KEYS) : s.race;
     if (i === 0) return { name: cleanName(setup.myName) || cleanName(s.name) || 'Player 1', race, team: s.team, kind: 'you' };
     if (s.ctrl === 'remote' && net.role === 'host') {
@@ -3273,7 +3374,7 @@ function battleConfig() {
     const diff = AI_DIFF[s.ctrl] ? s.ctrl : 'normal';
     return { name: s.name || CPU_NAMES[i], race, team: s.team, kind: 'cpu', diff };
   });
-  return { seed: (Math.random() * 2 ** 31) | 0, size: SIZES[setup.size][0], theme: setup.theme, res: START_RES[setup.res].slice(0, 2), players, you: 0 };
+  return { seed: (Math.random() * 2 ** 31) | 0, size: SIZES[setup.size][0], theme: setup.theme, res: START_RES[setup.res].slice(0, 2), players, you: watching() ? -1 : 0 };
 }
 let lastCfg = null;
 async function startBattle(cfg) {
@@ -3308,7 +3409,9 @@ function enterBattle() {
     const R = RACES[G.players[G.me].race];
     msg(`You lead the ${R.name}. ${R.passive}`, '#ffd23f');
     msg(`Right-click the gold mine with your ${R.workers} selected to start mining.`, '#a898cf');
-  } else msg('A battle is on: you\'re watching. You can play in the next one.', '#3ff0ff');
+  } else if (net.role === 'client') msg('A battle is on: you\'re watching. Click a player in the scoreboard (or press 1-4) to see what they see.', '#3ff0ff');
+  else msg('You\'re watching. Click a player in the scoreboard (or press 1-4) to see what they see, 0 for everything.' + (G.replica ? '' : ' [ and ] change the speed.'), '#3ff0ff');
+  renderSpeed();
 }
 function endBattle(w, team) {
   if (w.over) return;
@@ -3393,12 +3496,16 @@ const defaultSlots = () => [
   { name: CPU_NAMES[1], ctrl: 'normal', race: 'orcs', team: 2 },
   { name: CPU_NAMES[2], ctrl: 'normal', race: 'goblins', team: 3 },
   { name: CPU_NAMES[3], ctrl: 'normal', race: 'funguys', team: 4 },
+  { name: 'Bugsy Malone', ctrl: 'normal', race: 'bugs', team: 4 },
 ];
 function load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } }
 const setup = Object.assign({ mode: 'local', size: 1, theme: 0, res: 1, n: 2, myName: '', myRace: 'humans' }, load());
-if (!Array.isArray(setup.slots) || setup.slots.length !== MAX_P) setup.slots = defaultSlots();
+if (!Array.isArray(setup.slots) || setup.slots.length < MAX_P) setup.slots = defaultSlots();
+if (setup.slots.length === MAX_P) setup.slots.push(defaultSlots()[MAX_P]);
+setup.slots.length = MAX_P + 1;
 for (const [i, s] of setup.slots.entries()) {
-  if (!CTRLS.some(c => c[0] === s.ctrl) || (i === 0) !== (s.ctrl === 'you')) s.ctrl = i === 0 ? 'you' : 'normal';
+  if (i === 0) { if (s.ctrl !== 'watch') s.ctrl = 'you'; }
+  else if (!CTRLS.some(c => c[0] === s.ctrl) || s.ctrl === 'you') s.ctrl = 'normal';
   if (s.race !== 'random' && !RACES[s.race]) s.race = 'humans';
   s.team = clamp(s.team | 0, 1, 4);
 }
@@ -3443,9 +3550,9 @@ function renderSetup() {
 }
 function renderSlots() {
   const hosting = setup.mode === 'host';
-  $('playerRows').replaceChildren(...setup.slots.slice(0, setup.n).map((s, i) => {
+  $('playerRows').replaceChildren(...setup.slots.slice(0, rowCount()).map((s, i) => {
     const row = document.createElement('div'); row.className = 'team';
-    const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = COLORS[i];
+    const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = rowColor(i);
     const guest = s.ctrl === 'remote' && hosting ? net.players.find(q => q.slot === i) : null;
     let nameEl;
     if (s.ctrl === 'remote' && hosting) {
@@ -3458,7 +3565,7 @@ function renderSlots() {
       nameEl.oninput = () => { const v = cleanName(nameEl.value); if (i === 0) setup.myName = v; else s.name = v; save(); broadcastLobby(); };
     }
     const ctl = document.createElement('select'); ctl.setAttribute('aria-label', `Player ${i + 1} is`);
-    if (i === 0) { option(ctl, 'you', 'YOU'); ctl.disabled = true; }
+    if (i === 0) { option(ctl, 'you', 'YOU PLAY'); option(ctl, 'watch', 'YOU WATCH'); }
     else for (const [v, l] of CTRLS) if (v !== 'you' && (v !== 'remote' || hosting)) option(ctl, v, l);
     ctl.value = s.ctrl === 'remote' && !hosting ? 'normal' : s.ctrl;
     ctl.onchange = () => {
@@ -3468,6 +3575,11 @@ function renderSlots() {
       if (net.role === 'host') assignSlots();
       save(); renderSetup(); broadcastLobby();
     };
+    if (i === 0 && s.ctrl === 'watch') {
+      const note = document.createElement('span'); note.className = 'who'; note.textContent = 'SPECTATOR'; note.style.gridColumn = 'span 2';
+      row.append(sw, nameEl, ctl, note);
+      return row;
+    }
     const race = document.createElement('select'); race.className = 'race'; race.setAttribute('aria-label', `Player ${i + 1} race`);
     for (const r of [...RACE_KEYS, 'random']) option(race, r, raceLabel(r));
     race.value = guest ? guest.race : s.race; race.disabled = !!guest;
@@ -3483,7 +3595,7 @@ function renderLobby() {
   const L = net.lobby;
   $('joinBtn').hidden = net.role === 'client';
   $('lobbyRows').replaceChildren(...(L ? [
-    (() => { const d = document.createElement('div'); d.className = 'lbl'; d.style.margin = '14px 0 4px'; d.textContent = `${SIZES[clamp(L.size | 0, 0, 2)][1]} MAP · ${THEMES[clamp(L.theme | 0, 0, 2)].name}`; return d; })(),
+    (() => { const d = document.createElement('div'); d.className = 'lbl'; d.style.margin = '14px 0 4px'; d.textContent = `${SIZES[clamp(L.size | 0, 0, 2)][1]} MAP · ${THEMES[clamp(L.theme | 0, 0, 2)].name}${L.watch ? ' · THE HOST IS WATCHING' : ''}`; return d; })(),
     ...L.rows.map(r => {
       const row = document.createElement('div'); row.className = 'team'; row.style.gridTemplateColumns = '18px minmax(0,1fr) auto auto';
       const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = r.color;
@@ -3581,14 +3693,14 @@ function hostOnClose(conn) {
 }
 function assignSlots() {
   const open = [];
-  for (let i = 1; i < setup.n; i++) if (setup.slots[i].ctrl === 'remote') open.push(i);
+  for (let i = 1; i < rowCount(); i++) if (setup.slots[i].ctrl === 'remote') open.push(i);
   net.players.forEach((p, k) => { p.slot = k < open.length ? open[k] : -1; });
 }
 function lobbyMsg(p) {
-  return { t: 'lobby', code: net.code, size: setup.size, theme: setup.theme,
-    rows: setup.slots.slice(0, setup.n).map((s, i) => {
+  return { t: 'lobby', code: net.code, size: setup.size, theme: setup.theme, watch: watching(),
+    rows: fighterRows().map(({ s, i }) => {
       const q = s.ctrl === 'remote' ? net.players.find(x => x.slot === i) : null;
-      return { name: i === 0 ? cleanName(setup.myName) || s.name : q ? q.name : s.ctrl === 'remote' ? 'free seat' : s.name, race: q ? q.race : s.race, team: s.team, color: COLORS[i], you: !!(q && p && q.id === p.id),
+      return { name: i === 0 ? cleanName(setup.myName) || s.name : q ? q.name : s.ctrl === 'remote' ? 'free seat' : s.name, race: q ? q.race : s.race, team: s.team, color: rowColor(i), you: !!(q && p && q.id === p.id),
         label: i === 0 ? 'HOST' : q ? 'ONLINE' : s.ctrl === 'remote' ? 'OPEN' : 'CPU' };
     }) };
 }
@@ -3688,8 +3800,8 @@ $('joinName').value = setup.myName || '';
 $('startBtn').onclick = () => {
   audio();
   if (setup.mode === 'host' && net.role !== 'host') return openRoom();
-  const teams = new Set(setup.slots.slice(0, setup.n).map(s => s.team));
-  if (teams.size < 2) { setStatus('hostStatus', 'Everybody is on the same team. Who are you going to fight?', 'err'); return; }
+  const teams = new Set(fighterRows().map(r => r.s.team));
+  if (teams.size < 2) { setStatus('hostStatus', watching() ? 'Everybody is on the same team, so there would be nothing to watch.' : 'Everybody is on the same team. Who are you going to fight?', 'err'); return; }
   setStatus('hostStatus', '');
   startBattle(battleConfig());
 };
@@ -3733,7 +3845,7 @@ function frame(now) {
   sfxBudget = 0;
   if (G) {
     if (!G.replica) {
-      if (!G.paused) { acc += dt; let n = 0; while (acc >= TICK && n < 5) { acc -= TICK; n++; } hostSteps(n); if (acc > TICK * 5) acc = 0; }
+      if (!G.paused) { const sp = G.speed || 1; acc += dt * sp; let n = 0; while (acc >= TICK && n < 5 * sp) { acc -= TICK; n++; } hostSteps(n); if (acc > TICK * 5 * sp) acc = 0; }
     } else replicaTick(G, dt);
     if (G) {
       if (G.demo) demoCamera(dt); else panTick(dt);

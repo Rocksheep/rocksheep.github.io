@@ -128,7 +128,7 @@ broker is on the internet, so this needs a network connection even on localhost.
 sections in this order:
 
 - **Constants and game data**: `BASE` stats per kind (worker, melee, ranged, special, hall,
-  farm, barracks, lab, tower, mine, mill, flyer; the index in `KINDS` goes over the network,
+  farm, barracks, lab, tower, mine, mill, flyer, siege, ultimate, wall, workshop, altar; the index in `KINDS` goes over the network,
   so add new kinds at the end) and `RACES` (Humans, Orcs, Goblins, Funguys, Bugs) with
   names, jokes, a passive and per-kind overrides (`over`). `DEFS[race][kindIndex]` is the
   merged result. Balance changes go in `BASE`/`RACES`, not in the simulation code. `AI_DIFF`

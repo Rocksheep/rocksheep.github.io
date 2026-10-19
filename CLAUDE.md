@@ -129,10 +129,10 @@ sections in this order:
 
 - **Constants and game data**: `BASE` stats per kind (worker, melee, ranged, special, hall,
   farm, barracks, lab, tower, mine, mill, flyer, siege, ultimate, wall, workshop, altar; the index in `KINDS` goes over the network,
-  so add new kinds at the end) and `RACES` (Humans, Orcs, Goblins, Funguys, Bugs, Undead) with
+  so add new kinds at the end) and `RACES` (Humans, Orcs, Goblins, Funguys, Bugs, Undead, Mechs) with
   names, jokes, a passive and per-kind overrides (`over`). `DEFS[race][kindIndex]` is the
   merged result. Each race also has a signature rule set by flags on its `RACES` entry
-  (`repair`, `rage`, `plunder`, `train`, `blast`, `myco`, `carry`, `raise`, ...) that the
+  (`repair`, `rage`, `plunder`, `train`, `blast`, `myco`, `carry`, `raise`, `shield`, `unitCost`, ...) that the
   simulation checks by name. Balance changes go in `BASE`/`RACES`, not in the simulation code. `AI_DIFF`
   tunes the CPU levels.
 - **Map generation**: `genMap(seed, size, players)`, seeded and deterministic (see above).
@@ -169,7 +169,10 @@ but haven't changed state, cargo or position for 8 seconds. Sample every step or
 once a second, or a 2-second mining loop looks stuck.
 For balance, run a round-robin: every race against every other race, CPU hard vs hard,
 several seeds with both start corners, and compare win rates. Aim for every race between
-roughly 40% and 60%.
+roughly 40% and 60%, on both SMALL (48) and MEDIUM (64) maps. CPU games lean on economy and
+defence (towers, repair, regen), so also run equal-cost army fights on open ground (spawn the
+same gold+wood worth of units per side, attack-move into each other): a race that wins nearly
+every even fight will feel overpowered to a human player even at 50% in CPU games.
 
 ## Commits
 

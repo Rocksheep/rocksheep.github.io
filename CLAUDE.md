@@ -128,12 +128,15 @@ broker is on the internet, so this needs a network connection even on localhost.
 sections in this order:
 
 - **Constants and game data**: `BASE` stats per kind (worker, melee, ranged, special, hall,
-  farm, barracks, lab, tower, mine, mill, flyer, siege, ultimate, wall, workshop, altar; the index in `KINDS` goes over the network,
-  so add new kinds at the end) and `RACES` (Humans, Orcs, Goblins, Funguys, Bugs, Undead, Mechs) with
+  farm, barracks, lab, tower, mine, mill, flyer, siege, ultimate, wall, workshop, altar, shipyard,
+  bridge, transport, warship, battleship; the index in `KINDS` goes over the network, so add new kinds
+  at the end and update `isUnitK`/`isBldK`/`isBoatK`) and `RACES` (Humans, Orcs, Goblins, Funguys, Bugs,
+  Undead, Mechs, Lemmings) with
   names, jokes, a passive and per-kind overrides (`over`). `DEFS[race][kindIndex]` is the
   merged result. Each race also has a signature rule set by flags on its `RACES` entry
-  (`repair`, `rage`, `plunder`, `train`, `blast`, `myco`, `carry`, `raise`, `shield`, `unitCost`, ...) that the
-  simulation checks by name. Balance changes go in `BASE`/`RACES`, not in the simulation code. `AI_DIFF`
+  (`repair`, `rage`, `plunder`, `train`, `blast`, `myco`, `carry`, `raise`, `shield`, `unitCost`, `navyCost`,
+  `pop`, `fuse`, `bridge`, ...) that the simulation checks by name. Ship names, descriptions and boat
+  overrides per race live in `NAVY`, merged into `RACES` (a transport's `seats` is how much food it carries). Balance changes go in `BASE`/`RACES`, not in the simulation code. `AI_DIFF`
   tunes the CPU levels.
 - **Map generation**: `genMap(seed, size, players)`, seeded and deterministic (see above).
   Up to 4 players use the corners; the HUGE map (112 tiles, `HUGE` in `SIZES`) adds a start on
@@ -141,15 +144,23 @@ sections in this order:
   and a road from every expansion to the ring road. Which player gets which spot is shuffled from
   the seed. When touching it, check every start and mine is reachable over many seeds, and run
   8-CPU free-for-alls: the CPU's rally point and target choice decide who gets ganged up on.
+  `cfg.mapType === 'islands'` uses `genIslands()` instead: every base on its own island (channels
+  at least two squares wide), a rich middle island, islets with mines, cleared harbours for
+  shipyards, and fat trees (island wood runs out fast). `labelRegions(w)` numbers every island
+  (`w.isle`, all non-water land) and stretch of water (`w.seaId`); it runs again when a bridge
+  goes up or comes down. `canReach(w, u, t, d)` uses them so nobody chases a target across water.
 - **The world**: `makeWorld(cfg, replica)` → `G`. Entities live in `G.ents` / `G.byId`;
   buildings and mines mark tiles in `G.occ`. `findPath()` is grid A* with a goal callback.
 - **Orders**: every player action is a command object run through `applyCmd(world, slot, cmd)`
   (`move`, `attack`, `gather`, `return`, `build`, `train`, `cancel`, `rally`, `stop`, `hold`,
-  `boom`). Local players, CPU players and online guests all go through it, so it's the one
+  `boom`, `board`, `unload`). Local players, CPU players and online guests all go through it, so it's the one
   place to validate and the one place to add a new order.
 - **Simulation**: `step(w)` at 20 steps a second; units are small state machines
   (`unitTick`: idle, move, attack, gather, return, build, inside). Flyers (`e.fly`) skip
   pathfinding and fly straight; `canHit()` decides who can hit them (`hitsAir` on a def).
+  Boats (`e.sea`) path over water only (`sail` instead of `walk`, see `passOf`); melee can't hit
+  them. Passengers are `hidden` with `inId` = the transport and die with it. Lemming bridges
+  are buildings that turn their water tile into `T_BRIDGE` once built (`bridgeUp`/`bridgeDown`).
   Watching: `cfg.you = -1` makes you a spectator (player 1 set to YOU WATCH, or a guest
   without a seat). `eyeOf(w)` says whose fog is shown (`w.pov`, -1 = everything) and
   `G.speed` speeds up the host's simulation.
@@ -157,6 +168,10 @@ sections in this order:
   show (sounds, projectiles, messages) are pushed to `w.ev` as `[name, ...args]` and played
   by `runEvent()`, on the host and on guests alike.
 - **CPU players**: `aiThink()` once a second per CPU, issuing commands through `applyCmd`.
+  When no enemy shares its island (`naval`), a CPU builds a shipyard, transports and warships,
+  and `aiFerryStart`/`aiFerryTick` run a ferry: board by the shore, sail, unload next to the
+  target. A second ferry (`wferry`) ships workers to another island once the home mine runs dry.
+  `shoreNear()` finds landing spots by walking out from the troops, so they're always reachable.
 - **Drawing**: everything is drawn with canvas calls (`drawUnit`, `paintBuilding`,
   `paintRegion`), no image files. Unit and building sprites are cached per race/colour/zoom.
   The grimdark look (`grimOn(w)`: the GRIMDARK land, or LOOK set to GRIMDARK) is purely
@@ -174,7 +189,9 @@ but haven't changed state, cargo or position for 8 seconds. Sample every step or
 once a second, or a 2-second mining loop looks stuck.
 For balance, run a round-robin: every race against every other race, CPU hard vs hard,
 several seeds with both start corners, and compare win rates. Aim for every race between
-roughly 40% and 60%, on both SMALL (48) and MEDIUM (64) maps. CPU games lean on economy and
+roughly 40% and 60%, on both SMALL (48) and MEDIUM (64) maps, and on both map types (CONTINENT
+and ISLANDS: island games are slower, 12 minutes, and cost discounts and transport seats matter much
+more there). Also watch the number of games that hit the time limit on islands. CPU games lean on economy and
 defence (towers, repair, regen), so also run equal-cost army fights on open ground (spawn the
 same gold+wood worth of units per side, attack-move into each other): a race that wins nearly
 every even fight will feel overpowered to a human player even at 50% in CPU games.

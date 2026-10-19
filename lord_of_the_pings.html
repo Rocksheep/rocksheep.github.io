@@ -234,10 +234,11 @@ details p{margin:10px 0}
   <div class="panel">
     <a class="back" href="index.html">◀ ARCADE</a>
     <h1>LORD OF THE<span>PINGS</span></h1>
-    <p class="kicker">Real-time strategy for Humans, Orcs, Goblins, Funguys, Bugs, Undead and Mechs. Gather, build, conquer, blame lag.</p>
+    <p class="kicker">Real-time strategy for Humans, Orcs, Goblins, Funguys, Bugs, Undead, Mechs and Lemmings. Gather, build, conquer, blame lag.</p>
     <div class="seg tabs" id="optMode" role="group" aria-label="How you play"></div>
 
     <div id="hostSide">
+      <div class="row"><label>MAP</label><div class="seg" id="optKind"></div></div>
       <div class="row"><label>MAP SIZE</label><div class="seg" id="optSize"></div></div>
       <div class="row"><label>LAND</label><div class="seg" id="optTheme"></div></div>
       <div class="row"><label>START WITH</label><div class="seg" id="optRes"></div></div>
@@ -268,6 +269,8 @@ details p{margin:10px 0}
       <p>Your workers mine <b style="color:var(--yellow);font-weight:400">gold</b> from gold mines and chop <b style="color:#c58a4a;font-weight:400">wood</b> from trees, and carry it back to your hall. Spend it on buildings and an army. Every unit eats food, so build food buildings (Farms, Pig Farms, Rat Hutches, Compost Heaps or Aphid Ranches, depending on your race) to feed more. Build a saw mill next to a forest so your workers don't have to walk so far with wood. Destroy every building of the other teams to win.</p>
       <p><b style="color:var(--cyan);font-weight:400">Flyers:</b> every race can train one flying unit at its lab. Flyers go straight over trees, water and walls. Only ranged units, towers and other flyers can hit them, so keep some ranged units around.</p>
       <p><b style="color:var(--orange);font-weight:400">Walls, siege and ultimates:</b> workers can build walls; drag to lay a whole line. Siege engines from the workshop smash buildings and walls from far away. Each race also has one ultimate unit, summoned at its altar. You can only have one at a time.</p>
+      <p><b style="color:var(--cyan);font-weight:400">Islands and boats:</b> pick ISLANDS and every base starts on an island of its own. Land units can't swim, so build a shipyard on the shore. Its transports carry your army: right-click a transport with units selected to get them on board, then right-click land (or press U) to sail over and let them off. Warships fight at sea and shoot at the coast, battleships wreck buildings from the water. If a transport sinks, everyone on it goes down too.</p>
+      <p><b style="color:#44d03c;font-weight:400">Lemmings:</b> their Builders can lay bridges across the water (drag for a line), every Lemming pops when it dies, and pressing D lights their fuse: five seconds later they go off. Oh no!</p>
       <p><b style="color:var(--cyan);font-weight:400">Online:</b> pick HOST ONLINE, set some players to ONLINE PLAYER and open a room. Friends pick JOIN ONLINE, choose a race and type the room code, or open the invite link.</p>
       <div class="races" id="raceInfo"></div>
       <div class="keys">
@@ -337,17 +340,20 @@ const pick = a => a[Math.random() * a.length | 0];
 const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
 
 // terrain
-const T_GRASS = 0, T_TREE = 1, T_WATER = 2, T_ROCK = 3, T_DIRT = 4, T_STUMP = 5;
-const WALKABLE = [1, 0, 0, 0, 1, 1];
+const T_GRASS = 0, T_TREE = 1, T_WATER = 2, T_ROCK = 3, T_DIRT = 4, T_STUMP = 5, T_BRIDGE = 6;
+const WALKABLE = [1, 0, 0, 0, 1, 1, 1];
+const wet = t => t === T_WATER || t === T_BRIDGE;   // painted as water (a bridge is planks over water)
 const TREE_LOADS = 4;          // trips of wood in one tree
 
 // entity kinds: index is what goes over the network
-const KINDS = ['worker', 'melee', 'ranged', 'special', 'hall', 'farm', 'barracks', 'lab', 'tower', 'mine', 'mill', 'flyer', 'siege', 'ultimate', 'wall', 'workshop', 'altar'];
+const KINDS = ['worker', 'melee', 'ranged', 'special', 'hall', 'farm', 'barracks', 'lab', 'tower', 'mine', 'mill', 'flyer', 'siege', 'ultimate', 'wall', 'workshop', 'altar',
+  'shipyard', 'bridge', 'transport', 'warship', 'battleship'];
 const K = Object.fromEntries(KINDS.map((k, i) => [k, i]));
-const isUnitK = k => k <= 3 || (k >= 11 && k <= 13);
-const isBldK = k => (k >= 4 && k <= 8) || k === 10 || k >= 14;
+const isUnitK = k => k <= 3 || (k >= 11 && k <= 13) || (k >= 19 && k <= 21);
+const isBldK = k => (k >= 4 && k <= 8) || k === 10 || (k >= 14 && k <= 18);
+const isBoatK = k => k >= 19 && k <= 21;
 // queue items that are upgrades, not units: weapons and armour at the lab, axes at the mill
-const UP_ATK = 20, UP_ARM = 21, UP_WOOD = 22;
+const UP_ATK = 40, UP_ARM = 41, UP_WOOD = 42;
 const UP_COSTS = [[[150, 100, 30], [260, 200, 40]], [[150, 100, 30], [260, 200, 40]], [[100, 80, 25], [180, 150, 35]]];
 const UP_HOME = ['lab', 'lab', 'mill'];
 const WOOD_PER_UP = 3;
@@ -375,13 +381,19 @@ const BASE = {
   wall:     { hp: 260, arm: 6, size: 1, g: 5, w: 20, t: 6, sight: 2 },
   workshop: { hp: 650, arm: 3, size: 3, g: 180, w: 160, t: 40, sight: 5, req: 'mill' },
   altar:    { hp: 900, arm: 5, size: 3, g: 400, w: 300, t: 60, sight: 6, req: 'lab' },
+  // the navy: a shipyard on the shore builds boats; land units can't swim, so transports ferry them
+  shipyard: { hp: 750, arm: 3, size: 3, g: 150, w: 180, t: 40, sight: 7, req: 'barracks' },
+  bridge:   { hp: 160, arm: 3, size: 1, g: 0, w: 25, t: 5, sight: 2 },
+  transport:  { hp: 280, dmg: 0, arm: 3, rng: 0, cd: 1, spd: 3.3, sight: 7, g: 120, w: 100, t: 25, food: 1, r: 0.6, sea: true, seats: 8 },
+  warship:    { hp: 300, dmg: 14, arm: 2, rng: 5, cd: 1.6, spd: 3.4, sight: 8, g: 170, w: 130, t: 30, food: 2, r: 0.6, sea: true },
+  battleship: { hp: 560, dmg: 32, arm: 4, rng: 8, cd: 3.4, spd: 2.4, sight: 9, g: 320, w: 260, t: 50, food: 4, r: 0.8, sea: true, shot: 'rock', splash: 1.2, bldMul: 2, unitMul: 0.6, groundOnly: true, req: 'lab' },
 };
-const TRAINS = { hall: ['worker'], barracks: ['melee', 'ranged', 'special'], lab: ['flyer'], mill: [], workshop: ['siege'], altar: ['ultimate'] };
+const TRAINS = { hall: ['worker'], barracks: ['melee', 'ranged', 'special'], lab: ['flyer'], mill: [], workshop: ['siege'], altar: ['ultimate'], shipyard: ['transport', 'warship', 'battleship'] };
 
 const RACES = {
   humans: {
-    name: 'Humans', short: 'HUMANS', skin: '#f2c49b', dark: '#8a6a4a', proj: 'arrow', build: 1.15, repair: 15, wallCost: 0.5, towerMul: 1.1, armBonus: 1,
-    passive: 'Builders: buildings go up 15% faster, Interns can repair, walls cost half, towers hit harder and every unit wears extra armour.',
+    name: 'Humans', short: 'HUMANS', skin: '#f2c49b', dark: '#8a6a4a', proj: 'arrow', build: 1.15, repair: 15, wallCost: 0.5, towerMul: 1.1, armBonus: 1, navyCost: 0.85,
+    passive: 'Builders: buildings go up 15% faster, Interns can repair, walls cost half, boats cost 15% less, towers hit harder and every unit wears extra armour.',
     names: { worker: 'Intern', melee: 'Footman', ranged: 'Arch-er', special: 'Knight Who Says Ni', hall: 'Town Hall', farm: 'Farm', barracks: 'Barracks', lab: 'Library', tower: 'Guard Tower', mill: 'Lumber Mill', flyer: 'Gryphon Rider', siege: 'Trebuchet (Enterprise Edition)', ultimate: 'Root Wizard', wall: 'Stone Wall', workshop: 'Siege Workshop', altar: 'Wizard Tower' },
     desc: { worker: 'Mines, chops and builds. Unpaid.', melee: 'Sword, shield, strong opinions about tabs vs spaces.', ranged: 'Shoots arrows. Uses Arch, btw.', special: 'Fast, heavily armoured horseman. Demands a shrubbery.',
       lab: 'Researches upgrades. Unlocks the knight.', tower: 'Shoots arrows at anything that gets close.', flyer: 'Rides a gryphon over trees, water and walls, throwing hammers.', siege: 'Flings boulders over walls. Takes a while to load, worth the wait.', ultimate: 'Has sudo. Casts fireballs that burn everything near the target. Only one at a time.' },
@@ -391,7 +403,7 @@ const RACES = {
     workers: 'Interns', farms: 'Farms', ready: 'Job done!', alert: 'Our base is under attack! This is not a drill.', voice: 1.0,
   },
   orcs: {
-    name: 'Orcs', short: 'ORCS', skin: '#6aa33f', dark: '#3d6324', proj: 'spear', hp: 1.2, rage: 0.55, plunder: 0.45,
+    name: 'Orcs', short: 'ORCS', skin: '#6aa33f', dark: '#3d6324', proj: 'spear', hp: 1.2, rage: 0.55, plunder: 0.5,
     passive: 'Bloodlust: wounded units attack much faster, everyone has 20% more health, and razing a building pays out gold.',
     names: { worker: 'Peon', melee: 'Grunt', ranged: 'Spear Chucker', special: 'Ogre-clocker', hall: 'Great Hall', farm: 'Pig Farm', barracks: 'War Camp', lab: 'Altar of Firmware', tower: 'Watch Tower', mill: 'Chop Shop', flyer: 'Wi-Fi-vern', siege: 'Catapult.exe', ultimate: 'Warchief Ctrl-Alt-Defeat', wall: 'Palisade', workshop: 'Smashworks', altar: 'Shrine of the Elder Admin' },
     desc: { worker: 'Work work.', melee: 'Big axe. Small vocabulary.', ranged: 'Throws spears. Retrieves none.', special: 'Two heads, running way past spec. Its swings hit everyone near the target.',
@@ -402,19 +414,19 @@ const RACES = {
     workers: 'Peons', farms: 'Pig Farms', ready: 'Work complete!', alert: 'Enemies at the gate! Smash them!', voice: 0.7,
   },
   goblins: {
-    name: 'Goblins', short: 'GOBLINS', skin: '#a6c94a', dark: '#5f7a22', proj: 'zap', hp: 0.87, cost: 0.85, spd: 1.05, train: 1.1, blast: { dmg: 30, r: 2.2 },
-    passive: 'Mass production: everything is 15% cheaper and trains 10% faster, gobs are fragile, and goblin buildings blow up when destroyed.',
+    name: 'Goblins', short: 'GOBLINS', skin: '#a6c94a', dark: '#5f7a22', proj: 'zap', hp: 0.87, cost: 0.85, navyCost: 1.3, spd: 1.05, train: 1.1, blast: { dmg: 25, r: 2.2 },
+    passive: 'Mass production: everything but boats is 15% cheaper (boats cost 10% extra) and trains 10% faster, gobs are fragile, and goblin buildings blow up when destroyed.',
     names: { worker: 'Gobbo', melee: 'Stabby', ranged: 'Zapper', special: 'Kaboomer', hall: 'Junk Hall', farm: 'Rat Hutch', barracks: 'Scrapyard', lab: 'Tinker Shed', tower: 'Zap Tower', mill: 'Splinter Factory', flyer: 'Bomb Zeppelin', siege: 'Rocket Wagon', ultimate: 'Mecha-Gob 3000', wall: 'Scrap Fence', workshop: 'Boom Garage', altar: 'Big Red Button Room' },
-    desc: { worker: 'Time is money, friend!', melee: 'Stabs things. Pokes things. Is a thing.', ranged: 'Homemade lightning gun. Mostly safe.', special: 'A barrel of boom on legs. Runs at the target and explodes, hurting everything nearby (buildings extra).',
+    desc: { worker: 'Time is money, friend!', melee: 'Stabs things. Pokes things. Is a thing.', ranged: 'Homemade lightning gun. Mostly safe.', special: 'A barrel of boom on legs. Runs at the target and explodes, hurting everything nearby (buildings extra). Not allowed on boats.',
       lab: 'Researches upgrades. Unlocks the Kaboomer.', tower: 'Zaps anything that gets close.', flyer: 'A balloon full of bombs. Drops them on whatever is underneath, but can\'t hit other flyers.', siege: 'Fires rockets. Aims roughly.', ultimate: 'A giant robot with a goblin in the cockpit and rockets on both arms. Only one at a time.' },
-    over: { special: { hp: 70, dmg: 0, arm: 1, spd: 3.4, g: 90, w: 50, t: 18, food: 1, r: 0.36, kaboom: { dmg: 120, r: 1.8 } }, flyer: { hp: 170, dmg: 20, rng: 0.6, cd: 2.2, spd: 2.4, splash: 1.3, groundOnly: true, shot: 'bomb' }, siege: { shot: 'rocket', cd: 2.8 }, ultimate: { hp: 800, dmg: 26, arm: 7, rng: 5.5, cd: 1.2, splash: 1.1, shot: 'rocket' } },
+    over: { special: { hp: 70, dmg: 0, arm: 1, spd: 3.4, g: 90, w: 50, t: 18, food: 1, r: 0.36, kaboom: { dmg: 120, r: 1.8 } }, flyer: { hp: 170, dmg: 18, rng: 0.6, cd: 2.2, spd: 2.4, splash: 1.3, groundOnly: true, shot: 'bomb' }, siege: { shot: 'rocket', cd: 2.8 }, ultimate: { hp: 800, dmg: 26, arm: 7, rng: 5.5, cd: 1.2, splash: 1.1, shot: 'rocket' } },
     ups: ['Bigger Batteries', 'Duct Tape Armour', 'Chainsaws (Mostly Safe)'],
     quips: ['Time is money, friend!', 'Ooh, shiny!', 'Boom? Boom!', 'It\'s not a bug, it\'s explosives.', 'Gimme gimme.', 'Yes boss, right away boss!', 'Who touched my wrench?'],
     workers: 'Gobbos', farms: 'Rat Hutches', ready: 'Done! Don\'t lean on it.', alert: 'Somebody\'s smashing our stuff!', voice: 1.35,
   },
   funguys: {
-    name: 'Funguys', short: 'FUNGUYS', skin: '#f4ead6', dark: '#a8957a', proj: 'spore', regen: 1.2, myco: 5, bldRegen: 3, hp: 1.08,
-    passive: 'Mycelium: units are a bit sturdier and regrow health (much faster near your buildings), and buildings heal themselves.',
+    name: 'Funguys', short: 'FUNGUYS', skin: '#f4ead6', dark: '#a8957a', proj: 'spore', regen: 1.2, myco: 4, bldRegen: 2, hp: 1.08,
+    passive: 'Mycelium: units are a bit sturdier and regrow health on land (much faster near your buildings), and buildings heal themselves.',
     names: { worker: 'Sporeling', melee: 'Shroomtrooper', ranged: 'Spore Shooter', special: 'Truffle Tank', hall: 'Mother Shroom', farm: 'Compost Heap', barracks: 'Fairy Ring', lab: 'Spore Lab', tower: 'Puffball Tower', mill: 'Rot Pile', flyer: 'Spore Balloon', siege: 'Spore Mortar', ultimate: 'Fungus Amongus', wall: 'Mushroom Hedge', workshop: 'Fermentory', altar: 'Sacred Grove' },
     desc: { worker: 'Small, cheerful, always growing on you.', melee: 'These aren\'t the shrooms you\'re looking for.', ranged: 'Fires spore puffs that splash on nearby enemies.', special: 'Big, slow and lumpy. Heals friendly units around it.',
       lab: 'Researches upgrades. Unlocks the Truffle Tank.', tower: 'Puffs spores at anything that gets close.', flyer: 'A puffball with ambitions. Drifts over anything and rains spores that splash.', siege: 'Lobs fat spore bombs a long way.', ultimate: 'A walking forest floor. Stomps everyone near the target and heals friends around it. Only one at a time.' },
@@ -424,8 +436,8 @@ const RACES = {
     workers: 'Sporelings', farms: 'Compost Heaps', ready: 'Fully grown!', alert: 'Somebody is stepping on our shrooms!', voice: 1.2,
   },
   bugs: {
-    name: 'Bugs', short: 'BUGS', skin: '#3a3328', dark: '#1d1914', proj: 'spit', hp: 0.9, spd: 1.1, carry: 1.1, hallCost: 0.6, unitCost: 0.85,
-    passive: 'Swarm: army units are 15% cheaper and everyone moves 10% faster, but bugs are squishy. Anterns carry 10% more and new Hive Cores are cheap.',
+    name: 'Bugs', short: 'BUGS', skin: '#3a3328', dark: '#1d1914', proj: 'spit', hp: 0.93, spd: 1.1, carry: 1.1, hallCost: 0.6, unitCost: 0.9,
+    passive: 'Swarm: army units and boats are 10% cheaper and everyone moves 10% faster, but bugs are a bit squishy. Anterns carry 10% more and new Hive Cores are cheap.',
     names: { worker: 'Antern', melee: 'Beetle Brawler', ranged: 'Spitter Wasp', special: 'Heisenbug', hall: 'Hive Core', farm: 'Aphid Ranch', barracks: 'Brood Chamber', lab: 'The Debugger', tower: 'Stinger Spire', mill: 'Termite Mound', flyer: 'Drone-fly', siege: 'Bombardier Beetle', ultimate: 'Bug Queen v1.0 (final_FINAL)', wall: 'Wax Wall', workshop: 'Gall Factory', altar: 'Royal Chamber' },
     desc: { worker: 'An ant intern. Carries ten times its weight, gets paid in sugar.', melee: 'Horned, armoured, mildly annoyed.', ranged: 'Spits acid from a safe distance.', special: 'You can know where it is or hit it, not both: dodges a third of all attacks.',
       lab: 'Researches upgrades. Unlocks the Heisenbug.', tower: 'Stings anything that gets close.', flyer: 'A dragonfly running quadcopter firmware. Very fast, spits acid.', siege: 'Sprays boiling acid from its rear end. Nature is wild.', ultimate: 'Spits acid and lays a new Beetle Brawler every 20 seconds (up to 4). Only one at a time.' },
@@ -435,8 +447,8 @@ const RACES = {
     workers: 'Anterns', farms: 'Aphid Ranches', ready: 'Hatched!', alert: 'The hive is under attack! Swarm!', voice: 1.6,
   },
   undead: {
-    name: 'Undead', short: 'UNDEAD', skin: '#c9d1b8', dark: '#5a6050', proj: 'soul', spd: 0.95, raise: 0.33, noHeal: true,
-    passive: 'Raise dead: enemies who fall near your units can rise as Skeletons on your side for 45 seconds. Undead can\'t be healed.',
+    name: 'Undead', short: 'UNDEAD', skin: '#c9d1b8', dark: '#5a6050', proj: 'soul', raise: 0.36, noHeal: true, navyCost: 0.8,
+    passive: 'Raise dead: enemies who fall near your units can rise as Skeletons on your side for 45 seconds. Ghostly boats come cheap. Undead can\'t be healed.',
     names: { worker: 'Ghoul', melee: 'Skeleton', ranged: 'Banshee', special: 'Bone Golem', hall: 'Necropolis', farm: 'Graveyard', barracks: 'Crypt', lab: 'Haunted Server Room', tower: 'Ziggurat', mill: 'Bone Mill', flyer: 'Gargoyle', siege: 'Meat Wagon', ultimate: 'Lich Kernel', wall: 'Bone Fence', workshop: 'Slaughterhouse', altar: 'Altar of /dev/null' },
     desc: { worker: 'Mines, chops and builds. Never sleeps (literally).', melee: 'Rattly, cheap and surprisingly motivated.', ranged: 'Screams at things until they stop moving.', special: 'A heap of bones that hits like a truck. Slow.',
       lab: 'Researches upgrades and raises the Gargoyle. Unlocks the Bone Golem.', tower: 'Zaps the living with green fire.', flyer: 'A stone gargoyle that swoops down to claw at things.', siege: 'Lobs... let\'s call them "materials". Great against buildings.', ultimate: 'A zombie process that refuses to terminate. Its freezing blasts splash around the target. Only one at a time.' },
@@ -456,7 +468,36 @@ const RACES = {
     quips: ['Beep boop.', 'Affirmative.', 'Updating. Do not turn off your mech.', '01011001 01100101 01110011.', 'I am not a robot. ☑', 'Have you read the manual?', 'Added to the backlog.'],
     workers: 'Servobots', farms: 'Charging Docks', ready: 'Build succeeded!', alert: 'Intrusion detected! Deploy countermeasures!', voice: 0.85,
   },
+  lemmings: {
+    name: 'Lemmings', short: 'LEMMINGS', skin: '#f6d2b4', dark: '#2a3fae', hair: '#44d03c', robe: '#3c5cff', proj: 'bomblet', hp: 0.9, unitCost: 0.9, train: 1.1, navyCost: 0.85,
+    pop: { dmg: 11, r: 1.25 }, fuse: 5, bridge: true,
+    passive: 'Oh no!: every Lemming pops when it dies, hurting enemies next to it, and you can light any Lemming\'s fuse for a 5-second bomb. Builders lay bridges across water and Blockers make enemies attack them first. Lemmings are cheap, fragile, quick to breed and happy on a raft.',
+    names: { worker: 'Builder', melee: 'Basher', ranged: 'Bomb Tosser', special: 'Blocker', hall: 'Entrance Hatch', farm: 'Burrow', barracks: 'Skill School', lab: 'Level Editor', tower: 'Lookout', mill: 'Brickworks', flyer: 'Floater', siege: 'Digger', ultimate: 'Armageddon', wall: 'Brick Wall', workshop: 'Dig Site', altar: 'The Exit' },
+    desc: { worker: 'Mines, chops and builds, bridges across the water included. One brick at a time.', melee: 'Bashes through things. And people.', ranged: 'Throws little bombs that pop on whoever is underneath.', special: 'Stands with its arms out. Enemies nearby can\'t help attacking it first.',
+      lab: 'Researches upgrades. Unlocks the Blocker.', tower: 'A lemming on a pole with a slingshot.', flyer: 'Drifts about under an umbrella, dropping bricks on people.', siege: 'Throws rocks at walls until there\'s a hole to dig through.', ultimate: 'A very big lemming holding a very big red button. When it falls, everything near it goes too. Only one at a time.' },
+    over: { ranged: { splash: 0.5 }, special: { hp: 300, dmg: 12, arm: 4, spd: 1.8, taunt: 3.5 }, flyer: { hp: 120, dmg: 10, spd: 2.6, shot: 'brick' }, siege: { shot: 'rock' }, ultimate: { hp: 800, dmg: 30, cleave: 1.2, popMul: 6 } },
+    ups: ['Bigger Bombs', 'Hard Hats', 'Faster Bricklaying'],
+    quips: ['Oh no!', 'Let\'s go!', 'Yippee!', 'Hey!', 'Walking... walking...', 'I\'m a builder!', 'Which way is the exit?'],
+    workers: 'Builders', farms: 'Burrows', ready: 'Yippee!', alert: 'Oh no! They\'re attacking us!', voice: 1.7,
+  },
 };
+// every race's navy: [shipyard, transport, warship, battleship], what the boats are like, and how they shoot
+const NAVY = {
+  humans: [['Shipyard', 'Ferry', 'Frigate', 'Battleship (Enterprise Edition)'], ['Carries 8 food worth of units across the water. No refunds.', 'A fast ship full of archers.', 'Lobs cannonballs at anything near the shore. Great against buildings.'], {}],
+  orcs: [['Dockz', 'Raft-o-Matic', 'War Canoe', 'Juggernaught'], ['Floats. Mostly. Carries 8 food worth of units.', 'Twenty orcs paddling and throwing spears.', 'A floating fortress that throws boulders at the coast.'], {}],
+  goblins: [['Leaky Dock', 'Barge', 'Torpedo Tug', 'Dread-not'], ['Small and leaky: carries only 6 food worth of units. Bailing bucket included.', 'Zaps anything near the water.', 'Fires rockets at the shore. Sinks on purpose, sometimes.'], { transport: { seats: 6 }, battleship: { shot: 'rocket' } }],
+  funguys: [['Mooring Shroom', 'Lily Pad', 'Spore Sloop', 'Floating Fungus'], ['A very big lily pad. Carries 8 food worth of units.', 'Puffs spores that splash.', 'Lobs fat spore bombs at the shore.'], { warship: { splash: 0.6 }, battleship: { shot: 'sporebomb' } }],
+  bugs: [['Pond Nest', 'Leaf Boat', 'Water Strider', 'Diving Beetle'], ['A big leaf. The ants row. Carries 8 food worth of units.', 'Skates over the water spitting acid.', 'Surfaces near the shore and sprays acid at buildings.'], { battleship: { shot: 'acid' } }],
+  undead: [['Haunted Harbour', 'Ferry of the Dead', 'Ghost Ship', 'Kraken Wreck'], ['The dead travel light: carries 12 food worth of units. The ferryman stopped taking coins.', 'Sails without wind, shrieks without stopping.', 'A sunken wreck with a kraken attached. It throws things.'], { transport: { seats: 12 }, warship: { hp: 360, rng: 5.5 }, battleship: { shot: 'skull' } }],
+  mechs: [['Drydock.exe', 'Hovercraft', 'Patrol Drone', 'Battlecruiser'], ['We could walk under water, but HR said no. Fast, and carries 10 food worth of units.', 'A fast boat with a laser on top.', 'Plasma cannons the size of a server rack.'], { transport: { seats: 10, spd: 4.0 }, battleship: { shot: 'plasma' } }],
+  lemmings: [['Raft Yard', 'Raft', 'Paddle Boat', 'The Ark'], ['Eight lemmings on some logs. What could go wrong?', 'Pedal powered, bomb throwing.', 'Two of every lemming, and a catapult.'], { battleship: { shot: 'rock' } }],
+};
+for (const [rk, [n, d, over]] of Object.entries(NAVY)) {
+  const R = RACES[rk];
+  Object.assign(R.names, { shipyard: n[0], bridge: 'Bridge', transport: n[1], warship: n[2], battleship: n[3] });
+  Object.assign(R.desc, { transport: d[0], warship: d[1], battleship: d[2] });
+  Object.assign(R.over, over);
+}
 const RACE_KEYS = Object.keys(RACES);
 
 // the stats of every kind for every race, worked out once
@@ -471,11 +512,11 @@ for (const rk of RACE_KEYS) {
       d.proj = d.shot || (d.rng > 1.5 ? R.proj : null);
       d.hitsAir = (d.rng > 1.5 || !!d.fly) && !d.groundOnly;
       if (R.armBonus) d.arm += R.armBonus;
-      if (R.regen) d.regen = R.regen;
+      if (R.regen && !d.sea) d.regen = R.regen;
       if (R.shield) d.shield = Math.round(d.hp * R.shield);
     }
     if (kind === 'tower') { d.proj = R.proj; d.hitsAir = true; if (R.towerMul) { d.dmg = Math.round(d.dmg * R.towerMul); d.hp = Math.round(d.hp * 1.25); } }
-    const cm = (R.cost || 1) * (kind === 'wall' ? R.wallCost || 1 : 1) * (kind === 'hall' ? R.hallCost || 1 : 1) * (isUnitK(k) && kind !== 'worker' ? R.unitCost || 1 : 1);
+    const cm = (R.cost || 1) * (kind === 'wall' ? R.wallCost || 1 : 1) * (kind === 'hall' ? R.hallCost || 1 : 1) * (isUnitK(k) && kind !== 'worker' ? R.unitCost || 1 : 1) * (d.sea ? R.navyCost || 1 : 1);
     if (d.g || d.w) { d.g = Math.round(d.g * cm); d.w = Math.round(d.w * cm); }
     if (isBldK(k)) d.t /= R.build || 1;
     if (isUnitK(k)) d.t /= R.train || 1;
@@ -494,6 +535,8 @@ const descOf = (rk, kind) => {
   if (kind === 'workshop') return `Builds the ${R.names.siege}: long range, great against buildings and walls, poor against units.`;
   if (kind === 'altar') return `Summons the ${R.names.ultimate}, your ultimate unit. One at a time.`;
   if (kind === 'wall') return `Blocks the way. Drag to lay a whole line; select several ${R.workers} to build it faster.`;
+  if (kind === 'shipyard') return `Builds the ${R.names.transport}, the ${R.names.warship} and the ${R.names.battleship}. Has to be built on the shore.`;
+  if (kind === 'bridge') return `A walkway across the water, one square at a time: drag for a line. Boats can't pass it, and whoever stands on it when it breaks goes for a swim.`;
   return R.desc[kind] || '';
 };
 const upCost = (lvl, rk, which = 0) => UP_COSTS[which][Math.min(1, lvl)].map((v, i) => i < 2 ? Math.round(v * (RACES[rk].cost || 1)) : v);
@@ -571,6 +614,11 @@ const SFX = {
   laser() { tone(rand(1500, 1900), 0.12, 'sawtooth', 0.04, 0.35); },
   plasma() { tone(220, 0.3, 'sine', 0.08, 2.5); noise(0.2, 0.06, 3000, 0, 'bandpass'); },
   shield() { tone(1200, 0.08, 'sine', 0.03, 1.3); },
+  bomblet() { tone(500, 0.12, 'sine', 0.05, 0.6); },
+  brick() { noise(0.08, 0.1, 800); tone(160, 0.06, 'square', 0.04); },
+  pop() { tone(rand(700, 900), 0.08, 'square', 0.06, 0.4); noise(0.15, 0.12, 1500); },
+  ohno() { [740, 620].forEach((f, i) => tone(f * 1.6, 0.14, 'square', 0.07, 0.95, i * 0.15)); },
+  splash() { noise(0.35, 0.14, 700); },
   chop() { noise(0.05, 0.1, 900); tone(140, 0.05, 'square', 0.05); },
   fell() { noise(0.5, 0.18, 500); tone(90, 0.4, 'sine', 0.12, 0.5); },
   die() { tone(rand(300, 380), 0.25, 'square', 0.06, 0.4); },
@@ -614,7 +662,25 @@ function valueNoise(rng, W, H, cell) {
 // also has a spot in the middle of every side.
 const CORNERS = [[0, 0], [1, 1], [1, 0], [0, 1]];
 const SIDES = [[0.5, 0], [0.5, 1], [0, 0.5], [1, 0.5]];
-function genMap(seed, W, nPlayers) {
+// where the bases go: the corners, and on the huge map the middle of every side too
+function startSpots(W, nPlayers, rng) {
+  const H = W;
+  const inset = W <= 48 ? 7 : W >= 96 ? 9 : 8, huge = W >= 96;
+  const mid = (W - 1) / 2;
+  const spots = huge ? [...CORNERS, ...SIDES] : CORNERS;
+  let corners = spots.slice(0, Math.max(2, nPlayers));
+  if (nPlayers === 2 && rng() < 0.5) corners = [CORNERS[2], CORNERS[3]];
+  // who gets which of those spots is shuffled too, so no player is always stuck with the same one
+  for (let i = corners.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [corners[i], corners[j]] = [corners[j], corners[i]]; }
+  // a base on a side faces the middle, with its mine straight in front and forest behind and on both flanks
+  // (ax, ay) points from a side base straight at the middle
+  const spotAt = ([cx, cy]) => cx === 0.5 ? { x: cy ? Math.ceil(mid) : Math.floor(mid), y: cy ? H - 1 - inset : inset, dx: cy ? -1 : 1, dy: cy ? -1 : 1, side: true, ax: 0, ay: cy ? -1 : 1 }
+    : cy === 0.5 ? { x: cx ? W - 1 - inset : inset, y: cx ? Math.floor(mid) : Math.ceil(mid), dx: cx ? -1 : 1, dy: cx ? 1 : -1, side: true, ax: cx ? -1 : 1, ay: 0 }
+    : { x: cx ? W - 1 - inset : inset, y: cy ? H - 1 - inset : inset, dx: cx ? -1 : 1, dy: cy ? -1 : 1 };
+  return { mid, huge, inset, spots, corners, spotAt };
+}
+function genMap(seed, W, nPlayers, type) {
+  if (type === 'islands') return genIslands(seed, W, nPlayers);
   const H = W, rng = mulberry32(seed), N = W * H;
   const ter = new Uint8Array(N), wood = new Uint8Array(N), deco = new Uint8Array(N);
   const forest = valueNoise(rng, W, H, 7), lakes = valueNoise(rng, W, H, 11), rocks = valueNoise(rng, W, H, 5), fine = valueNoise(rng, W, H, 2);
@@ -634,18 +700,7 @@ function genMap(seed, W, nPlayers) {
     for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++)
       if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r) set(x, y, t === T_GRASS && ter[y * W + x] === T_DIRT ? T_DIRT : t);
   };
-  const inset = W <= 48 ? 7 : W >= 96 ? 9 : 8, huge = W >= 96;
-  const mid = (W - 1) / 2;
-  const spots = huge ? [...CORNERS, ...SIDES] : CORNERS;
-  let corners = spots.slice(0, Math.max(2, nPlayers));
-  if (nPlayers === 2 && rng() < 0.5) corners = [CORNERS[2], CORNERS[3]];
-  // who gets which of those spots is shuffled too, so no player is always stuck with the same one
-  for (let i = corners.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [corners[i], corners[j]] = [corners[j], corners[i]]; }
-  // a base on a side faces the middle, with its mine straight in front and forest behind and on both flanks
-  // (ax, ay) points from a side base straight at the middle
-  const spotAt = ([cx, cy]) => cx === 0.5 ? { x: cy ? Math.ceil(mid) : Math.floor(mid), y: cy ? H - 1 - inset : inset, dx: cy ? -1 : 1, dy: cy ? -1 : 1, side: true, ax: 0, ay: cy ? -1 : 1 }
-    : cy === 0.5 ? { x: cx ? W - 1 - inset : inset, y: cx ? Math.floor(mid) : Math.ceil(mid), dx: cx ? -1 : 1, dy: cx ? 1 : -1, side: true, ax: cx ? -1 : 1, ay: 0 }
-    : { x: cx ? W - 1 - inset : inset, y: cy ? H - 1 - inset : inset, dx: cx ? -1 : 1, dy: cy ? -1 : 1 };
+  const { mid, huge, spots, corners, spotAt } = startSpots(W, nPlayers, rng);
   const starts = corners.map(spotAt);
   const mines = [];
   // roads from every start to the middle so nobody is walled in
@@ -712,6 +767,91 @@ function genMap(seed, W, nPlayers) {
   for (let i = 0; i < N; i++) if (ter[i] === T_TREE) wood[i] = TREE_LOADS;
   return { W, H, ter, wood, deco, starts, mines };
 }
+// the islands map: every base on an island of its own, a rich island in the middle, small islands
+// with a gold mine each, and water everywhere in between (at least two squares of it, so nobody walks across)
+function genIslands(seed, W, nPlayers) {
+  const H = W, rng = mulberry32(seed ^ 0x15a1d5), N = W * H;
+  const ter = new Uint8Array(N).fill(T_WATER), wood = new Uint8Array(N), deco = new Uint8Array(N), owner = new Int16Array(N).fill(-1);
+  const shape = valueNoise(rng, W, H, 4), forest = valueNoise(rng, W, H, 6), fine = valueNoise(rng, W, H, 2);
+  for (let i = 0; i < N; i++) deco[i] = rng() * 256 | 0;
+  const { mid, huge, spots, corners, spotAt } = startSpots(W, nPlayers, rng);
+  const starts = corners.map(spotAt);
+  const R = W <= 48 ? 10.5 : W <= 64 ? 12 : W <= 80 ? 13.5 : 12.5;
+  // islands: [x, y, radius, gold]  (gold 0 = a player's island, whose mine is placed with the base)
+  const isles = starts.map(s => [s.x + s.dx * 2, s.y + s.dy * 2, R, 0]);
+  isles.push([mid, mid, W <= 48 ? 5.5 : 6.5, 15000]);
+  if (huge) {
+    for (const [fx, fy] of [[0.29, 0.14], [0.71, 0.14], [0.29, 0.86], [0.71, 0.86], [0.14, 0.29], [0.86, 0.29], [0.14, 0.71], [0.86, 0.71]]) isles.push([fx * (W - 1), fy * (H - 1), 5, 10000]);
+    for (const sp of spots) if (!corners.includes(sp)) { const s = spotAt(sp); isles.push([s.x, s.y, 6, 10000]); }
+  } else if (W >= 64) for (const [x, y] of [[mid, 6.5], [mid, H - 7.5], [6.5, mid], [W - 7.5, mid]]) isles.push([x, y, 5, 10000]);
+  // land wherever an island reaches, with a ragged coast; remember whose island each square is
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x; let best = -1, bv = 0;
+    isles.forEach(([ix, iy, r], k) => { const v = 1 - Math.hypot(x - ix, y - iy) / r + (shape[i] - 0.5) * 0.45; if (v > bv) { bv = v; best = k; } });
+    if (best >= 0) { ter[i] = T_GRASS; owner[i] = best; }
+  }
+  // the core of every island stays land no matter what the coast does
+  isles.forEach(([ix, iy, r], k) => { for (let y = Math.floor(iy - r); y <= iy + r; y++) for (let x = Math.floor(ix - r); x <= ix + r; x++) if (x >= 0 && y >= 0 && x < W && y < H && Math.hypot(x - ix, y - iy) < r * 0.62) { ter[y * W + x] = T_GRASS; owner[y * W + x] = k; } });
+  // channels: a square touching another island's square becomes water (so both sides do: two wide)
+  const cut = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x; if (owner[i] < 0) continue;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const xx = x + ox, yy = y + oy; if (xx >= 0 && yy >= 0 && xx < W && yy < H && owner[yy * W + xx] >= 0 && owner[yy * W + xx] !== owner[i]) { cut.push(i); oy = ox = 2; } }
+  }
+  for (const i of cut) { ter[i] = T_WATER; owner[i] = -1; }
+  // the map's rim is water too
+  for (let i = 0; i < W; i++) for (const j of [i, (H - 1) * W + i, i * W, i * W + W - 1]) { ter[j] = T_WATER; owner[j] = -1; }
+  // woods, rocks and dirt on the land
+  for (let i = 0; i < N; i++) {
+    if (ter[i] !== T_GRASS) continue;
+    const f = forest[i] * 0.75 + fine[i] * 0.25;
+    ter[i] = f > 0.53 ? T_TREE : (shape[i] > 0.78 && fine[i] > 0.55) ? T_ROCK : fine[i] > 0.8 ? T_DIRT : T_GRASS;
+  }
+  const land = (x, y) => x >= 1 && y >= 1 && x < W - 1 && y < H - 1 && ter[y * W + x] !== T_WATER;
+  const set = (x, y, t) => { if (land(x, y)) ter[y * W + x] = t; };
+  const clearDisc = (cx, cy, r) => { for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r && land(x, y) && ter[y * W + x] !== T_DIRT) ter[y * W + x] = T_GRASS; };
+  const mines = [];
+  for (const s of starts) {
+    clearDisc(s.x, s.y, 6.5);
+    let mx, my;
+    if (s.side) {
+      const px = Math.abs(s.ay), py = Math.abs(s.ax);
+      for (let k = -3; k <= 3; k++) for (let d = 0; d < 2; d++) {
+        set(s.x - s.ax * (6 + d) + px * k, s.y - s.ay * (6 + d) + py * k, T_TREE);
+        if (!d && k <= 1) for (const sg of [-1, 1]) set(s.x + px * sg * 7 + s.ax * k, s.y + py * sg * 7 + s.ay * k, T_TREE);
+      }
+      mx = s.x + s.ax * (MINE_GAP + 4) - 1; my = s.y + s.ay * (MINE_GAP + 4) - 1;
+    } else {
+      for (let y = -3; y <= 3; y++) for (let x = 0; x < 3; x++) set(s.x - s.dx * (6 + x), s.y + y, T_TREE);
+      for (let x = -3; x <= 3; x++) for (let y = 0; y < 2; y++) set(s.x + x, s.y - s.dy * (6 + y), T_TREE);
+      mx = s.x + s.dx * (MINE_GAP + 3) - 1; my = s.y + s.dy * 3 - 1;
+    }
+    clearDisc(mx + 1, my + 1, 3);
+    mines.push({ x: mx, y: my, gold: 11000 });
+    s.mine = mines.length - 1;
+    for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++) set(s.x + x, s.y + y, T_DIRT);
+    // a clear stretch of coast facing the middle, room for a shipyard
+    const a0 = Math.atan2(mid - s.y, mid - s.x);
+    for (const da of [0, 0.8, -0.8]) {
+      const ux = Math.cos(a0 + da), uy = Math.sin(a0 + da);
+      let k = 4; while (k < 30 && land(Math.round(s.x + ux * k), Math.round(s.y + uy * k))) k++;
+      clearDisc(s.x + ux * (k - 2.5), s.y + uy * (k - 2.5), 2.8);
+    }
+  }
+  for (const [x, y, r, gold] of isles) {
+    if (!gold) continue;
+    const mx = Math.round(x) - 1, my = Math.round(y) - 1;
+    clearDisc(mx + 1, my + 1, 3.2);
+    // a few trees round the edge, so a new base out here has wood too
+    for (let a = 0; a < 6.28; a += 0.45) set(Math.round(x + Math.cos(a) * (r - 0.8)), Math.round(y + Math.sin(a) * (r - 0.8)), T_TREE);
+    mines.push({ x: mx, y: my, gold });
+  }
+  // gold mines sit on solid ground
+  for (const m of mines) for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) ter[(m.y + y) * W + m.x + x] = T_DIRT;
+  // island trees are old and fat: there are fewer of them, so each holds more wood
+  for (let i = 0; i < N; i++) if (ter[i] === T_TREE) wood[i] = Math.round(TREE_LOADS * 2.5);
+  return { W, H, ter, wood, deco, starts, mines };
+}
 
 // ====================================================================
 //  The world. The host (or a game against the CPU) owns the real one;
@@ -719,7 +859,7 @@ function genMap(seed, W, nPlayers) {
 // ====================================================================
 let G = null;
 function makeWorld(cfg, replica) {
-  const map = genMap(cfg.seed, cfg.size, cfg.players.length);
+  const map = genMap(cfg.seed, cfg.size, cfg.players.length, cfg.mapType);
   const N = map.W * map.H;
   const w = {
     cfg, replica, ...map, N, theme: THEMES[cfg.theme] || THEMES[0],
@@ -734,6 +874,7 @@ function makeWorld(cfg, replica) {
     fx: { proj: [], parts: [], texts: [], bubbles: [], pings: [], marks: [], rings: [], scars: [] },
     seen: new Map(),       // enemy buildings you saw once, still drawn in the fog
   };
+  labelRegions(w);
   if (!replica) {
     for (const m of map.mines) spawn(w, K.mine, -1, m.x, m.y, { gold: m.gold, built: true });
     w.players.forEach((p, i) => {
@@ -755,7 +896,7 @@ function spawn(w, k, o, x, y, extra = {}) {
   const e = { id: w.nextId++, k, o, hp: 1, face: 1, cd: Math.random(), atkT: 0, st: 'idle', scanT: Math.random() * 0.5 };
   const d = o < 0 ? DEFS.none[k] : DEFS[w.players[o].race][k];
   if (isUnitK(k)) {
-    Object.assign(e, { x: x + 0.5, y: y + 0.5, hp: d.hp, r: d.r, carry: 0, path: null, pi: 0, fly: !!d.fly });
+    Object.assign(e, { x: x + 0.5, y: y + 0.5, hp: d.hp, r: d.r, carry: 0, path: null, pi: 0, fly: !!d.fly, sea: !!d.sea });
     if (d.shield) e.sh = d.shield;
   } else {
     const size = d.size;
@@ -764,6 +905,7 @@ function spawn(w, k, o, x, y, extra = {}) {
     for (let yy = y; yy < y + size; yy++) for (let xx = x; xx < x + size; xx++) w.occ[yy * w.W + xx] = e.id;
   }
   Object.assign(e, extra);
+  if (k === K.bridge && e.built) bridgeUp(w, e);
   if (e.built) e.prog = 1;
   w.ents.push(e); w.byId.set(e.id, e);
   return e;
@@ -776,8 +918,43 @@ function removeEnt(w, e) {
 }
 const inMap = (w, x, y) => x >= 0 && y >= 0 && x < w.W && y < w.H;
 const walk = (w, x, y) => inMap(w, x, y) && WALKABLE[w.ter[y * w.W + x]] === 1 && !w.occ[y * w.W + x];
-// flyers can only be hit by ranged units, towers and other flyers (bombers excepted)
-const canHit = (w, a, t) => !t.fly || !!def(w, a).hitsAir;
+const sail = (w, x, y) => inMap(w, x, y) && w.ter[y * w.W + x] === T_WATER && !w.occ[y * w.W + x];
+const passOf = u => u.sea ? sail : walk;
+// flyers can only be hit by ranged units, towers and other flyers (bombers excepted); boats can't be hit in melee
+const canHit = (w, a, t) => (!t.fly || !!def(w, a).hitsAir) && (!t.sea || a.size || def(w, a).rng > 1.5 || !!a.fly);
+// which island (for walkers) and which stretch of water (for boats) every tile belongs to.
+// Worked out again whenever a bridge goes up or comes down.
+function labelRegions(w) {
+  const N = w.N, W = w.W, isle = w.isle || (w.isle = new Int32Array(N)), sea = w.seaId || (w.seaId = new Int32Array(N));
+  isle.fill(0); sea.fill(0);
+  const stack = [];
+  // an island is all the land that hangs together, forests and rocks included (trees get chopped)
+  for (const [arr, ok] of [[isle, i => w.ter[i] !== T_WATER], [sea, i => w.ter[i] === T_WATER]]) {
+    let id = 0;
+    for (let s0 = 0; s0 < N; s0++) {
+      if (arr[s0] || !ok(s0)) continue;
+      arr[s0] = ++id; stack.push(s0);
+      while (stack.length) {
+        const c = stack.pop(), cx = c % W, cy = c / W | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= W || y >= w.H) continue;
+          const i = y * W + x; if (!arr[i] && ok(i)) { arr[i] = id; stack.push(i); }
+        }
+      }
+    }
+  }
+}
+// can u get somewhere it can hit t from? Flyers can; walkers only from their own island, boats from their own water
+function canReach(w, u, t, d) {
+  if (u.fly || u.size || !w.isle) return true;
+  const dom = u.sea ? w.seaId : w.isle, mine = dom[clamp(u.y | 0, 0, w.H - 1) * w.W + clamp(u.x | 0, 0, w.W - 1)];
+  if (!mine) return true;
+  const R = Math.max(d.rng, 0.3) + (u.r || 0) + 0.3;
+  const x0 = Math.max(0, Math.floor((t.size ? t.bx : t.x) - R - 1)), y0 = Math.max(0, Math.floor((t.size ? t.by : t.y) - R - 1));
+  const x1 = Math.min(w.W - 1, Math.ceil((t.size ? t.bx + t.size : t.x) + R + 1)), y1 = Math.min(w.H - 1, Math.ceil((t.size ? t.by + t.size : t.y) + R + 1));
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (dom[y * w.W + x] === mine && edgeDist(t, x + 0.5, y + 0.5) <= R) return true;
+  return false;
+}
 const allied = (w, a, b) => a >= 0 && b >= 0 && w.players[a].team === w.players[b].team;
 const enemies = (w, a, b) => a >= 0 && b >= 0 && w.players[a].team !== w.players[b].team;
 
@@ -789,13 +966,13 @@ function edgeDist(e, x, y) {
   }
   return Math.max(0, dist(e.x, e.y, x, y) - e.r);
 }
-function freeSpotNear(w, around, tx, ty) {
-  // nearest walkable tile next to a building (or point), preferring the side facing (tx, ty)
+function freeSpotNear(w, around, tx, ty, pass = walk) {
+  // nearest walkable (or, for boats, sailable) tile next to a building (or point), preferring the side facing (tx, ty)
   const cx = Math.floor(tx), cy = Math.floor(ty);
   let best = null, bd = 1e9;
   for (let r = 0; r < 14 && !best; r++) {
     for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
-      if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) !== r || !walk(w, x, y)) continue;
+      if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) !== r || !pass(w, x, y)) continue;
       const d = around ? edgeDist(around, x + 0.5, y + 0.5) : 0;
       const score = d * 3 + Math.hypot(x - cx, y - cy);
       if (around && d > 1.6 && r < 6) continue;
@@ -807,7 +984,7 @@ function freeSpotNear(w, around, tx, ty) {
 
 // ---------- A* on the tile grid ----------
 let pfStamp = null, pfG = null, pfFrom = null, pfOpen = null, pfGen = 0, pfFound = false;
-function findPath(w, sx, sy, goal, gx, gy, limit = 6000) {
+function findPath(w, sx, sy, goal, gx, gy, limit = 6000, pass = walk) {
   const N = w.N, W = w.W, fx = sx, fy = sy;
   if (!pfStamp || pfStamp.length !== N) { pfStamp = new Int32Array(N); pfG = new Float32Array(N); pfFrom = new Int32Array(N); pfOpen = new Int32Array(N); }
   pfGen++;
@@ -849,8 +1026,8 @@ function findPath(w, sx, sy, goal, gx, gy, limit = 6000) {
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       if (!dx && !dy) continue;
       const nx = cx + dx, ny = cy + dy;
-      if (!walk(w, nx, ny)) continue;
-      if (dx && dy && (!walk(w, cx + dx, cy) || !walk(w, cx, cy + dy))) continue;
+      if (!pass(w, nx, ny)) continue;
+      if (dx && dy && (!pass(w, cx + dx, cy) || !pass(w, cx, cy + dy))) continue;
       const ni = ny * W + nx, g = pfG[cur] + (dx && dy ? 1.414 : 1);
       if (pfStamp[ni] === pfGen && (pfOpen[ni] === pfGen || pfG[ni] <= g)) continue;
       pfStamp[ni] = pfGen; pfG[ni] = g; pfFrom[ni] = cur;
@@ -863,28 +1040,28 @@ function findPath(w, sx, sy, goal, gx, gy, limit = 6000) {
   const path = [];
   for (let c = end; c !== start && c >= 0; c = pfFrom[c]) path.push(c);
   path.reverse();
-  return smoothPath(w, fx, fy, sx + 0.5, sy + 0.5, path);
+  return smoothPath(w, fx, fy, sx + 0.5, sy + 0.5, path, pass);
 }
-function lineClear(w, ax, ay, bx, by) {
+function lineClear(w, ax, ay, bx, by, pass = walk) {
   const d = dist(ax, ay, bx, by), n = Math.ceil(d / 0.3);
   for (let i = 1; i < n; i++) {
     const x = ax + (bx - ax) * i / n, y = ay + (by - ay) * i / n;
     // check a little to each side too so units don't clip corners
-    for (const [ox, oy] of [[0, 0], [0.28, 0.28], [-0.28, -0.28], [0.28, -0.28], [-0.28, 0.28]]) if (!walk(w, Math.floor(x + ox), Math.floor(y + oy))) return false;
+    for (const [ox, oy] of [[0, 0], [0.28, 0.28], [-0.28, -0.28], [0.28, -0.28], [-0.28, 0.28]]) if (!pass(w, Math.floor(x + ox), Math.floor(y + oy))) return false;
   }
   return true;
 }
 // (fx, fy) is where the unit really stands, (cx, cy) the middle of its tile. A unit standing
 // off-centre could clip a tree corner on the way to the first step, so then it steps to the
 // middle of its own tile first.
-function smoothPath(w, fx, fy, cx, cy, path) {
+function smoothPath(w, fx, fy, cx, cy, path, pass = walk) {
   const pts = path.map(i => ({ x: i % w.W + 0.5, y: (i / w.W | 0) + 0.5 }));
   const out = [];
   let ax = fx, ay = fy, i = 0;
   while (i < pts.length) {
     let j = Math.min(pts.length - 1, i + 8);
-    while (j > i && !lineClear(w, ax, ay, pts[j].x, pts[j].y)) j--;
-    if (j === i && !out.length && (ax !== cx || ay !== cy) && !lineClear(w, ax, ay, pts[i].x, pts[i].y)) { out.push({ x: cx, y: cy }); ax = cx; ay = cy; continue; }
+    while (j > i && !lineClear(w, ax, ay, pts[j].x, pts[j].y, pass)) j--;
+    if (j === i && !out.length && (ax !== cx || ay !== cy) && !lineClear(w, ax, ay, pts[i].x, pts[i].y, pass)) { out.push({ x: cx, y: cy }); ax = cx; ay = cy; continue; }
     out.push(pts[j]); ax = pts[j].x; ay = pts[j].y; i = j + 1;
   }
   return out;
@@ -912,9 +1089,12 @@ function applyCmd(w, slot, c) {
     case 'move': {
       if (!num(c.x) || !num(c.y)) return;
       const tx = clamp(c.x, 0, w.W - 0.01), ty = clamp(c.y, 0, w.H - 0.01);
-      const ground = units.filter(u => !u.fly), air = units.filter(u => u.fly);
+      const ground = units.filter(u => !u.fly && !u.sea), air = units.filter(u => u.fly), sea = units.filter(u => u.sea);
       const spots = formation(w, ground, tx, ty);
       ground.forEach((u, i) => orderMove(w, u, spots[i].x, spots[i].y, !!c.a));
+      // boats sent onto land go to the nearest water instead
+      const seaSpots = formation(w, sea, tx, ty, sail);
+      sea.forEach((u, i) => orderMove(w, u, seaSpots[i].x, seaSpots[i].y, !!c.a));
       air.forEach((u, i) => { const a = i * 2.4, r = i ? 0.75 * Math.sqrt(i) : 0; orderMove(w, u, clamp(tx + Math.cos(a) * r, 0.3, w.W - 0.3), clamp(ty + Math.sin(a) * r, 0.3, w.H - 0.3), !!c.a); });
       break;
     }
@@ -941,16 +1121,39 @@ function applyCmd(w, slot, c) {
     }
     case 'stop': for (const u of units) { stopUnit(u); u.hold = false; } break;
     case 'hold': for (const u of units) { stopUnit(u); u.hold = true; } break;
-    case 'boom': for (const u of units) if (def(w, u).kaboom) explode(w, u); break;
+    case 'boom': for (const u of units) {
+      if (def(w, u).kaboom) explode(w, u);
+      else if (RACES[P.race].fuse && u.fuse === undefined && !u.sea) { u.fuse = RACES[P.race].fuse; w.ev.push(['fuse', +u.x.toFixed(2), +u.y.toFixed(2), slot]); }
+    } break;
+    case 'board': {
+      // walkers climb into one of your transports; an idle transport comes to the shore for them
+      const t = w.byId.get(c.id);
+      if (!t || t.o !== slot || t.k !== K.transport) return;
+      // no explosives on board
+      const riders = units.filter(u => !u.sea && !u.fly && !def(w, u).kaboom);
+      if (riders.length < units.filter(u => !u.sea && !u.fly).length) note(w, slot, 'noboom');
+      for (const u of riders) { stopUnit(u); u.hold = false; u.st = 'board'; u.boat = t.id; }
+      if (riders.length && t.st === 'idle') {
+        const cx = riders.reduce((a, u) => a + u.x, 0) / riders.length, cy = riders.reduce((a, u) => a + u.y, 0) / riders.length, sp = shoreNear(w, t, cx, cy);
+        if (sp && dist(sp.x, sp.y, t.x, t.y) > 1.5) orderMove(w, t, sp.x, sp.y, false);
+      }
+      break;
+    }
+    case 'unload': {
+      if (!num(c.x) || !num(c.y)) return;
+      for (const u of units) if (u.k === K.transport) { stopUnit(u); u.hold = false; u.st = 'unload'; u.drop = { x: clamp(c.x, 0, w.W - 0.01), y: clamp(c.y, 0, w.H - 0.01) }; u.dropAt = null; u.tries = 0; }
+      break;
+    }
     case 'build': {
       const u = units.find(e => e.k === K.worker); const k = c.k | 0;
       if (!u || !isBldK(k) || !num(c.tx) || !num(c.ty)) return;
       const d = DEFS[P.race][k];
+      if (k === K.bridge && !RACES[P.race].bridge) return;
       if (!canAfford(P, d) || !hasReq(w, slot, d) || !canPlace(w, k, c.tx | 0, c.ty | 0, slot, u)) { note(w, slot, 'nope'); return; }
       P.g -= d.g; P.w -= d.w;
       stopUnit(u); u.hold = false;
       // a line of wall: the rest of the tiles wait in the worker's to-do list (paid when started)
-      u.buildQ = k === K.wall && Array.isArray(c.more) ? c.more.slice(0, 30).filter(q => Array.isArray(q) && num(q[0]) && num(q[1])).map(q => ({ k, tx: q[0] | 0, ty: q[1] | 0 })) : [];
+      u.buildQ = (k === K.wall || k === K.bridge) && Array.isArray(c.more) ? c.more.slice(0, 30).filter(q => Array.isArray(q) && num(q[0]) && num(q[1])).map(q => ({ k, tx: q[0] | 0, ty: q[1] | 0 })) : [];
       u.st = 'build'; u.bld = { k, tx: c.tx | 0, ty: c.ty | 0 };
       pathTo(w, u, rectGoal(w, c.tx | 0, c.ty | 0, d.size), c.tx + d.size / 2, c.ty + d.size / 2);
       break;
@@ -1007,11 +1210,62 @@ function hasReq(w, slot, d) {
 }
 function canPlace(w, k, tx, ty, slot, builder) {
   const size = BASE[KINDS[k]].size;
+  if (k === K.bridge) return bridgeOk(w, tx, ty);
   for (let y = ty; y < ty + size; y++) for (let x = tx; x < tx + size; x++) {
     if (!inMap(w, x, y) || x < 1 || y < 1 || x >= w.W - 1 || y >= w.H - 1) return false;
     if (WALKABLE[w.ter[y * w.W + x]] !== 1 || w.occ[y * w.W + x]) return false;
   }
+  if (k === K.shipyard) return onShore(w, tx, ty, size);
   return k !== K.hall || !mineTooClose(w, tx, ty, size);
+}
+// a bridge goes on open water, touching land or another bridge
+function bridgeOk(w, x, y, extra) {
+  if (!inMap(w, x, y) || x < 1 || y < 1 || x >= w.W - 1 || y >= w.H - 1 || w.ter[y * w.W + x] !== T_WATER || w.occ[y * w.W + x]) return false;
+  return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => (inMap(w, x + dx, y + dy) && WALKABLE[w.ter[(y + dy) * w.W + x + dx]] === 1) || (extra && extra(x + dx, y + dy)));
+}
+// a shipyard needs at least two squares of water right next to it
+function onShore(w, tx, ty, size) {
+  let n = 0;
+  for (let i = 0; i < size; i++) for (const [x, y] of [[tx + i, ty - 1], [tx + i, ty + size], [tx - 1, ty + i], [tx + size, ty + i]]) if (inMap(w, x, y) && w.ter[y * w.W + x] === T_WATER) n++;
+  return n >= 2;
+}
+// where boat b can pull up to let units on or off near (x, y): walk out from (x, y) over open ground
+// and take the first square of b's water next to it, so the landing spot is always reachable on foot
+let shoreSeen = null, shoreQ = null, shoreGen = 0;
+function shoreNear(w, b, x, y, maxVisit = 6000) {
+  if (!w.seaId) return null;
+  if (!shoreSeen || shoreSeen.length !== w.N) { shoreSeen = new Int32Array(w.N); shoreQ = new Int32Array(w.N); }
+  shoreGen++;
+  const sea = w.seaId[clamp(b.y | 0, 0, w.H - 1) * w.W + clamp(b.x | 0, 0, w.W - 1)], st = freeSpotNear(w, null, x, y), W = w.W;
+  let head = 0, tail = 0;
+  shoreQ[tail++] = st.y * W + st.x; shoreSeen[st.y * W + st.x] = shoreGen;
+  while (head < tail && head < maxVisit) {
+    const cur = shoreQ[head++], cx = cur % W, cy = cur / W | 0;
+    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+      const nx = cx + dx, ny = cy + dy; if (!inMap(w, nx, ny)) continue;
+      const ni = ny * W + nx;
+      if (w.seaId[ni] === sea && !w.occ[ni]) return { x: nx + 0.5, y: ny + 0.5, lx: cx, ly: cy };
+      if (shoreSeen[ni] !== shoreGen && walk(w, nx, ny)) { shoreSeen[ni] = shoreGen; shoreQ[tail++] = ni; }
+    }
+  }
+  return null;
+}
+const passengers = (w, b) => w.ents.filter(e => e.inId === b.id && e.hidden);
+const cargoFood = (w, b) => passengers(w, b).reduce((n, e) => n + def(w, e).food, 0);
+// a finished bridge turns its square of water into a walkway; a broken one drops whoever is on it in the water
+function bridgeUp(w, b) {
+  const i = b.by * w.W + b.bx;
+  w.occ[i] = 0; w.ter[i] = T_BRIDGE;
+  labelRegions(w);
+  w.ev.push(['tile', b.bx, b.by, T_BRIDGE]);
+}
+function bridgeDown(w, b) {
+  const i = b.by * w.W + b.bx;
+  if (w.ter[i] !== T_BRIDGE) return;
+  w.ter[i] = T_WATER;
+  for (const u of w.ents.slice()) if (isUnitK(u.k) && !u.fly && !u.sea && !u.hidden && Math.floor(u.x) === b.bx && Math.floor(u.y) === b.by) { w.ev.push(['splash', +u.x.toFixed(2), +u.y.toFixed(2), 0.6]); killUnit(w, u, null, true); }
+  labelRegions(w);
+  w.ev.push(['tile', b.bx, b.by, T_WATER]);
 }
 // halls have to keep MINE_GAP open squares between them and any gold mine
 function mineTooClose(w, tx, ty, size) {
@@ -1022,7 +1276,7 @@ function mineTooClose(w, tx, ty, size) {
   }
   return null;
 }
-function formation(w, units, tx, ty) {
+function formation(w, units, tx, ty, pass = walk) {
   // hand every unit its own free tile around the target so they don't all pile onto one spot
   const out = [], used = new Set();
   const cx = Math.floor(tx), cy = Math.floor(ty);
@@ -1031,12 +1285,12 @@ function formation(w, units, tx, ty) {
   while (ring.length < units.length && r < 12) {
     for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
       if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) !== r) continue;
-      if (walk(w, x, y) && !used.has(y * w.W + x)) { used.add(y * w.W + x); ring.push({ x: x + 0.5, y: y + 0.5, d: Math.hypot(x - cx, y - cy) }); }
+      if (pass(w, x, y) && !used.has(y * w.W + x)) { used.add(y * w.W + x); ring.push({ x: x + 0.5, y: y + 0.5, d: Math.hypot(x - cx, y - cy) }); }
     }
     r++;
   }
   ring.sort((a, b) => a.d - b.d);
-  if (units.length === 1 && walk(w, cx, cy)) return [{ x: tx, y: ty }];
+  if (units.length === 1 && pass(w, cx, cy)) return [{ x: tx, y: ty }];
   for (let i = 0; i < units.length; i++) out.push(ring[i] || { x: tx, y: ty });
   return out;
 }
@@ -1045,7 +1299,7 @@ function stopUnit(u) {
   u.st = 'idle'; u.path = null; u.tries = 0; u.failT = 0; u.reroutes = 0; u.blocked = false; u.blockT = 0; u.tgt = 0; u.amove = null; u.res = null; u.bld = null; u.after = null;
 }
 function pathTo(w, u, goal, gx, gy) {
-  u.path = findPath(w, u.x, u.y, goal, Math.floor(gx), Math.floor(gy));
+  u.path = findPath(w, u.x, u.y, goal, Math.floor(gx), Math.floor(gy), u.sea ? 9000 : 6000, passOf(u));
   // already on a good tile: step to its middle so range checks line up
   if (u.path && !u.path.length) u.path = [{ x: Math.floor(u.x) + 0.5, y: Math.floor(u.y) + 0.5 }];
   u.pi = 0; u.stuckT = 0; u.lastD = 1e9; u.repathT = 0;
@@ -1124,7 +1378,7 @@ function checkWin(w) {
   if (w.over) return;
   for (const P of w.players) {
     if (!P.alive) continue;
-    if (!w.ents.some(e => e.o === P.slot && isBldK(e.k) && e.k !== K.wall)) eliminate(w, P);
+    if (!w.ents.some(e => e.o === P.slot && isBldK(e.k) && e.k !== K.wall && e.k !== K.bridge)) eliminate(w, P);
   }
   const teams = new Set(w.players.filter(P => P.alive).map(P => P.team));
   if (teams.size <= 1) endBattle(w, [...teams][0]);
@@ -1154,6 +1408,14 @@ function unitTick(w, u, dt) {
     }
   }
   if (u.lifeT !== undefined && (u.lifeT -= dt) <= 0) { killUnit(w, u, null, true); return; }
+  // a lit lemming: when the fuse runs out, everything around it gets it
+  if (u.fuse !== undefined && (u.fuse -= dt) <= 0) {
+    const R = RACES[d.race], m = d.popMul || 1;
+    w.ev.push(['boom', +u.x.toFixed(2), +u.y.toFixed(2), 1.9 * Math.sqrt(m)]);
+    popAt(w, u, R.pop.dmg * 4.5 * Math.sqrt(m) + upAtk(w, u) * 3, 1.9 * Math.sqrt(m), 1.5);
+    killUnit(w, u, null, true);
+    return;
+  }
   const RU = RACES[d.race];
   if (RU.myco && u.hp < d.hp && (w.frame + u.id) % 10 === 0 && w.ents.some(e => e.o === u.o && e.size && e.built && edgeDist(e, u.x, u.y) <= 4)) u.hp = Math.min(d.hp, u.hp + RU.myco * 0.5);
   if (d.aura && w.frame % 10 === 0) {
@@ -1191,9 +1453,13 @@ function unitTick(w, u, dt) {
     case 'return': returnTick(w, u, d, dt); break;
     case 'build': buildTick(w, u, d, dt); break;
     case 'repair': repairTick(w, u, d, dt); break;
+    case 'board': boardTick(w, u, d, dt); break;
+    case 'unload': unloadTick(w, u, d, dt); break;
     case 'inside': {
       const host = w.byId.get(u.inId);
       if (!host) { leaveInside(w, u, null); break; }
+      // riding in a boat: go where it goes
+      if (host.sea) { u.x = host.x; u.y = host.y; break; }
       if (host.k === K.mine) {
         if ((u.timer -= dt) <= 0) {
           const P = w.players[u.o], mul = P.ai ? AI_DIFF[P.diff].gather : 1;
@@ -1209,15 +1475,61 @@ function unitTick(w, u, dt) {
 }
 function findEnemy(w, u, range) {
   let best = null, bd = 1e9;
+  const d = def(w, u);
   for (const o of w.ents) {
     if (o.k === K.mine || o.hidden || !enemies(w, u.o, o.o) || !canHit(w, u, o)) continue;
     const dd = edgeDist(o, u.x, u.y);
     if (dd > range) continue;
-    // prefer things that fight back over buildings and workers
-    const score = dd + (o.size ? (def(w, u).bldMul ? -3 : 4) : 0) + (o.k === K.worker ? 1.5 : 0) + (o.k === K.wall ? 3 : 0);
-    if (score < bd) { bd = score; best = o; }
+    // prefer things that fight back over buildings and workers; a Blocker close by trumps everything
+    const od = def(w, o);
+    let score = dd + (o.size ? (d.bldMul ? -3 : 4) : 0) + (o.k === K.worker ? 1.5 : 0) + (o.k === K.wall || o.k === K.bridge ? 3 : 0);
+    if (od.taunt && dist(o.x, o.y, u.x, u.y) <= od.taunt) score -= 50;
+    if (score < bd && canReach(w, u, o, d)) { bd = score; best = o; }
   }
   return best;
+}
+// walkers on their way to climb into a transport
+function boardTick(w, u, d, dt) {
+  const b = w.byId.get(u.boat);
+  if (!b || b.dead || b.o !== u.o) { u.st = 'idle'; u.boat = 0; u.path = null; return; }
+  if (dist(u.x, u.y, b.x, b.y) - b.r - u.r <= 0.9) {
+    if (cargoFood(w, b) + d.food > def(w, b).seats) { note(w, u.o, 'full'); u.st = 'idle'; u.boat = 0; u.path = null; return; }
+    u.st = 'inside'; u.hidden = true; u.inId = b.id; u.path = null; u.x = b.x; u.y = b.y;
+    b.cAmt = passengers(w, b).length;
+    if (u.o === w.me) w.ev.push(['board', +b.x.toFixed(2), +b.y.toFixed(2)]);
+    return;
+  }
+  if ((u.repathT = (u.repathT || 0) - dt) <= 0 || !u.path || u.pi >= u.path.length) {
+    u.repathT = 1;
+    if (!pathTo(w, u, entGoal(b, 0.9), b.x, b.y) && (u.tries = (u.tries || 0) + 1) > 5) { u.st = 'idle'; u.tries = 0; return; }
+  }
+  follow(w, u, d, dt);
+}
+// a transport sailing to the shore nearest u.drop to let everyone off
+function unloadTick(w, u, d, dt) {
+  const pax = passengers(w, u);
+  if (!pax.length) { u.st = 'idle'; u.path = null; return; }
+  if (!u.dropAt) {
+    u.dropAt = shoreNear(w, u, u.drop.x, u.drop.y);
+    if (!u.dropAt) { note(w, u.o, 'noshore'); u.st = 'idle'; return; }
+    pathTo(w, u, (x, y) => x === Math.floor(u.dropAt.x) && y === Math.floor(u.dropAt.y), u.dropAt.x, u.dropAt.y);
+  }
+  const a = u.dropAt;
+  if (dist(u.x, u.y, a.x, a.y) < 0.9) {
+    const walkTo = walk(w, u.drop.x | 0, u.drop.y | 0) || (inMap(w, u.drop.x | 0, u.drop.y | 0) && WALKABLE[w.ter[(u.drop.y | 0) * w.W + (u.drop.x | 0)]] === 1);
+    for (const p of pax) {
+      const sp = freeSpotNear(w, null, a.lx + 0.5, a.ly + 0.5);
+      p.hidden = false; p.inId = 0; p.st = 'idle'; p.x = sp.x + 0.5; p.y = sp.y + 0.5;
+      if (walkTo) orderMove(w, p, u.drop.x, u.drop.y, true);
+    }
+    u.cAmt = 0; u.st = 'idle'; u.path = null;
+    w.ev.push(['unload', +a.x.toFixed(2), +a.y.toFixed(2), u.o]);
+    return;
+  }
+  if (follow(w, u, d, dt)) {
+    if ((u.tries = (u.tries || 0) + 1) > 4) { u.st = 'idle'; u.tries = 0; return; }
+    u.dropAt = null;
+  }
 }
 function follow(w, u, d, dt) {
   if (!u.path) return true;
@@ -1285,6 +1597,8 @@ function attackTick(w, u, d, dt) {
   u.repathT = (u.repathT || 0) - dt;
   if (!u.path || u.repathT <= 0 || u.pi >= u.path.length) {
     u.repathT = 0.6 + Math.random() * 0.4;
+    // across the water and no way to get in range: forget it
+    if (!canReach(w, u, t, d)) return giveUp();
     const reach = Math.max(d.rng, 0.3) + u.r - 0.1;
     if (u.fly) { u.path = [{ x: t.x, y: t.y }]; u.pi = 0; }
     else if (pathTo(w, u, entGoal(t, reach), t.x, t.y) && !pfFound && t.k !== K.wall) {
@@ -1343,7 +1657,19 @@ function killUnit(w, u, by, quiet) {
   if (u.o >= 0 && !u.raised) w.players[u.o].stats.lost++;
   w.ev.push(['die', +u.x.toFixed(2), +u.y.toFixed(2), u.k, u.o]);
   removeEnt(w, u);
-  if (!quiet && u.o >= 0 && !u.fly) raiseDead(w, u);
+  // a sunk transport takes its passengers down with it
+  if (u.k === K.transport) for (const p of passengers(w, u)) killUnit(w, p, by, true);
+  if (quiet || u.o < 0) return;
+  if (!u.fly && !u.sea) raiseDead(w, u);
+  const R = RACES[w.players[u.o].race];
+  if (R.pop) { const m = def(w, u).popMul || 1; w.ev.push(['pop', +u.x.toFixed(2), +u.y.toFixed(2), +(R.pop.r * Math.sqrt(m)).toFixed(2)]); popAt(w, u, R.pop.dmg * m, R.pop.r * Math.sqrt(m), 1); }
+}
+// "Oh no!": a lemming going off hurts every enemy next to it (not flyers, buildings take bm times as much)
+function popAt(w, u, dmg, r, bm) {
+  for (const o of w.ents.slice()) {
+    if (o === u || o.dead || o.hidden || o.fly || o.k === K.mine || !enemies(w, u.o, o.o)) continue;
+    if (edgeDist(o, u.x, u.y) <= r) damage(w, o, dmg * (o.size ? bm : 1), 0, u.o);
+  }
 }
 // undead nearby may get the fallen back up, as a temporary Skeleton on their side
 function raiseDead(w, u) {
@@ -1360,6 +1686,7 @@ function raiseDead(w, u) {
 }
 function destroyBuilding(w, b, byEnemy) {
   if (b.dead) return;
+  if (b.k === K.bridge && b.built) bridgeDown(w, b);
   for (const u of w.ents.slice()) if (u.inId === b.id) { leaveInside(w, u, b); if (!byEnemy) nextBuild(w, u); }
   if (b.o >= 0 && byEnemy) w.players[b.o].stats.lost++;
   w.ev.push(['crumble', +b.x.toFixed(2), +b.y.toFixed(2), b.size, b.o]);
@@ -1414,11 +1741,13 @@ function nearestHall(w, o, x, y, wood) {
   for (const e of w.ents) if (e.o === o && (e.k === K.hall || (wood && e.k === K.mill)) && e.built) { const dd = dist(e.x, e.y, x, y); if (dd < bd) { bd = dd; best = e; } }
   return best;
 }
-function nearestMine(w, x, y, maxD = 30) {
+// the nearest gold mine, optionally only one on a given island
+function nearestMine(w, x, y, maxD = 30, isle = 0) {
   let best = null, bd = maxD;
-  for (const e of w.ents) if (e.k === K.mine) { const dd = dist(e.x, e.y, x, y); if (dd < bd) { bd = dd; best = e; } }
+  for (const e of w.ents) if (e.k === K.mine && (!isle || isleAt(w, e.x, e.y) === isle)) { const dd = dist(e.x, e.y, x, y); if (dd < bd) { bd = dd; best = e; } }
   return best;
 }
+const isleAt = (w, x, y) => w.isle ? w.isle[clamp(y | 0, 0, w.H - 1) * w.W + clamp(x | 0, 0, w.W - 1)] : 1;
 function nearestTree(w, x, y, maxR = 12) {
   const cx = Math.floor(x), cy = Math.floor(y);
   for (let r = 0; r <= maxR; r++) {
@@ -1612,6 +1941,7 @@ function buildingTick(w, b, dt) {
     b.hp = Math.min(d.hp, b.hp + d.hp * 0.9 * dt / d.t);
     if (b.prog >= 1) {
       b.prog = 1; b.built = true; P.stats.built++;
+      if (b.k === K.bridge) bridgeUp(w, b);
       const u = w.byId.get(b.builder);
       if (u && u.inId === b.id) {
         leaveInside(w, u, b);
@@ -1655,7 +1985,7 @@ function buildingTick(w, b, dt) {
   if (b.qt >= ud.t) {
     b.queue.shift(); b.qt = 0;
     const r = b.rally;
-    const spot = freeSpotNear(w, b, r ? r.x : b.x, r ? r.y : b.y + b.size);
+    const spot = ud.sea ? freeSpotNear(w, b, r ? r.x : b.x, r ? r.y : b.y, sail) : freeSpotNear(w, b, r ? r.x : b.x, r ? r.y : b.y + b.size);
     const u = spawn(w, k, b.o, spot.x, spot.y);
     P.stats.made++;
     w.ev.push(['ready', b.o, k, +u.x.toFixed(1), +u.y.toFixed(1), 0]);
@@ -1671,9 +2001,9 @@ function buildingTick(w, b, dt) {
 // ---------- keep units from standing inside each other ----------
 // a shove may not squeeze anyone diagonally between two trees into a pocket
 function canNudge(w, u, x, y) {
-  const ax = Math.floor(u.x), ay = Math.floor(u.y), bx = Math.floor(x), by = Math.floor(y);
-  if (!walk(w, bx, by)) return false;
-  if (ax !== bx && ay !== by) return walk(w, ax, by) && walk(w, bx, ay);
+  const ax = Math.floor(u.x), ay = Math.floor(u.y), bx = Math.floor(x), by = Math.floor(y), pass = passOf(u);
+  if (!pass(w, bx, by)) return false;
+  if (ax !== bx && ay !== by) return pass(w, ax, by) && pass(w, bx, ay);
   return true;
 }
 function separate(w) {
@@ -1686,7 +2016,16 @@ function separate(w) {
     a.x = clamp(a.x - nx * push, 0.3, w.W - 0.3); a.y = clamp(a.y - ny * push, 0.3, w.H - 0.3);
     b.x = clamp(b.x + nx * push, 0.3, w.W - 0.3); b.y = clamp(b.y + ny * push, 0.3, w.H - 0.3);
   }
-  const units = w.ents.filter(e => isUnitK(e.k) && !e.hidden && !e.fly);
+  // boats push each other apart, but never up onto the land
+  const boats = w.ents.filter(e => e.sea && !e.hidden);
+  for (let i = 0; i < boats.length; i++) for (let j = i + 1; j < boats.length; j++) {
+    const a = boats[i], b = boats[j], dx = b.x - a.x, dy = b.y - a.y, dd = Math.hypot(dx, dy), min = (a.r + b.r) * 0.9;
+    if (dd >= min) continue;
+    const push = (min - dd) * 0.3, nx = dd > 0.001 ? dx / dd : Math.random() - 0.5, ny = dd > 0.001 ? dy / dd : Math.random() - 0.5;
+    if (canNudge(w, a, a.x - nx * push, a.y - ny * push)) { a.x -= nx * push; a.y -= ny * push; }
+    if (canNudge(w, b, b.x + nx * push, b.y + ny * push)) { b.x += nx * push; b.y += ny * push; }
+  }
+  const units = w.ents.filter(e => isUnitK(e.k) && !e.hidden && !e.fly && !e.sea);
   for (const u of units) {
     const key = Math.floor(u.x) + Math.floor(u.y) * 4096;
     let a = cell.get(key); if (!a) cell.set(key, a = []); a.push(u);
@@ -1725,9 +2064,10 @@ function newAI(P) {
 }
 function aiNewUnit(w, P, u) {
   if (u.k === K.worker) aiAssignWorker(w, P, u);
+  else if (u.k === K.transport) { /* transports wait at the shipyard until a ferry needs them */ }
   else {
     const h = P.home;
-    if (P.ai.raid) applyCmd(w, P.slot, { c: 'move', ids: [u.id], x: P.ai.raid.x, y: P.ai.raid.y, a: true });
+    if (P.ai.raid && (u.fly || isleAt(w, P.ai.raid.x, P.ai.raid.y) === isleAt(w, u.x, u.y))) applyCmd(w, P.slot, { c: 'move', ids: [u.id], x: P.ai.raid.x, y: P.ai.raid.y, a: true });
     else if (h) { const r = aiRally(w, h); applyCmd(w, P.slot, { c: 'move', ids: [u.id], x: r.x + rand(-2, 2), y: r.y + rand(-2, 2), a: true }); }
   }
 }
@@ -1753,7 +2093,7 @@ function aiAssignWorker(w, P, u) {
   const onWood = mine.filter(e => e.res && e.res.tx !== undefined).length;
   const hall = nearestHall(w, P.slot, u.x, u.y);
   const base = hall || u;
-  const m = nearestMine(w, base.x, base.y, 16);
+  const m = nearestMine(w, base.x, base.y, 16, isleAt(w, base.x, base.y));
   // mostly gold, but more on wood whenever wood is running behind
   const share = P.w < P.g * 0.6 ? 0.35 : 0.6;
   // only 3 fit in a mine at once, so more than 5 on gold just means queueing at the door
@@ -1775,7 +2115,8 @@ function aiFindSpot(w, P, k, hall) {
   // keep the lane between hall and mine free, and leave a gap around every building
   const lane = mine ? { x0: Math.min(hall.bx, mine.bx) - 1, y0: Math.min(hall.by, mine.by) - 1, x1: Math.max(hall.bx + 3, mine.bx + 3) + 1, y1: Math.max(hall.by + 3, mine.by + 3) + 1 } : null;
   const tries = [];
-  for (let r = 3; r < 13; r++) for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
+  // shipyards have to reach the shore, which can be a fair walk from the hall
+  for (let r = 3; r < (k === K.shipyard ? 24 : 13); r++) for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
     if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) !== r) continue;
     tries.push([x, y]);
   }
@@ -1790,7 +2131,7 @@ function aiFindSpot(w, P, k, hall) {
     if (w.ents.some(e => e.o === P.slot && isUnitK(e.k) && e.st === 'build' && e.bld && Math.abs(e.bld.tx - tx) < 4 && Math.abs(e.bld.ty - ty) < 4)) continue;
     // and only spots a worker can actually walk to
     const from = freeSpotNear(w, hall.size ? hall : null, tx, ty);
-    findPath(w, from.x + 0.5, from.y + 0.5, rectGoal(w, tx, ty, size), tx, ty, 1500);
+    findPath(w, from.x + 0.5, from.y + 0.5, rectGoal(w, tx, ty, size), tx, ty, k === K.shipyard ? 4000 : 1500);
     if (!pfFound) continue;
     return { tx, ty };
   }
@@ -1813,10 +2154,14 @@ function aiThink(w, P) {
   const mine = w.ents.filter(e => e.o === P.slot);
   const count = (k, built) => mine.filter(e => e.k === k && (!built || e.built)).length;
   const workers = mine.filter(e => e.k === K.worker);
-  const army = mine.filter(e => isUnitK(e.k) && e.k !== K.worker);
+  // (raised skeletons crumble soon, so they don't count as army and never take a seat in a transport)
+  const army = mine.filter(e => isUnitK(e.k) && e.k !== K.worker && !e.sea && !e.raised), navy = mine.filter(e => e.sea);
   const halls = mine.filter(e => e.k === K.hall);
   const hall = halls.find(e => e.built) || halls[0];
   const pending = k => workers.some(u => u.st === 'build' && u.bld && u.bld.k === k) || mine.some(e => e.k === k && !e.built);
+  // no enemy on our island: the war has to go over water
+  const myIsle = hall ? isleAt(w, hall.x, hall.y) : 0;
+  const naval = !!hall && !w.ents.some(e => e.size && e.k !== K.mine && enemies(w, P.slot, e.o) && isleAt(w, e.x, e.y) === myIsle);
   if (!hall) {
     // the hall is gone: rebuild it at home if we still can
     if (workers.length && !pending(K.hall) && P.home) aiBuild(w, P, K.hall, { x: P.home.x, y: P.home.y, bx: P.home.x - 1, by: P.home.y - 1 }, workers);
@@ -1844,10 +2189,22 @@ function aiThink(w, P) {
     if (from) { from.res = null; from.st = 'idle'; if (toWood) { const st = freeSpotNear(w, hall, hall.x, hall.y + 2), t = nearestReachableTree(w, st.x + 0.5, st.y + 0.5); if (t) applyCmd(w, P.slot, { c: 'gather', ids: [from.id], tx: t.tx, ty: t.ty }); } else aiAssignWorker(w, P, from); }
   }
   // the home mine ran dry: put a new hall next to the closest mine
-  if (hall.built && !halls.some(h => nearestMine(w, h.x, h.y, 12)) && !pending(K.hall) && workers.length) {
-    const m = nearestMine(w, hall.x, hall.y, 999);
-    if (m) aiBuild(w, P, K.hall, m, workers);
+  if (hall.built && !halls.some(h => nearestMine(w, h.x, h.y, 12, isleAt(w, h.x, h.y))) && !pending(K.hall) && workers.length) {
+    // on islands that can mean shipping some workers to another island first
+    const m = nearestMine(w, hall.x, hall.y, 999, myIsle) || (naval && aiFreeMine(w, P, hall));
+    if (m) {
+      const mi = isleAt(w, m.x, m.y), there = workers.filter(u => !u.hidden && isleAt(w, u.x, u.y) === mi);
+      if (there.length) aiBuild(w, P, K.hall, m, there);
+      else if (!ai.wferry) aiFerryStart(w, P, workers.filter(u => !u.hidden && !u.carry && u.st !== 'build').slice(0, 5), m, 'wferry');
+    }
   }
+  // workers with nothing left to do on their island go where there is work
+  if (naval && !ai.wferry && w.frame % 200 < 20) {
+    const stuck = workers.filter(u => u.st === 'idle' && !u.hidden);
+    const work = stuck.length >= 3 && halls.find(h => h.built && isleAt(w, h.x, h.y) !== isleAt(w, stuck[0].x, stuck[0].y) && nearestMine(w, h.x, h.y, 12, isleAt(w, h.x, h.y)));
+    if (work) aiFerryStart(w, P, stuck.slice(0, 8), work, 'wferry');
+  }
+  if (ai.wferry) aiFerryTick(w, P, 'wferry');
   // food
   if (P.cap < 100 && P.cap - P.food <= 3 + (army.length > 10 ? 3 : 0) && !pending(K.farm)) aiBuild(w, P, K.farm, hall, workers);
   // buildings in order
@@ -1858,6 +2215,7 @@ function aiThink(w, P) {
     const t = nearestTree(w, hall.x, hall.y, 14);
     aiBuild(w, P, K.mill, t ? { x: t.tx + 0.5, y: t.ty + 0.5, bx: t.tx, by: t.ty } : hall, workers);
   }
+  else if (naval && count(K.barracks, true) && !count(K.shipyard) && !pending(K.shipyard)) aiBuild(w, P, K.shipyard, hall, workers);
   else if (count(K.barracks, true) && !count(K.lab) && army.length >= 3 && w.t > 150 && !pending(K.lab)) aiBuild(w, P, K.lab, hall, workers);
   else if (count(K.lab, true) && count(K.tower) < D.towers && P.g > 250 && !pending(K.tower)) aiBuild(w, P, K.tower, hall, workers);
   else if (rax < D.rax && (count(K.lab, true) || P.g > 700) && P.g > 400 && !pending(K.barracks)) aiBuild(w, P, K.barracks, hall, workers);
@@ -1891,29 +2249,102 @@ function aiThink(w, P) {
   const enemyAir = w.ents.some(e => e.fly && enemies(w, P.slot, e.o));
   // army (once the altar stands, keep enough back to summon the ultimate)
   const altarUp = mine.some(e => e.k === K.altar && e.built) && !hasUnique(w, P.slot, K.ultimate) && army.length >= 6;
-  const keep = altarUp ? DEFS[P.race][K.ultimate] : { g: 0, w: 0 };
+  // at sea without a single transport: save up for one before anything else
+  const noBoat = naval && mine.some(e => e.k === K.shipyard && e.built) && !mine.some(e => e.k === K.transport || (e.queue && e.queue.includes(K.transport)));
+  const keep = noBoat ? DEFS[P.race][K.transport] : altarUp ? DEFS[P.race][K.ultimate] : { g: 0, w: 0 };
   for (const b of mine) if (b.k === K.barracks && b.built && b.queue.length < 2) {
     const r = Math.random();
     const k = lab && r < (enemyAir ? 0.18 : 0.28) ? K.special : r < (enemyAir ? 0.4 : 0.62) ? K.melee : K.ranged;
     const d = DEFS[P.race][k];
     if (P.g - d.g >= keep.g && P.w - d.w >= keep.w && P.food + d.food <= P.cap) applyCmd(w, P.slot, { c: 'train', ids: [b.id], k });
   }
+  // the navy: enough transports to carry the army, and some warships to go with them
+  const yard = mine.find(e => e.k === K.shipyard && e.built);
+  if (yard && naval && yard.queue.length < 2) {
+    const n = k => navy.filter(e => e.k === k).length + mine.reduce((q, b) => q + (b.queue ? b.queue.filter(x => x === k).length : 0), 0);
+    const armyFood = army.reduce((f, u) => f + def(w, u).food, 0);
+    const k = n(K.transport) < clamp(Math.ceil(armyFood / 8), 1, 4) ? K.transport
+      : n(K.warship) < Math.min(5, 1 + ai.wave) ? K.warship : lab && n(K.battleship) < Math.min(2, ai.wave >> 1) ? K.battleship : -1;
+    const d = k >= 0 && DEFS[P.race][k];
+    if (d && canAfford(P, d) && hasReq(w, P.slot, d) && P.food + d.food <= P.cap) applyCmd(w, P.slot, { c: 'train', ids: [yard.id], k });
+  }
+  // lemmings in trouble light their own fuse
+  if (RACES[P.race].fuse) {
+    const lit = army.filter(u => u.fuse === undefined && u.st === 'attack' && u.hp < def(w, u).hp * 0.3 && w.ents.some(e => e.o >= 0 && enemies(w, P.slot, e.o) && !e.size && !e.fly && dist(e.x, e.y, u.x, u.y) < 1.6));
+    if (lit.length) applyCmd(w, P.slot, { c: 'boom', ids: lit.map(u => u.id) });
+  }
   // defend
   if (ai.threat && w.t - ai.threat.t < 6) {
-    const near = army.filter(u => dist(u.x, u.y, ai.threat.x, ai.threat.y) < 22 && (u.st === 'idle' || (u.st === 'move' && !ai.raid)));
+    const near = [...army, ...navy.filter(u => u.k !== K.transport)].filter(u => dist(u.x, u.y, ai.threat.x, ai.threat.y) < 22 && (u.st === 'idle' || (u.st === 'move' && !ai.raid)) && !(ai.ferry && ai.ferry.ids.includes(u.id)));
     if (near.length) applyCmd(w, P.slot, { c: 'move', ids: near.map(u => u.id), x: ai.threat.x, y: ai.threat.y, a: true });
   }
-  // attack
-  if (w.t >= ai.attackAt && army.length >= ai.need) {
+  if (ai.ferry) aiFerryTick(w, P);
+  // attack (with whatever there is, once the money's run dry)
+  const broke = (P.w < 40 || P.g < 80) && w.t > 600 && army.length >= 1;
+  if (w.t >= ai.attackAt && (army.length >= ai.need || broke) && !ai.ferry) {
     ai.wave++; ai.need += D.grow; ai.attackAt = w.t + D.every; ai.foe = -1;
-    aiAttackWith(w, P, army);
+    aiAttackWith(w, P, [...army, ...navy.filter(u => u.k !== K.transport)]);
   } else if (ai.raid) {
     // keep the raid going: idle raiders pick the next thing to knock down
-    const idle = army.filter(u => u.st === 'idle' && dist(u.x, u.y, hall.x, hall.y) > 14);
-    if (idle.length) aiAttackWith(w, P, idle);
+    const idle = [...army, ...navy.filter(u => u.k !== K.transport)].filter(u => u.st === 'idle' && !u.hidden && dist(u.x, u.y, hall.x, hall.y) > 14);
+    if (idle.length) aiAttackWith(w, P, idle, 4);
   }
 }
-function aiAttackWith(w, P, units) {
+// ferry an army across the water: board the transports by the shore, sail, land next to the target
+// (slot 'ferry' is the army, 'wferry' a few workers off to start a base on another island; they don't share boats)
+function aiFerryStart(w, P, riders, target, slot = 'ferry') {
+  const other = P.ai[slot === 'ferry' ? 'wferry' : 'ferry'], busy = other ? other.boats : [];
+  let boats = w.ents.filter(e => e.o === P.slot && e.k === K.transport && e.st !== 'unload' && !busy.includes(e.id));
+  if (slot === 'wferry') boats = boats.slice(0, 1);
+  if (!boats.length || !riders.length) return false;
+  P.ai[slot] = { t0: w.t, stage: 'board', ids: riders.map(u => u.id), boats: boats.map(b => b.id), target: { x: target.x, y: target.y } };
+  aiFerryTick(w, P, slot);
+  return true;
+}
+// the nearest gold mine with no enemy base next to it
+function aiFreeMine(w, P, from) {
+  let best = null, bd = 1e9;
+  for (const m of w.ents) {
+    if (m.k !== K.mine || w.ents.some(e => e.k === K.hall && e.o !== P.slot && dist(e.x, e.y, m.x, m.y) < 12)) continue;
+    const dd = dist(m.x, m.y, from.x, from.y); if (dd < bd) { bd = dd; best = m; }
+  }
+  return best;
+}
+function aiFerryTick(w, P, slot = 'ferry') {
+  const f = P.ai[slot], boats = f.boats.map(id => w.byId.get(id)).filter(b => b && !b.dead);
+  if (!boats.length) { P.ai[slot] = null; return; }
+  const riders = f.ids.map(id => w.byId.get(id)).filter(u => u && !u.dead);
+  if (f.stage === 'board') {
+    // seats already spoken for, per boat
+    const taken = new Map(boats.map(b => [b.id, cargoFood(w, b)]));
+    for (const u of riders) if (u.st === 'board' && taken.has(u.boat)) taken.set(u.boat, taken.get(u.boat) + def(w, u).food);
+    const ashore = riders.filter(u => !u.hidden);
+    for (const u of ashore) {
+      if (u.st === 'board' && taken.has(u.boat)) continue;
+      const d = def(w, u), b = boats.filter(b => taken.get(b.id) + d.food <= def(w, b).seats).sort((a, c) => dist(a.x, a.y, u.x, u.y) - dist(c.x, c.y, u.x, u.y))[0];
+      if (!b) continue;
+      taken.set(b.id, taken.get(b.id) + d.food);
+      applyCmd(w, P.slot, { c: 'board', ids: [u.id], id: b.id });
+    }
+    // off we go once nobody is still on the way to a boat (or the boats are full, or it's taking too long)
+    const full = boats.every(b => cargoFood(w, b) + 1 > def(w, b).seats), boarding = riders.some(u => u.st === 'board');
+    if (!ashore.length || full || (!boarding && riders.some(u => u.hidden)) || w.t - f.t0 > 50) {
+      const loaded = boats.filter(b => b.cAmt > 0);
+      if (!loaded.length) { if (w.t - f.t0 > 50) P.ai[slot] = null; return; }
+      for (const b of loaded) applyCmd(w, P.slot, { c: 'unload', ids: [b.id], x: f.target.x, y: f.target.y });
+      // whoever didn't make it on board stays home
+      for (const u of riders) if (!u.hidden && u.st === 'board') stopUnit(u);
+      f.stage = 'sail'; f.t1 = w.t;
+    }
+  } else if (boats.every(b => b.st !== 'unload') || w.t - f.t1 > 120) {
+    // dropped off: the boats go home, the landing party carries on
+    const h = P.home, yard = w.ents.find(e => e.o === P.slot && e.k === K.shipyard);
+    for (const b of boats) { const sp = yard ? freeSpotNear(w, yard, yard.x, yard.y, sail) : null; if (sp && !b.cAmt) orderMove(w, b, sp.x + 0.5, sp.y + 0.5, false); }
+    if (slot === 'ferry') P.ai.raid = { x: f.target.x, y: f.target.y };
+    P.ai[slot] = null;
+  }
+}
+function aiAttackWith(w, P, units, minFerry = 1) {
   if (!units.length) return;
   const c = units.reduce((a, u) => ({ x: a.x + u.x / units.length, y: a.y + u.y / units.length }), { x: 0, y: 0 });
   // each wave goes after one enemy: the closest, give or take a bit, so a CPU sitting between two
@@ -1923,14 +2354,27 @@ function aiAttackWith(w, P, units) {
     let fd = 1e9; P.ai.foe = -1;
     for (const Q of w.players) if (Q.alive && enemies(w, P.slot, Q.slot) && Q.home) { const dd = dist(Q.home.x, Q.home.y, c.x, c.y) + rand(0, 12); if (dd < fd) { fd = dd; P.ai.foe = Q.slot; } }
   }
+  // the land army's island; buildings on it come first (the foe's, then anyone's), then the foe's across the water
+  const walkers = units.filter(u => !u.sea && !u.fly && !u.hidden), boats = units.filter(u => u.sea), flyers = units.filter(u => u.fly);
+  const cIsle = walkers.length ? isleAt(w, walkers[0].x, walkers[0].y) : 0;
   let best = null, bd = 1e9;
-  for (const pass of [0, 1]) {
-    for (const e of w.ents) if (isBldK(e.k) && enemies(w, P.slot, e.o) && (pass || e.o === P.ai.foe)) { const dd = dist(e.x, e.y, c.x, c.y); if (dd < bd) { bd = dd; best = e; } }
-    if (best) break;
+  for (const e of w.ents) {
+    if (!isBldK(e.k) || e.k === K.bridge || !enemies(w, P.slot, e.o)) continue;
+    const dd = dist(e.x, e.y, c.x, c.y) + (e.o === P.ai.foe ? 0 : 40) + (!cIsle || isleAt(w, e.x, e.y) === cIsle ? 0 : 1000);
+    if (dd < bd) { bd = dd; best = e; }
   }
   if (!best) { P.ai.raid = null; return; }
   P.ai.raid = { x: best.x, y: best.y };
-  const boomers = units.filter(u => def(w, u).kaboom), rest = units.filter(u => !def(w, u).kaboom);
+  const overWater = cIsle && isleAt(w, best.x, best.y) !== cIsle;
+  // warships go for whatever they can shoot from the water, near the target
+  for (const b of boats) {
+    let tb = null, td = 1e9;
+    for (const e of w.ents) if (e.o >= 0 && enemies(w, P.slot, e.o) && !e.hidden && e.k !== K.mine && canHit(w, b, e)) { const dd = dist(e.x, e.y, best.x, best.y); if (dd < td && canReach(w, b, e, def(w, b))) { td = dd; tb = e; } }
+    if (tb) applyCmd(w, P.slot, { c: 'move', ids: [b.id], x: tb.x, y: tb.y, a: true });
+  }
+  if (flyers.length) applyCmd(w, P.slot, { c: 'move', ids: flyers.map(u => u.id), x: best.x, y: best.y, a: true });
+  if (overWater) { if (!P.ai.ferry && walkers.length >= minFerry) aiFerryStart(w, P, walkers, best); return; }
+  const boomers = walkers.filter(u => def(w, u).kaboom), rest = walkers.filter(u => !def(w, u).kaboom);
   if (rest.length) applyCmd(w, P.slot, { c: 'move', ids: rest.map(u => u.id), x: best.x, y: best.y, a: true });
   if (boomers.length) applyCmd(w, P.slot, { c: 'attack', ids: boomers.map(u => u.id), id: best.id });
 }
@@ -2005,7 +2449,7 @@ function paintRegion(w, x0, y0, x1, y1) {
   // 1. ground colour
   for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
     const t = w.ter[y * w.W + x], px = x * TS, py = y * TS;
-    c.fillStyle = t === T_WATER ? th.water : grassCol(w, x, y, t === T_TREE ? -0.12 : 0);
+    c.fillStyle = wet(t) ? th.water : grassCol(w, x, y, t === T_TREE ? -0.12 : 0);
     c.fillRect(px, py, TS, TS);
   }
   // 2. dirt patches with ragged edges, then water depth and shores
@@ -2019,16 +2463,16 @@ function paintRegion(w, x0, y0, x1, y1) {
   }
   for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
     const i = y * w.W + x, d = w.deco[i], px = x * TS, py = y * TS;
-    if (w.ter[i] !== T_WATER) continue;
+    if (!wet(w.ter[i])) continue;
     // deeper (darker) away from the bank
     let bank = 9;
-    for (let r = 1; r <= 2 && bank === 9; r++) for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) if (terAt(w, x + ox, y + oy) !== T_WATER && w.ter[i] === T_WATER) bank = Math.min(bank, r);
+    for (let r = 1; r <= 2 && bank === 9; r++) for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) if (!wet(terAt(w, x + ox, y + oy))) bank = Math.min(bank, r);
     if (bank > 1) { c.fillStyle = shade(th.water, bank > 2 ? -0.22 : -0.1); c.fillRect(px, py, TS, TS); }
     c.fillStyle = th.water2; for (let k = 0; k < 2; k++) c.fillRect(px + ((d + k * 13) % 20), py + 8 + k * 12, 8, 2);
     // sandy bank and a line of foam wherever land touches the water
     const sand = th.snow ? '#e8f2ff' : th === THEMES[2] ? '#6e6a40' : '#d8c48a', foam = 'rgba(255,255,255,.55)';
     const edge = (land, fx, fy, fw, fh) => { if (!land) return; c.fillStyle = sand; c.fillRect(fx, fy, fw, fh); };
-    const n = terAt(w, x, y - 1) !== T_WATER, s = terAt(w, x, y + 1) !== T_WATER, wst = terAt(w, x - 1, y) !== T_WATER, e = terAt(w, x + 1, y) !== T_WATER;
+    const n = !wet(terAt(w, x, y - 1)), s = !wet(terAt(w, x, y + 1)), wst = !wet(terAt(w, x - 1, y)), e = !wet(terAt(w, x + 1, y));
     edge(n, px, py, TS, 5); edge(s, px, py + TS - 5, TS, 5); edge(wst, px, py, 5, TS); edge(e, px + TS - 5, py, 5, TS);
     c.fillStyle = foam;
     if (n) c.fillRect(px, py + 5, TS, 2); if (s) c.fillRect(px, py + TS - 7, TS, 2); if (wst) c.fillRect(px + 5, py, 2, TS); if (e) c.fillRect(px + TS - 7, py, 2, TS);
@@ -2059,13 +2503,25 @@ function paintRegion(w, x0, y0, x1, y1) {
     if (t === T_ROCK) paintRock(c, th, px, py, d);
     else if (t === T_STUMP) paintStump(c, th, px, py, d);
     else if (t === T_TREE) paintTree(c, th, px, py, d);
+    else if (t === T_BRIDGE) paintBridge(c, px, py, terAt(w, x - 1, y) !== T_WATER || terAt(w, x + 1, y) !== T_WATER);
   }
   c.restore();
   const mc = th.mini;
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const t = w.ter[y * w.W + x];
-    w.miniCtx.fillStyle = t === T_WATER ? mc.w : t === T_TREE ? mc.t : t === T_ROCK ? mc.r : t === T_DIRT ? mc.d : mc.g;
+    w.miniCtx.fillStyle = t === T_WATER ? mc.w : t === T_TREE ? mc.t : t === T_ROCK ? mc.r : t === T_DIRT ? mc.d : t === T_BRIDGE ? '#8a6a3e' : mc.g;
     w.miniCtx.fillRect(x, y, 1, 1);
+  }
+}
+// a lemming-built walkway of planks over the water, running across (or along) the tile
+function paintBridge(c, x, y, across) {
+  ell(c, x + 16, y + 20, 15, 7, 'rgba(0,0,0,.25)');
+  if (across) {
+    box(c, x, y + 8, TS, 16, '#8a5a2b'); for (let i = 0; i < 4; i++) box(c, x + 1 + i * 8, y + 9, 6, 14, i % 2 ? '#a06a35' : '#b07a42');
+    box(c, x, y + 7, TS, 2, '#5a3a1e'); box(c, x, y + 23, TS, 2, '#5a3a1e'); box(c, x + 3, y + 22, 3, 7, '#5a3a1e'); box(c, x + 26, y + 22, 3, 7, '#5a3a1e');
+  } else {
+    box(c, x + 8, y, 16, TS, '#8a5a2b'); for (let i = 0; i < 4; i++) box(c, x + 9, y + 1 + i * 8, 14, 6, i % 2 ? '#a06a35' : '#b07a42');
+    box(c, x + 7, y, 2, TS, '#5a3a1e'); box(c, x + 23, y, 2, TS, '#5a3a1e');
   }
 }
 function paintRock(c, th, x, y, d) {
@@ -2239,6 +2695,16 @@ function drawFlyer(c, race, color, u, t, swing, R) {
     ell(c, 8 * u, y0 - 6 * u, 5 * u, 5 * u, '#8a8898'); poly(c, '#5a5868', 5 * u, y0 - 10 * u, 4 * u, y0 - 16 * u, 8 * u, y0 - 11 * u); poly(c, '#5a5868', 10 * u, y0 - 10 * u, 12 * u, y0 - 16 * u, 12 * u, y0 - 9 * u);
     box(c, 9 * u, y0 - 7 * u, 2 * u, 2 * u, '#7dff6a'); box(c, -6 * u, y0 - 1 * u, 12 * u, 2.5 * u, color);
     poly(c, '#6a6878', -2 * u, y0 - 2 * u, -16 * u, y0 - 15 * u + fl * 9 * u, -10 * u, y0 + 2 * u);
+  } else if (race === 'lemmings') {
+    // the Floater: a lemming drifting under a team-coloured umbrella, a brick in hand
+    const sway = Math.sin(t * 2) * 0.15;
+    c.save(); c.translate(0, y0 + 2 * u); c.rotate(sway);
+    c.fillStyle = color; c.beginPath(); c.ellipse(0, -14 * u, 14 * u, 9 * u, 0, Math.PI, 0); c.fill();
+    for (let i = -2; i <= 2; i++) line(c, 0, -14 * u, i * 6.5 * u, -14 * u, shade(color, -0.3), u);
+    line(c, 0, -23 * u, 0, -2 * u, '#3a2a1a', 1.2 * u);
+    c.translate(0, 13 * u);
+    lemming(c, R, u, 0.9, 0, sk => { box(c, -1 * u, -14 * u, 2 * u, 4 * u, sk); if (swing <= 0) box(c, 3 * u, -9 * u, 4 * u, 2.5 * u, '#b85a3a'); });
+    c.restore();
   } else if (race === 'mechs') {
     // the Cloud Computer: a server box hanging under a smug little cloud
     const bob = Math.sin(t * 4) * 1.2 * u;
@@ -2251,6 +2717,78 @@ function drawFlyer(c, race, color, u, t, swing, R) {
   }
 }
 
+// boats: drawn from the waterline (y = 0) up, facing right. Every race builds them its own way.
+const BOAT_LOOK = {
+  humans:   { hull: '#8a5a34', keel: '#5a3a1e', deck: '#c9a06a', sail: '#f4f0e6', mast: '#6a4426' },
+  orcs:     { hull: '#5a3a1e', keel: '#3a2410', deck: '#8a6a3e', sail: '#a03a2a', mast: '#4a2e16', spikes: true },
+  goblins:  { hull: '#8a8790', keel: '#5a5860', deck: '#a0522d', sail: null, mast: '#555', stack: true, rivets: true },
+  funguys:  { hull: null, keel: '#a8957a', deck: '#efe3c8', sail: null, mast: '#efe3c8', shroom: true },
+  bugs:     { hull: '#5d9a3a', keel: '#3d6a2a', deck: '#7dba4a', sail: null, mast: '#3a3328', leaf: true },
+  undead:   { hull: '#3a3440', keel: '#24202a', deck: '#4a4458', sail: '#c9d1b8', mast: '#2a2430', ghost: true },
+  mechs:    { hull: '#8a96a2', keel: '#5a626e', deck: '#b8c4cf', sail: null, mast: '#4a5562', tech: true },
+  lemmings: { hull: '#8a5a2b', keel: '#5a3a1e', deck: '#b07a42', sail: '#e8dcc0', mast: '#6a4426', logs: true },
+};
+function drawBoat(c, race, k, color, u, t, swing, R) {
+  const L = BOAT_LOOK[race] || BOAT_LOOK.humans, big = k === K.battleship ? 1.35 : k === K.transport ? 1.05 : 0.95;
+  const len = 20 * u * big, ht = 6 * u * big, bob = Math.sin(t * 3) * 0.8 * u;
+  ell(c, 0, 1.5 * u, len * 1.1, 3.5 * u * big, 'rgba(255,255,255,.22)');
+  c.save(); c.translate(0, bob);
+  // the hull
+  if (L.logs && k === K.transport) {
+    for (let i = 0; i < 4; i++) { box(c, -len, -ht + i * ht * 0.5 - 2 * u, len * 2, ht * 0.5, i % 2 ? L.hull : L.deck); ell(c, len, -ht + i * ht * 0.5 - 2 * u + ht * 0.25, 1.5 * u, ht * 0.25, '#c9a06a'); }
+    box(c, -len * 0.6, -ht - 3 * u, 2 * u, ht + 3 * u, L.keel); box(c, len * 0.5, -ht - 3 * u, 2 * u, ht + 3 * u, L.keel);
+  } else if (L.leaf) {
+    poly(c, L.keel, -len, -ht * 0.4, -len * 0.5, ht * 0.3, len * 0.6, ht * 0.3, len * 1.15, -ht * 0.6, len * 0.2, -ht * 0.9, -len * 0.6, -ht * 0.8);
+    poly(c, L.hull, -len * 0.9, -ht * 0.5, -len * 0.4, 0, len * 0.6, 0, len * 1.05, -ht * 0.6, len * 0.2, -ht * 0.95, -len * 0.6, -ht * 0.9);
+    line(c, -len * 0.8, -ht * 0.55, len * 0.95, -ht * 0.6, '#9bdc5a', u);
+  } else if (L.shroom) {
+    // an upside-down mushroom cap for a hull
+    c.fillStyle = color; c.beginPath(); c.ellipse(0, -ht * 0.9, len, ht * 1.1, 0, 0, Math.PI); c.fill();
+    for (const [dx, dy, r] of [[-0.5, 0.3, 0.14], [0.1, 0.6, 0.12], [0.55, 0.25, 0.1]]) ell(c, dx * len, -ht * 0.9 + dy * ht, r * len * 0.8, r * len * 0.5, '#fff');
+    box(c, -len, -ht * 1.1, len * 2, 2 * u, L.deck);
+  } else {
+    const bow = L.tech ? len * 1.2 : len * 1.15;
+    poly(c, L.keel, -len, -ht, bow, -ht, len * 0.75, ht * 0.15, -len * 0.85, ht * 0.15);
+    poly(c, L.hull, -len, -ht, bow, -ht, len * 0.8, -ht * 0.15, -len * 0.9, -ht * 0.15);
+    box(c, -len, -ht - 2 * u, len * 2 + (bow - len) * 0.5, 2.5 * u, L.deck);
+    box(c, -len * 0.9, -ht * 0.55, len * 1.7, 1.6 * u, color);
+    if (L.rivets) for (let i = 0; i < 6; i++) ell(c, -len * 0.8 + i * len * 0.32, -ht * 0.35, 0.9 * u, 0.9 * u, '#444');
+    if (L.spikes) for (let i = 0; i < 4; i++) poly(c, '#e8e0cc', -len * 0.7 + i * len * 0.45, -ht - 2 * u, -len * 0.6 + i * len * 0.45, -ht - 6 * u, -len * 0.5 + i * len * 0.45, -ht - 2 * u);
+    if (L.ghost) for (let i = 0; i < 3; i++) ell(c, -len * 0.5 + i * len * 0.5, -ht * 0.6, 1.4 * u, 1.4 * u, '#7dff6a');
+    if (L.tech && k === K.transport) { ell(c, 0, 0, len * 1.05, 2.5 * u, '#22262c'); box(c, -len * 0.95, -ht - 9 * u, 7 * u, 7 * u, '#4a5562'); line(c, -len * 0.95 + 3.5 * u, -ht - 9 * u, -len * 0.95 + 3.5 * u + Math.cos(t * 30) * 3 * u, -ht - 5.5 * u, '#cfd6de', u); }
+  }
+  const deckY = -ht - 2 * u;
+  // what's on deck
+  if (k === K.transport) {
+    // crates and a little cabin, or passengers' heads poking out
+    box(c, -len * 0.5, deckY - 6 * u, 8 * u, 6 * u, L.shroom ? '#d8c8a6' : '#a07a40'); box(c, -len * 0.5 + 1 * u, deckY - 5 * u, 6 * u, 1 * u, 'rgba(0,0,0,.3)');
+    box(c, len * 0.1, deckY - 5 * u, 6 * u, 5 * u, color); box(c, len * 0.1 + 1 * u, deckY - 4 * u, 4 * u, 1 * u, 'rgba(0,0,0,.25)');
+    if (L.logs) for (let i = 0; i < 3; i++) { ell(c, -len * 0.3 + i * 6 * u, deckY - 9 * u, 2.5 * u, 2.5 * u, R.skin); ell(c, -len * 0.3 + i * 6 * u, deckY - 11 * u, 2.8 * u, 1.6 * u, R.hair || '#44d03c'); }
+  } else {
+    // mast and sail, or a turret, and a gun that kicks when it fires
+    const mx = k === K.battleship ? -len * 0.35 : -len * 0.15, mh = (k === K.battleship ? 30 : 24) * u;
+    if (L.stack) { box(c, mx - 3 * u, deckY - 12 * u, 6 * u, 12 * u, '#555'); box(c, mx - 3 * u, deckY - 12 * u, 6 * u, 2 * u, color); const q = (t * 0.8) % 1; ell(c, mx + q * 4 * u, deckY - 14 * u - q * 10 * u, (2 + q * 4) * u, (2 + q * 4) * u, `rgba(190,190,200,${0.55 * (1 - q)})`); }
+    else if (L.tech || L.leaf || L.shroom) {
+      box(c, mx - 6 * u, deckY - 8 * u, 12 * u, 8 * u, L.shroom ? '#efe3c8' : L.leaf ? '#2a241c' : '#5a626e');
+      if (L.shroom) { c.fillStyle = color; c.beginPath(); c.ellipse(mx, deckY - 8 * u, 9 * u, 6 * u, 0, Math.PI, 0); c.fill(); ell(c, mx - 3 * u, deckY - 11 * u, 1.5 * u, 1.2 * u, '#fff'); }
+      if (L.leaf) { ell(c, mx, deckY - 8 * u, 6 * u, 5 * u, '#3a3328'); box(c, mx + 3 * u, deckY - 10 * u, 2 * u, 2 * u, '#ff4f4f'); }
+      if (L.tech) { box(c, mx - 1 * u, deckY - 14 * u, 2 * u, 6 * u, '#4a5562'); ell(c, mx, deckY - 15 * u, 4 * u, 1.5 * u, '#b8c4cf'); box(c, mx - 5 * u, deckY - 6 * u, 10 * u, 1.5 * u, color); }
+    } else {
+      line(c, mx, deckY, mx, deckY - mh, L.mast, 2 * u);
+      const flap = Math.sin(t * 2) * u;
+      if (L.ghost) { poly(c, L.sail, mx + u, deckY - mh + 2 * u, mx + 14 * u + flap, deckY - mh * 0.7, mx + 10 * u, deckY - mh * 0.45, mx + 13 * u + flap, deckY - mh * 0.3, mx + u, deckY - 4 * u); ell(c, mx + 6 * u, deckY - mh * 0.6, 1.5 * u, 2 * u, L.keel); }
+      else { poly(c, L.sail, mx + u, deckY - mh + 2 * u, mx + 15 * u + flap, deckY - mh * 0.5, mx + u, deckY - 4 * u); box(c, mx + u, deckY - mh * 0.55, 10 * u, 2 * u, color); }
+      poly(c, color, mx, deckY - mh, mx + 7 * u, deckY - mh + 2 * u, mx, deckY - mh + 4 * u);
+      if (k === K.battleship) { const m2 = len * 0.35; line(c, m2, deckY, m2, deckY - mh * 0.8, L.mast, 2 * u); poly(c, L.sail, m2 + u, deckY - mh * 0.8 + 2 * u, m2 + 12 * u + flap, deckY - mh * 0.45, m2 + u, deckY - 4 * u); }
+    }
+    // the gun
+    const gx = k === K.battleship ? len * 0.5 : len * 0.55, gl = (k === K.battleship ? 12 : 8) * u - swing * 3 * u;
+    box(c, gx - 3 * u, deckY - 4 * u, 6 * u, 4 * u, '#3a3a40'); box(c, gx, deckY - 3.5 * u, gl, 2.5 * u * (k === K.battleship ? 1.4 : 1), '#2a2a30');
+    if (swing > 0) ell(c, gx + gl + 2 * u, deckY - 2.5 * u, 3 * u, 3 * u, 'rgba(255,220,120,.9)');
+    if (L.logs && k === K.warship) { ell(c, -len * 0.75, deckY + 1 * u, 5 * u, 5 * u, L.keel); for (let i = 0; i < 4; i++) { const a = t * 6 + i * 1.57; line(c, -len * 0.75, deckY + u, -len * 0.75 + Math.cos(a) * 5 * u, deckY + u + Math.sin(a) * 5 * u, '#c9a06a', 1.2 * u); } }
+  }
+  c.restore();
+}
 // siege engines: drawn from the ground up, facing right
 function drawSiege(c, race, color, u, t, swing, walkPh, R) {
   const wheel = (x, r) => { ell(c, x, -r, r, r, '#4a2e16'); ell(c, x, -r, r * 0.65, r * 0.65, '#7a5530'); const a = walkPh * 2; line(c, x - Math.cos(a) * r * 0.6, -r - Math.sin(a) * r * 0.6, x + Math.cos(a) * r * 0.6, -r + Math.sin(a) * r * 0.6, '#4a2e16', u); ell(c, x, -r, r * 0.2, r * 0.2, '#333'); };
@@ -2305,6 +2843,14 @@ function drawSiege(c, race, color, u, t, swing, walkPh, R) {
     for (const [x, y] of [[-10, -15], [-4, -17], [3, -15], [-7, -19]]) { ell(c, x * u, y * u, 3.5 * u, 3 * u, '#c9d1b8'); box(c, x * u - u, y * u - u, 1.2 * u, 1.2 * u, '#222'); }
     c.save(); c.translate(6 * u, -14 * u); c.rotate(-0.4 - swing * 1.3); line(c, 0, 0, 16 * u, -8 * u, '#3a2a2a', 3 * u); ell(c, 17 * u, -9 * u, 4 * u, 3 * u, '#3a2a2a'); c.restore();
     box(c, -16 * u, -10 * u, 32 * u, 2 * u, color);
+  } else if (race === 'lemmings') {
+    // the Digger: a lemming in a mine cart with a drill on the front and rocks to throw
+    box(c, -14 * u, -12 * u, 24 * u, 9 * u, '#6a4426'); box(c, -14 * u, -12 * u, 24 * u, 2 * u, color); wheel(-9 * u, 3.5 * u); wheel(6 * u, 3.5 * u);
+    for (const [x, y] of [[-10, -14], [-6, -15], [-2, -14]]) ell(c, x * u, y * u, 2.5 * u, 2 * u, '#8a8790');
+    c.save(); c.translate(10 * u, -8 * u); c.rotate(Math.sin(t * 30) * 0.05);
+    poly(c, '#b8bec8', 0, -4 * u, 12 * u, 0, 0, 4 * u); for (let i = 0; i < 3; i++) line(c, i * 3 * u, -3 * u + i * u, i * 3 * u + 2 * u, 3 * u - i * u, '#7a8088', u);
+    c.restore();
+    c.save(); c.translate(2 * u, -12 * u); lemming(c, R, u, 0.8, 0, sk => { c.save(); c.translate(0, -9 * u); c.rotate(-0.8 + swing * 1.5); box(c, 0, -1 * u, 5 * u, 2 * u, R.robe); c.restore(); }); c.restore();
   } else if (race === 'mechs') {
     // DDoS cannon: tank tracks, a boxy turret and a long coil barrel
     box(c, -17 * u, -8 * u, 34 * u, 8 * u, '#3a404a'); for (let i = 0; i < 5; i++) ell(c, (-13 + i * 6.5) * u, -4 * u, 3 * u, 3 * u, '#5a626e');
@@ -2387,6 +2933,16 @@ function drawUltimate(c, race, color, u, t, swing, walkPh, R) {
     line(c, 0, 20 * u, 0, -24 * u, '#c9d1b8', 2.5 * u); poly(c, '#9fe8ff', 0, -34 * u, 5 * u, -26 * u, 0, -20 * u, -5 * u, -26 * u);
     c.restore();
     for (let i = 0; i < 3; i++) { const a = t * 2 + i * 2.1; ell(c, Math.cos(a) * 16 * u, -24 * u + Math.sin(a) * 6 * u, 1.6 * u, 1.6 * u, 'rgba(159,232,255,.8)'); }
+  } else if (race === 'lemmings') {
+    // Armageddon: a huge lemming holding up a big red button on a box. Do not press.
+    c.save(); c.translate(0, 0);
+    lemming(c, R, u, 2.6, walkPh, sk => {
+      box(c, 2 * u, -30 * u, 12 * u, 10 * u, '#4a4a52'); box(c, 2 * u, -30 * u, 12 * u, 2 * u, color);
+      ell(c, 8 * u, -31 * u, 4.5 * u, 2.5 * u, '#8a1010'); ell(c, 8 * u, -32 * u - swing * 1.5 * u, 4 * u, 2 * u, (t * 3 | 0) % 2 ? '#ff4f4f' : '#ff7a6a');
+      box(c, 0, -26 * u, 3 * u, 4 * u, sk); box(c, 13 * u, -26 * u, 3 * u, 4 * u, sk);
+    });
+    box(c, -9 * u, -18 * u, 18 * u, 3 * u, color);
+    c.restore();
   } else if (race === 'mechs') {
     // the Singularity: a huge walking mech with a glowing core, a fist and a plasma cannon arm
     box(c, -11 * u + walkPh * 3 * u, -18 * u, 7 * u, 18 * u, '#5a626e'); box(c, 4 * u - walkPh * 3 * u, -18 * u, 7 * u, 18 * u, '#5a626e');
@@ -2404,6 +2960,16 @@ function drawUltimate(c, race, color, u, t, swing, walkPh, R) {
     c.restore();
   }
 }
+// one lemming: green hair, blue robe, pale face and hands. sc scales it, arms() draws what its hands do.
+function lemming(c, R, u, sc, walkPh, arms) {
+  const sk = R.skin, robe = R.robe, hair = R.hair;
+  box(c, (-3 + walkPh * 1.5) * u * sc, -3 * u * sc, 2.6 * u * sc, 3 * u * sc, sk); box(c, (0.6 - walkPh * 1.5) * u * sc, -3 * u * sc, 2.6 * u * sc, 3 * u * sc, sk);
+  box(c, -3.6 * u * sc, -11.5 * u * sc, 7.2 * u * sc, 9 * u * sc, robe); box(c, -3.6 * u * sc, -11.5 * u * sc, 1.6 * u * sc, 9 * u * sc, shade(robe, -0.25));
+  ell(c, 0.6 * u * sc, -14.5 * u * sc, 3.4 * u * sc, 3.4 * u * sc, sk);
+  ell(c, -0.6 * u * sc, -16.6 * u * sc, 4 * u * sc, 2.6 * u * sc, hair); box(c, -4.4 * u * sc, -17 * u * sc, 3.4 * u * sc, 5 * u * sc, hair);
+  box(c, 2.2 * u * sc, -15.5 * u * sc, 1.2 * u * sc, 1.4 * u * sc, '#222'); box(c, 3.6 * u * sc, -14 * u * sc, 1.2 * u * sc, 1 * u * sc, shade(sk, -0.2));
+  if (arms) arms(sk);
+}
 // px, py = where the feet touch the ground; s = pixels per tile
 function drawUnit(c, race, k, color, px, py, s, a) {
   const u = s / 32, R = RACES[race], t = a.t || 0;
@@ -2411,9 +2977,10 @@ function drawUnit(c, race, k, color, px, py, s, a) {
   const swing = a.atk > 0 ? Math.sin((1 - a.atk / 0.3) * Math.PI) : 0;
   c.save(); c.translate(px, py); if (a.face < 0) c.scale(-1, 1);
   const big = k === K.special ? 1.35 : k === K.siege ? 1.6 : k === K.ultimate ? 2 : 1, gob = race === 'goblins' ? 0.85 : 1, sc = big * gob;
-  if (!a.noShadow) ell(c, 0, 0, 9 * u * sc * (k === K.special && race === 'humans' ? 1.5 : 1), 3 * u * sc, 'rgba(0,0,0,.3)');
+  if (!a.noShadow && !isBoatK(k)) ell(c, 0, 0, 9 * u * sc * (k === K.special && race === 'humans' ? 1.5 : 1), 3 * u * sc, 'rgba(0,0,0,.3)');
   c.translate(0, -bob);
   const skin = R.skin, eye = '#111';
+  if (isBoatK(k)) { drawBoat(c, race, k, color, u, t, swing, R); c.restore(); return; }
   if (k === K.flyer) { drawFlyer(c, race, color, u, t, swing, R); c.restore(); return; }
   if (k === K.siege) { drawSiege(c, race, color, u, t, swing, walkPh, R); c.restore(); return; }
   if (k === K.ultimate) { drawUltimate(c, race, color, u, t, swing, walkPh, R); c.restore(); return; }
@@ -2577,6 +3144,27 @@ function drawUnit(c, race, k, color, px, py, s, a) {
         ell(c, -5 * u, -11 * u, 4 * u, 5 * u, color); box(c, -6 * u, -12 * u, 2 * u, 2 * u, bone);
       }
     }
+  } else if (race === 'lemmings') {
+    if (k === K.special) {
+      // the Blocker: feet planted, arms straight out, team sash
+      lemming(c, R, u, 1.25, 0, sk => { box(c, -13 * u, -11 * u, 26 * u, 2.6 * u, R.robe); ell(c, -13 * u, -10 * u, 2 * u, 2 * u, sk); ell(c, 13 * u, -10 * u, 2 * u, 2 * u, sk); });
+      box(c, -4.5 * u, -9 * u, 9 * u, 2 * u, color);
+    } else if (k === K.worker) {
+      lemming(c, R, u, 0.9, walkPh, sk => { box(c, -1 * u, -9 * u, 2 * u, 2 * u, sk); });
+      box(c, -3.2 * u, -7 * u, 6.4 * u, 1.4 * u, color);
+      // a hard hat and a trowel; carrying bricks or gold
+      ell(c, 0.4 * u, -16.8 * u, 4 * u, 2 * u, '#ffd23f');
+      tool(9, '#7a5530', (x, y) => poly(c, '#b8bec8', x - 3 * u, y, x + 3 * u, y, x, y - 4 * u));
+      carry();
+    } else if (k === K.melee) {
+      // the Basher punches, fists swinging
+      lemming(c, R, u, 1, walkPh, sk => { c.save(); c.translate(1 * u, -9 * u); c.rotate(-0.3 + swing * 1.3); box(c, 0, -1.2 * u, 7 * u, 2.4 * u, R.robe); ell(c, 8 * u, 0, 2.2 * u, 2.2 * u, sk); c.restore(); });
+      box(c, -3.6 * u, -6 * u, 7.2 * u, 1.6 * u, color);
+    } else if (k === K.ranged) {
+      // the Bomb Tosser, with a lit bomb ready
+      lemming(c, R, u, 1, walkPh, sk => { c.save(); c.translate(1 * u, -10 * u); c.rotate(-1.2 + swing * 1.8); box(c, 0, -1 * u, 6 * u, 2 * u, R.robe); ell(c, 7.5 * u, 0, 3 * u, 3 * u, '#222'); line(c, 7.5 * u, -3 * u, 9 * u, -5 * u, '#c9a06a', 0.8 * u); ell(c, 9.3 * u, -5.4 * u, 1 * u, 1 * u, (t * 12 | 0) % 2 ? '#ffd23f' : '#ff7a2a'); c.restore(); });
+      box(c, -3.6 * u, -6 * u, 7.2 * u, 1.6 * u, color);
+    }
   } else if (race === 'mechs') {
     const steel = '#9aa7b4', dark = '#4a5562', joint = '#2e343c';
     if (k === K.special) {
@@ -2652,7 +3240,7 @@ const unitCache = new Map();
 const FLY_LIFT = 0.75;   // how high flyers hover above their shadow, in tiles
 const WALK_PERIOD = Math.PI * 2 / 14;
 // units that keep moving while they stand still (a lit fuse, buzzing wings, a glitching bug)
-const idleAnim = (race, k) => k === K.flyer || (race === 'goblins' && k === K.special) || (race === 'bugs' && (k === K.ranged || k === K.special));
+const idleAnim = (race, k) => k === K.flyer || isBoatK(k) || (race === 'goblins' && k === K.special) || (race === 'bugs' && (k === K.ranged || k === K.special));
 function unitFrame(race, k, color, s, a) {
   const f = (a.mv || a.chop || idleAnim(race, k)) ? Math.floor(a.t / WALK_PERIOD * 8) & 7 : 0;
   const ab = a.atk > 0.2 ? 1 : a.atk > 0.1 ? 2 : a.atk > 0 ? 3 : 0;
@@ -2672,7 +3260,7 @@ function unitFrame(race, k, color, s, a) {
 function drawUnitFast(c, race, k, color, px, py, s, a) {
   const R = RACES[race], u = s / 32, sc = (k === K.special ? 1.35 : k === K.siege ? 1.6 : k === K.ultimate ? 2 : 1) * (race === 'goblins' && k !== K.ultimate ? 0.85 : 1);
   if (k === K.flyer) { ell(c, px, py, 12 * u, 4 * u, 'rgba(0,0,0,.22)'); py -= FLY_LIFT * s + Math.sin(a.t * 3) * 2 * u; }
-  else ell(c, px, py, 9 * u * sc * (k === K.special && race === 'humans' ? 1.5 : 1), 3 * u * sc, 'rgba(0,0,0,.3)');
+  else if (!isBoatK(k)) ell(c, px, py, 9 * u * sc * (k === K.special && race === 'humans' ? 1.5 : 1), 3 * u * sc, 'rgba(0,0,0,.3)');
   const spr = unitFrame(race, k, color, s, a);
   const w = spr.width / spr.dpr, h = spr.height / spr.dpr;
   if (a.face < 0) { c.save(); c.translate(px, py); c.scale(-1, 1); c.drawImage(spr, -spr.ox, -spr.oy, w, h); c.restore(); }
@@ -2715,6 +3303,11 @@ function paintWall(c, race, color, W, u) {
     for (let i = 0; i < 4; i++) { const x = W * (0.1 + i * 0.26); box(c, x - 2 * u, W * 0.2, 4 * u, W * 0.75, '#e8eadf'); ell(c, x - 2 * u, W * 0.2, 2.5 * u, 2.5 * u, '#e8eadf'); ell(c, x + 2 * u, W * 0.2, 2.5 * u, 2.5 * u, '#e8eadf'); }
     box(c, 0, W * 0.45, W, W * 0.07, '#d0d2c4'); box(c, 0, W * 0.75, W, W * 0.07, color);
     ell(c, W * 0.5, W * 0.1, 5 * u, 4.5 * u, '#e8eadf'); box(c, W * 0.5 - 3 * u, W * 0.08, 2 * u, 2 * u, '#1a1420'); box(c, W * 0.5 + 1 * u, W * 0.08, 2 * u, 2 * u, '#1a1420');
+  } else if (race === 'lemmings') {
+    // a brick wall, the kind lemmings walk straight into
+    box(c, 0, W * 0.15, W, W * 0.83, '#a8503c');
+    for (let r = 0; r < 5; r++) { const y = W * (0.15 + r * 0.166); line(c, 0, y, W, y, '#6a3024', u); for (const x of r % 2 ? [0.25, 0.75] : [0.5]) line(c, W * x, y, W * x, y + W * 0.166, '#6a3024', u); }
+    box(c, 0, W * 0.6, W, W * 0.07, color);
   } else if (race === 'mechs') {
     // paywall: a riveted steel slab with a coin slot
     box(c, W * 0.04, W * 0.1, W * 0.92, W * 0.88, '#8a96a2'); box(c, W * 0.04, W * 0.1, W * 0.92, W * 0.08, '#a8b4c0');
@@ -2767,6 +3360,12 @@ function paintMill(c, race, color, W, u) {
     box(c, W * 0.28, W * 0.62, W * 0.14, W * 0.3, '#1a1420'); box(c, W * 0.14, W * 0.48, W * 0.08, W * 0.08, '#7dff6a');
     ell(c, W * 0.8, W * 0.62, W * 0.16, W * 0.16, '#8a8898'); ell(c, W * 0.8, W * 0.62, W * 0.05, W * 0.05, '#333');
     logPile(c, W * 0.62, W * 0.95, u, 2); box(c, W * 0.66, W * 0.68, W * 0.2, 2.5 * u, '#e8eadf');
+  } else if (race === 'lemmings') {
+    // brickworks: a round kiln with a chimney, and stacks of fresh bricks
+    c.fillStyle = '#a8503c'; c.beginPath(); c.ellipse(W * 0.35, W * 0.92, W * 0.3, W * 0.5, 0, Math.PI, 0); c.fill();
+    ell(c, W * 0.35, W * 0.78, W * 0.1, W * 0.12, '#ff9a3c'); box(c, W * 0.25, W * 0.78, W * 0.2, W * 0.14, '#2a1a0a');
+    box(c, W * 0.5, W * 0.1, W * 0.1, W * 0.4, '#8a4030'); box(c, W * 0.08, W * 0.55, W * 0.54, W * 0.05, color);
+    for (let r = 0; r < 3; r++) for (let i = 0; i < 3 - r; i++) box(c, W * (0.66 + i * 0.1 + r * 0.05), W * (0.86 - r * 0.08), W * 0.09, W * 0.07, i % 2 ? '#b85a3a' : '#c86a4a');
   } else if (race === 'mechs') {
     // recycling plant: a shredder with a hopper on top, and a conveyor belt out to the log pile
     box(c, W * 0.06, W * 0.38, W * 0.56, W * 0.54, '#8a96a2'); box(c, W * 0.06, W * 0.38, W * 0.56, W * 0.06, '#a8b4c0');
@@ -2777,11 +3376,43 @@ function paintMill(c, race, color, W, u) {
     logPile(c, W * 0.66, W * 0.82, u, 2);
   }
 }
+// shipyards: a boathouse on the shore, a jetty and a crane, in each race's own colours
+const YARD_LOOK = {
+  humans: ['#e3cf9f', '#8a8790'], orcs: ['#7a5530', '#5a3a1e'], goblins: ['#8a8790', '#a0522d'], funguys: ['#efe3c8', '#a8957a'],
+  bugs: ['#7d6342', '#5d9a3a'], undead: ['#4a4458', '#3e3a4c'], mechs: ['#a8b4c0', '#5a626e'], lemmings: ['#b07a42', '#a8503c'],
+};
+function paintShipyard(c, race, color, W, u) {
+  const [wall, base] = YARD_LOOK[race] || YARD_LOOK.humans;
+  // the jetty, out over the water
+  box(c, W * 0.55, W * 0.72, W * 0.45, W * 0.12, '#8a6a3e'); for (let i = 0; i < 5; i++) line(c, W * (0.58 + i * 0.09), W * 0.72, W * (0.58 + i * 0.09), W * 0.84, '#6a4a2a', u);
+  for (const x of [0.6, 0.95]) box(c, W * x - 1.5 * u, W * 0.82, 3 * u, W * 0.14, '#5a3a1e');
+  // the boathouse with its big doors and a hull peeking out
+  box(c, W * 0.04, W * 0.42, W * 0.56, W * 0.52, base); box(c, W * 0.07, W * 0.45, W * 0.5, W * 0.46, wall);
+  poly(c, color, W * 0.0, W * 0.45, W * 0.32, W * 0.12, W * 0.64, W * 0.45); poly(c, shade(color, -0.35), W * 0.32, W * 0.12, W * 0.64, W * 0.45, W * 0.32, W * 0.45);
+  c.fillStyle = '#1a1208'; c.beginPath(); c.ellipse(W * 0.32, W * 0.94, W * 0.17, W * 0.32, 0, Math.PI, 0); c.fill();
+  poly(c, '#8a5a34', W * 0.18, W * 0.8, W * 0.46, W * 0.8, W * 0.42, W * 0.92, W * 0.22, W * 0.92);
+  // anchor sign
+  const ax = W * 0.32, ay = W * 0.3; c.strokeStyle = '#dfe6ee'; c.lineWidth = 1.6 * u;
+  c.beginPath(); c.moveTo(ax, ay - 5 * u); c.lineTo(ax, ay + 5 * u); c.moveTo(ax - 3 * u, ay - 2 * u); c.lineTo(ax + 3 * u, ay - 2 * u); c.arc(ax, ay + 1 * u, 4 * u, 0.3, Math.PI - 0.3); c.stroke();
+  // the crane
+  line(c, W * 0.86, W * 0.72, W * 0.86, W * 0.06, '#5a3a1e', 2.5 * u); line(c, W * 0.86, W * 0.1, W * 0.62, W * 0.1, '#5a3a1e', 2 * u);
+  line(c, W * 0.66, W * 0.1, W * 0.66, W * 0.3, '#ccc', 0.8 * u); box(c, W * 0.63, W * 0.3, W * 0.06, W * 0.05, '#555');
+  if (race === 'goblins' || race === 'mechs') box(c, W * 0.86 - 3 * u, W * 0.06, 6 * u, 4 * u, '#ffd23f');
+  if (race === 'funguys') ell(c, W * 0.86, W * 0.06, 5 * u, 3 * u, color);
+  if (race === 'undead') box(c, W * 0.14, W * 0.55, W * 0.06, W * 0.06, '#7dff6a');
+}
 function paintBuilding(c, race, k, color, W, s, variant) {
   const u = s / 32, kind = KINDS[k], dk = shade(color, -0.35);
   if (!c.noShadow) ell(c, W / 2, W * 0.92, W * 0.48, W * 0.12, 'rgba(0,0,0,.3)');
   if (kind === 'mill') { paintMill(c, race, color, W, u); return; }
   if (kind === 'wall') { paintWall(c, race, color, W, u); return; }
+  if (kind === 'shipyard') { paintShipyard(c, race, color, W, u); return; }
+  if (kind === 'bridge') {
+    // the planks are part of the ground once it's built; the bridge itself is two rope posts in team colours
+    for (const x of [0.12, 0.88]) { box(c, W * x - 2 * u, W * 0.3, 4 * u, W * 0.6, '#5a3a1e'); ell(c, W * x, W * 0.3, 2.5 * u, 1.5 * u, color); }
+    c.strokeStyle = color; c.lineWidth = 1.2 * u; c.beginPath(); c.moveTo(W * 0.12, W * 0.35); c.quadraticCurveTo(W * 0.5, W * 0.55, W * 0.88, W * 0.35); c.stroke();
+    return;
+  }
   if (kind === 'mine') {
     poly(c, '#6d6a72', W * 0.04, W * 0.95, W * 0.12, W * 0.35, W * 0.4, W * 0.12, W * 0.7, W * 0.2, W * 0.95, W * 0.55, W * 0.98, W * 0.95);
     poly(c, '#8a8790', W * 0.15, W * 0.45, W * 0.4, W * 0.17, W * 0.6, W * 0.3, W * 0.35, W * 0.55);
@@ -2967,6 +3598,54 @@ function paintBuilding(c, race, k, color, W, s, variant) {
     for (const x of [0.3, 0.62]) { box(c, W * x, W * (0.95 - 0.42 * tall), W * 0.08, W * 0.12, glow); }
     if (kind === 'hall') { ell(c, W * 0.5, W * 0.18, 6 * u, 5.5 * u, '#e8eadf'); box(c, W * 0.5 - 3 * u, W * 0.17, 2 * u, 2 * u, '#1a1420'); box(c, W * 0.5 + 1 * u, W * 0.17, 2 * u, 2 * u, '#1a1420'); }
     emblem();
+  } else if (race === 'lemmings') {
+    const wood = '#b07a42', dark = '#6a4426', hut = (x, y, w2, h) => {
+      box(c, x, y + h * 0.4, w2, h * 0.6, wood); for (let i = 1; i < 6; i++) line(c, x, y + h * 0.4 + i * h * 0.1, x + w2, y + h * 0.4 + i * h * 0.1, 'rgba(0,0,0,.18)', u);
+      poly(c, color, x - w2 * 0.06, y + h * 0.44, x + w2 / 2, y, x + w2 * 1.06, y + h * 0.44); poly(c, shade(color, -0.35), x + w2 / 2, y, x + w2 * 1.06, y + h * 0.44, x + w2 / 2, y + h * 0.44);
+      box(c, x + w2 * 0.4, y + h * 0.7, w2 * 0.2, h * 0.3, '#3a2410');
+    };
+    if (kind === 'hall') {
+      // the Entrance Hatch: a trapdoor box on stilts that lemmings drop out of
+      for (const x of [0.12, 0.84]) box(c, W * x, W * 0.35, W * 0.06, W * 0.6, dark);
+      box(c, W * 0.06, -W * 0.05, W * 0.88, W * 0.45, wood); box(c, W * 0.06, -W * 0.05, W * 0.88, W * 0.06, dark); box(c, W * 0.06, W * 0.12, W * 0.88, W * 0.05, color);
+      for (const x of [0.2, 0.5]) { box(c, W * x, W * 0.4, W * 0.3, W * 0.05, dark); poly(c, '#8a5a2b', W * x, W * 0.42, W * (x + 0.06), W * 0.62, W * (x + 0.3), W * 0.45); }
+      for (let i = 0; i < 4; i++) box(c, W * (0.15 + i * 0.2), W * 0.22, W * 0.1, W * 0.08, '#3a2410');
+      ell(c, W * 0.5, W * 0.03, W * 0.08, W * 0.08, '#ffd23f');
+      return;
+    }
+    if (kind === 'farm') {
+      // a burrow: grassy mound with a round door and a carrot patch
+      c.fillStyle = '#5a8a3a'; c.beginPath(); c.ellipse(W * 0.45, W * 0.92, W * 0.42, W * 0.55, 0, Math.PI, 0); c.fill();
+      ell(c, W * 0.45, W * 0.8, W * 0.13, W * 0.13, '#3a2410'); ell(c, W * 0.45, W * 0.8, W * 0.1, W * 0.1, color);
+      for (let i = 0; i < 3; i++) { poly(c, '#ff9a3c', W * (0.75 + i * 0.07), W * 0.8, W * (0.77 + i * 0.07), W * 0.92, W * (0.79 + i * 0.07), W * 0.8); ell(c, W * (0.77 + i * 0.07), W * 0.78, 2 * u, 1.5 * u, '#44d03c'); }
+      return;
+    }
+    if (kind === 'tower') {
+      // the Lookout: a pole with a crow's nest and a lemming with a slingshot
+      box(c, W * 0.46, -W * 0.1, W * 0.08, W * 1.05, dark); box(c, W * 0.25, -W * 0.15, W * 0.5, W * 0.12, wood); box(c, W * 0.25, -W * 0.06, W * 0.5, W * 0.04, color);
+      ell(c, W * 0.5, -W * 0.3, W * 0.09, W * 0.09, '#f6d2b4'); ell(c, W * 0.47, -W * 0.37, W * 0.11, W * 0.06, '#44d03c');
+      line(c, W * 0.25, W * 0.95, W * 0.46, W * 0.4, dark, 2 * u); line(c, W * 0.75, W * 0.95, W * 0.54, W * 0.4, dark, 2 * u);
+      return;
+    }
+    if (kind === 'altar') {
+      // The Exit: a stone archway with burning torches. Every lemming wants to go there.
+      box(c, W * 0.1, W * 0.1, W * 0.8, W * 0.85, '#8a8790'); for (let r = 0; r < 5; r++) line(c, W * 0.1, W * (0.25 + r * 0.15), W * 0.9, W * (0.25 + r * 0.15), 'rgba(0,0,0,.18)', u);
+      c.fillStyle = '#1a1208'; c.beginPath(); c.ellipse(W * 0.5, W * 0.95, W * 0.2, W * 0.45, 0, Math.PI, 0); c.fill();
+      for (const x of [0.12, 0.88]) { box(c, W * x - 2 * u, W * 0.3, 4 * u, W * 0.25, dark); poly(c, '#ff9a3c', W * x - 4 * u, W * 0.3, W * x, W * 0.1, W * x + 4 * u, W * 0.3); poly(c, '#ffd23f', W * x - 2 * u, W * 0.3, W * x, W * 0.18, W * x + 2 * u, W * 0.3); }
+      box(c, W * 0.3, W * 0.14, W * 0.4, W * 0.1, color);
+      return;
+    }
+    if (kind === 'workshop') {
+      // the Dig Site: a hole with a ladder, dirt heaps and crossed pickaxes
+      ell(c, W * 0.42, W * 0.75, W * 0.32, W * 0.16, '#2a1a0a'); ell(c, W * 0.42, W * 0.72, W * 0.36, W * 0.08, '#8a6a3e');
+      for (const [x, h] of [[0.8, 0.3], [0.12, 0.2]]) { c.fillStyle = '#8a6a3e'; c.beginPath(); c.ellipse(W * x, W * 0.95, W * 0.14, W * h, 0, Math.PI, 0); c.fill(); }
+      line(c, W * 0.36, W * 0.85, W * 0.42, W * 0.35, dark, 2 * u); line(c, W * 0.48, W * 0.85, W * 0.54, W * 0.35, dark, 2 * u); for (let i = 0; i < 4; i++) line(c, W * (0.37 + i * 0.015), W * (0.75 - i * 0.12), W * (0.49 + i * 0.015), W * (0.75 - i * 0.12), dark, 1.5 * u);
+      emblem(); return;
+    }
+    hut(W * 0.05, kind === 'barracks' ? W * 0.02 : W * 0.08, W * 0.9, W * 0.88);
+    if (kind === 'lab') { box(c, W * 0.14, W * 0.52, W * 0.22, W * 0.16, '#22262c'); box(c, W * 0.16, W * 0.54, W * 0.18, W * 0.12, '#3c5cff'); box(c, W * 0.2, W * 0.58, W * 0.04, W * 0.04, '#44d03c'); }
+    if (kind === 'barracks') for (const [x, col] of [[0.15, '#ff4fa3'], [0.68, '#ffd23f']]) { box(c, W * x, W * 0.5, W * 0.14, W * 0.12, '#efe6ff'); ell(c, W * (x + 0.07), W * 0.56, W * 0.04, W * 0.04, col); }
+    emblem();
   } else if (race === 'mechs') {
     const steel = '#8a96a2', panel = '#a8b4c0', dark = '#3a424c';
     if (kind === 'tower') {
@@ -3101,7 +3780,7 @@ const PROJ = {
   spore: { col: '#b7f07a', arc: 1.0 }, spit: { col: '#9bdc3a', arc: 0.5 }, bolt: { col: '#fff', arc: 0.4 },
   hammer: { col: '#b8bec8', arc: 0.4 }, fire: { col: '#ff9a3c', arc: 0.1 }, bomb: { col: '#2a2a2a', arc: 0 },
   rock: { col: '#8a8790', arc: 2.2 }, soul: { col: '#b9ffd8', arc: 0.2 }, skull: { col: '#e8eadf', arc: 2.2 }, frost: { col: '#9fe8ff', arc: 0.3 }, magic: { col: '#c77dff', arc: 0.3 }, rocket: { col: '#ff9a3c', arc: 0.6 }, sporebomb: { col: '#9bdc3a', arc: 2.4 }, acid: { col: '#b6f03a', arc: 1.2 },
-  laser: { col: '#ff4f6d', arc: 0 }, plasma: { col: '#7df9ff', arc: 0.4 },
+  laser: { col: '#ff4f6d', arc: 0 }, plasma: { col: '#7df9ff', arc: 0.4 }, bomblet: { col: '#2a2a30', arc: 1.1 }, brick: { col: '#b85a3a', arc: 0.7 },
 };
 // events from the simulation: sounds and sparkles on every screen, messages only for the owner
 function runEvents(w, list) {
@@ -3124,9 +3803,21 @@ function runEvent(w, [n, ...a]) {
     case 'raise': { const [x, y] = a; if (onScreen(x, y)) { addParts(w, x, y, 14, '#7dff6a', 1.5, 0.9, 3, -1.5); w.fx.rings.push({ x, y, r: 0.8, life: 0.6, max: 0.6, col: '#7dff6a', wd: 3 }); sfx('spore'); } break; }
     case 'fix': { const [x, y] = a; if (onScreen(x, y)) { addParts(w, x, y - 0.3, 2, '#ffd23f', 1, 0.3, 2); if (Math.random() < 0.4) sfx('sword'); } break; }
     case 'shield': { const [x, y, up] = a; if (onScreen(x, y)) { w.fx.rings.push({ x, y: y - 0.35, r: 0.45, life: 0.25, max: 0.25, col: up ? '#3ff0ff' : '#ff4fa3', wd: 2 }); if (Math.random() < 0.3) sfx('shield'); } break; }
+    case 'pop': { const [x, y, r] = a; addScar(w, x, y, r * 0.6, 'scorch'); w.fx.rings.push({ x, y, r, life: 0.35, max: 0.35, col: '#ffd23f', wd: 3, flash: true }); if (onScreen(x, y)) { addParts(w, x, y, 14, '#ff9a3c', 2.5, 0.5, 3); if (Math.random() < 0.35) floatText(w, x, y - 0.6, 'OH NO!', '#ffd23f'); sfx('pop'); } break; }
+    case 'fuse': { const [x, y, o] = a; if (onScreen(x, y)) { floatText(w, x, y - 0.9, 'OH NO!', '#ff4fa3'); sfx('ohno'); } break; }
+    case 'tile': {
+      // a bridge went up or came down
+      const [x, y, t2] = a, i = y * w.W + x;
+      if (w.replica && i >= 0 && i < w.N) { w.ter[i] = t2; labelRegions(w); }
+      repaintAround(w, x, y); break; }
+    case 'board': { const [x, y] = a; if (onScreen(x, y)) { addParts(w, x, y, 4, '#cfe8ff', 1, 0.4, 2); sfx('click'); } break; }
+    case 'unload': { const [x, y, o] = a; if (onScreen(x, y)) { addParts(w, x, y, 8, '#cfe8ff', 1.5, 0.5, 3); sfx('splash'); } if (mine(o)) msg('Troops ashore!', '#7dff6a'); break; }
     case 'miss': { const [x, y] = a; floatText(w, x, y - 0.6, 'MISS', '#3ff0ff'); break; }
     case 'heal': { const [x, y] = a; addParts(w, x, y - 0.3, 1, '#7dff6a', 0.3, 0.8, 3, -1); break; }
-    case 'die': { const [x, y, k, o] = a; const dr = w.players[o] && w.players[o].race; addScar(w, x, y + 0.1, k === K.ultimate ? 1 : 0.55, dr === 'undead' || dr === 'funguys' ? 'bonedust' : dr === 'mechs' ? 'scorch' : 'blood'); if (onScreen(x, y)) { addParts(w, x, y, 10, dr === 'funguys' || dr === 'undead' ? '#e8eadf' : dr === 'bugs' ? '#9bdc3a' : dr === 'mechs' ? '#ffd23f' : '#c22', 2.5, 0.7, 3); sfx('die'); }
+    case 'die': { const [x, y, k, o] = a; const dr = w.players[o] && w.players[o].race;
+      if (isBoatK(k)) { w.fx.rings.push({ x, y, r: 1.2, life: 0.8, max: 0.8, col: '#cfe8ff', wd: 4 }); if (onScreen(x, y)) { addParts(w, x, y, 18, '#cfe8ff', 2.5, 0.9, 4); addParts(w, x, y, 8, '#6a4426', 2, 1, 4); sfx('splash'); } break; }
+      if (dr === 'lemmings') { if (onScreen(x, y)) addParts(w, x, y, 12, pick(['#44d03c', '#3c5cff']), 2.5, 0.6, 3); break; }
+      addScar(w, x, y + 0.1, k === K.ultimate ? 1 : 0.55, dr === 'undead' || dr === 'funguys' ? 'bonedust' : dr === 'mechs' ? 'scorch' : 'blood'); if (onScreen(x, y)) { addParts(w, x, y, 10, dr === 'funguys' || dr === 'undead' ? '#e8eadf' : dr === 'bugs' ? '#9bdc3a' : dr === 'mechs' ? '#ffd23f' : '#c22', 2.5, 0.7, 3); sfx('die'); }
       w.fx.marks.push({ x, y, t: 0, life: 10, corpse: true, k, o }); if (w.fx.marks.length > 160) w.fx.marks.shift(); break; }
     case 'crumble': { const [x, y, size] = a; addScar(w, x, y + size * 0.2, size * 0.75, 'scorch'); w.fx.rings.push({ x, y: y + size * 0.3, r: size * 0.8, life: 0.7, max: 0.7, col: '#c8b08a', wd: 5 }); if (onScreen(x, y)) { for (let i = 0; i < 4; i++) addParts(w, x + rand(-size / 2, size / 2), y + rand(-size / 2, size / 2), 8, pick(['#8a8790', '#6a5236', '#ff9a3c', '#333']), 3, 1.1, 4); sfx('crumble'); } break; }
     case 'boom': { const [x, y, r] = a; addScar(w, x, y, r * 0.9, 'scorch'); addScar(w, x, y, r * 0.5, 'crater'); w.fx.rings.push({ x, y, r: r * 1.2, life: 0.6, max: 0.6, col: '#ffd23f', wd: 6, flash: true }); addParts(w, x, y, 40, '#ff9a3c', 5 * r / 1.8, 0.9, 5); addParts(w, x, y, 20, '#ffd23f', 3, 0.6, 4); addParts(w, x, y, 14, '#444', 2, 1.4, 6, -2); sfx('boom'); shake = Math.max(shake, 0.4); break; }
@@ -3135,13 +3826,13 @@ function runEvent(w, [n, ...a]) {
     case 'dry': { const [x, y] = a; addParts(w, x, y, 20, '#8a8790', 3, 1, 4); if (onScreen(x, y)) sfx('crumble'); msg('A gold mine has run dry.', '#ffd23f'); break; }
     case 'drop': { const [o, what] = a; if (mine(o) && Math.random() < 0.3) sfx('coin'); break; }
     case 'alert': { const [o, x, y] = a; if (mine(o)) { msg(RACES[w.players[o].race].alert, '#ff4f6d'); sfx('alert'); w.fx.pings.push({ x, y, life: 4 }); lastAlertAt = { x, y }; } break; }
-    case 'note': { const [o, what] = a; if (!mine(o)) break; const text = { nope: 'Not enough gold or wood.', food: `Not enough food. Build more ${RACES[w.players[o].race].farms}!`, blocked: 'Can\'t build there. Something is in the way.', unique: `You can only have one ${RACES[w.players[o].race].names.ultimate} at a time.` }[what]; if (text) { msg(text, '#ff4fa3'); sfx('nope'); } break; }
+    case 'note': { const [o, what] = a; if (!mine(o)) break; const text = { nope: 'Not enough gold or wood.', food: `Not enough food. Build more ${RACES[w.players[o].race].farms}!`, blocked: 'Can\'t build there. Something is in the way.', unique: `You can only have one ${RACES[w.players[o].race].names.ultimate} at a time.`, full: `That ${RACES[w.players[o].race].names.transport} is full.`, noshore: 'There\'s no shore that boat can reach near there.', noboom: 'No explosives on board! Kaboomers stay ashore.' }[what]; if (text) { msg(text, '#ff4fa3'); sfx('nope'); } break; }
     case 'place': { const [o] = a; if (mine(o)) sfx('build'); break; }
     case 'ready': {
       const [o, k, x, y, isB] = a;
       if (!mine(o)) break;
       const R = RACES[w.players[o].race];
-      if (isB) { msg(`${R.names[KINDS[k]]}: ${R.ready}`, '#7dff6a'); sfx('ready'); }
+      if (isB && k !== K.bridge) { msg(`${R.names[KINDS[k]]}: ${R.ready}`, '#7dff6a'); sfx('ready'); }
       else if (Math.random() < 0.5) { const e = nearestEntAt(w, x, y, k, o); if (e) { say(w, e, pick(R.quips)); sfx('babble', R.voice); } }
       break;
     }
@@ -3345,8 +4036,16 @@ function render(w, now) {
       if (d.aura) { ctx.strokeStyle = 'rgba(125,255,106,.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(px, py, d.aura * s * (0.95 + Math.sin(t * 3) * 0.05), d.aura * s * 0.5, 0, 0, 7); ctx.stroke(); }
       // raised skeletons glow green and are a bit see-through
       if (e.raised) { ell(ctx, px, py, s * 0.4, s * 0.16, 'rgba(125,255,106,.35)'); ctx.globalAlpha = 0.72; }
-      drawUnitFast(ctx, race, e.k, color, px, py + e.r * s * 0.3, s * 1.2, a);
+      // boats leave a wake behind them
+      if (e.sea && e.moving && Math.random() < frameDt * 6) addParts(w, e.rx - (e.face || 1) * e.r * 0.9, e.ry + 0.1, 1, 'rgba(230,245,255,.8)', 0.4, 0.8, 3, 0);
+      drawUnitFast(ctx, race, e.k, color, px, py + (e.sea ? 0 : e.r * s * 0.3), s * 1.2, a);
       ctx.globalAlpha = 1;
+      // a lit lemming shows its countdown
+      if (e.fuse > 0) {
+        const n = String(Math.ceil(e.fuse)), hy = py - s * (e.k === K.ultimate ? 2.6 : 1.2);
+        ctx.font = `${Math.round(s * 0.36)}px ${FONT}`; ctx.textAlign = 'center';
+        ctx.fillStyle = '#000'; ctx.fillText(n, px + 2, hy + 2); ctx.fillStyle = (t * 4 | 0) % 2 ? '#ff4fa3' : '#fff'; ctx.fillText(n, px, hy);
+      }
       // kicked-up dust
       if (e.moving && !e.fly && !(race === 'bugs' && e.k === K.ranged) && Math.random() < frameDt * 2) addParts(w, e.rx, e.ry + 0.2, 1, w.theme.snow ? '#ffffff' : '#c8b08a', 0.3, 0.45, 3, 0);
     }
@@ -3359,7 +4058,7 @@ function render(w, now) {
     if (!sel && e.id !== hoverId && e.hp >= d.hp - 0.5 && !(d.shield && e.sh < d.shield - 0.5)) continue;
     const f = clamp(e.hp / d.hp, 0, 1);
     const bw = e.size ? e.size * s * 0.7 : s * 0.8, [cx, cy] = toScreen(ux(e), e.size ? e.by : uy(e));
-    const by = e.size ? cy - s * 0.25 : cy - s * (e.fly ? 1.95 : e.k === K.ultimate ? 2.4 : e.k === K.siege ? 1.7 : e.k === K.special ? 1.5 : 1.05) - (e.k === K.ranged && w.players[e.o].race === 'bugs' ? s * 0.3 : 0);
+    const by = e.size ? cy - s * 0.25 : cy - s * (e.fly ? 1.95 : e.k === K.ultimate ? 2.4 : e.k === K.siege ? 1.7 : e.k === K.battleship ? 1.6 : e.sea ? 1.25 : e.k === K.special ? 1.5 : 1.05) - (e.k === K.ranged && w.players[e.o].race === 'bugs' ? s * 0.3 : 0);
     ctx.fillStyle = '#05020c'; ctx.fillRect(cx - bw / 2 - 1, by - 1, bw + 2, 5);
     ctx.fillStyle = f > 0.6 ? '#7dff6a' : f > 0.3 ? '#ffd23f' : '#ff4f4f'; ctx.fillRect(cx - bw / 2, by, bw * f, 3);
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(cx - bw / 2, by, bw * f, 1);
@@ -3391,7 +4090,7 @@ function render(w, now) {
       continue;
     }
     const [tx, ty] = projAt(p, P, Math.max(0, k - 0.18)), [qx, qy] = toScreen(tx, ty);
-    if (p.kind === 'spore' || p.kind === 'spit' || p.kind === 'fire' || p.kind === 'bomb' || p.kind === 'rock' || p.kind === 'magic' || p.kind === 'sporebomb' || p.kind === 'acid' || p.kind === 'soul' || p.kind === 'skull' || p.kind === 'frost' || p.kind === 'plasma') {
+    if (p.kind === 'spore' || p.kind === 'spit' || p.kind === 'fire' || p.kind === 'bomb' || p.kind === 'rock' || p.kind === 'magic' || p.kind === 'sporebomb' || p.kind === 'acid' || p.kind === 'soul' || p.kind === 'skull' || p.kind === 'frost' || p.kind === 'plasma' || p.kind === 'bomblet' || p.kind === 'brick') {
       const big = p.kind === 'rock' || p.kind === 'sporebomb' || p.kind === 'skull' ? 1.8 : p.kind === 'plasma' ? 1.4 : 1;
       if (big > 1) { ctx.save(); ctx.translate(px, py); ctx.scale(big, big); ctx.translate(-px, -py); }
       ctx.globalAlpha = 0.35; ell(ctx, qx, qy, s * 0.09, s * 0.09, P.col); ctx.globalAlpha = 1;
@@ -3477,15 +4176,21 @@ function drawOverlays(w, s, t) {
     placing.tx = tx; placing.ty = ty;
     const P = w.players[w.me];
     const spr = buildingSprite(P.race, placing.k, P.color, s);
-    const goodTile = (x, y) => inMap(w, x, y) && x >= 1 && y >= 1 && x < w.W - 1 && y < w.H - 1 && WALKABLE[w.ter[y * w.W + x]] === 1 && !w.occ[y * w.W + x] && w.exp[y * w.W + x];
-    // walls: drag out a line, every free tile on it gets a piece
-    const spots = placing.k === K.wall ? wallLine(placing.from || { tx, ty }, { tx, ty }) : [{ tx, ty }];
+    const isLine = placing.k === K.wall || placing.k === K.bridge, planned = new Set();
+    const landTile = (x, y) => inMap(w, x, y) && x >= 1 && y >= 1 && x < w.W - 1 && y < w.H - 1 && WALKABLE[w.ter[y * w.W + x]] === 1 && !w.occ[y * w.W + x] && w.exp[y * w.W + x];
+    // bridges go on water, next to land or a bridge (or the piece before it in the line)
+    const goodTile = placing.k === K.bridge ? (x, y) => w.exp[y * w.W + x] && bridgeOk(w, x, y, (ax, ay) => planned.has(ay * w.W + ax)) : landTile;
+    // walls and bridges: drag out a line, every free tile on it gets a piece
+    const spots = isLine ? wallLine(placing.from || { tx, ty }, { tx, ty }) : [{ tx, ty }];
     let ok = true;
     placing.tiles = []; placing.why = '';
     for (const sp of spots) {
       let good = true;
       for (let y = sp.ty; y < sp.ty + size; y++) for (let x = sp.tx; x < sp.tx + size; x++) if (!goodTile(x, y)) good = false;
       const nearMine = placing.k === K.hall && mineTooClose(w, sp.tx, sp.ty, size);
+      if (good && placing.k === K.shipyard && !onShore(w, sp.tx, sp.ty, size)) { good = false; placing.why = `A ${RACES[P.race].names.shipyard} has to be built on the shore, right next to the water.`; }
+      if (placing.k === K.bridge && !good) placing.why = 'Bridges go on open water, starting from the shore.';
+      if (good && placing.k === K.bridge) planned.add(sp.ty * w.W + sp.tx);
       if (nearMine) {
         good = false; placing.why = `Too close to the gold mine: keep ${MINE_GAP} squares between a ${RACES[P.race].names.hall} and a mine.`;
         // outline the squares that have to stay open
@@ -3496,13 +4201,13 @@ function drawOverlays(w, s, t) {
       const [gx, gy] = toScreen(sp.tx, sp.ty);
       ctx.globalAlpha = 0.5; drawSprite(ctx, spr, gx, gy - s * 1.2); ctx.globalAlpha = 1;
       for (let y = sp.ty; y < sp.ty + size; y++) for (let x = sp.tx; x < sp.tx + size; x++) {
-        const g = goodTile(x, y) && !nearMine, [qx, qy] = toScreen(x, y);
+        const g = (placing.k === K.bridge ? good : goodTile(x, y) && (placing.k !== K.shipyard || onShore(w, sp.tx, sp.ty, size))) && !nearMine, [qx, qy] = toScreen(x, y);
         ctx.fillStyle = g ? 'rgba(125,255,106,.3)' : 'rgba(255,79,79,.5)'; ctx.fillRect(qx + 1, qy + 1, s - 2, s - 2);
         ctx.strokeStyle = g ? '#7dff6a' : '#ff4f4f'; ctx.lineWidth = 1; ctx.strokeRect(qx + 1.5, qy + 1.5, s - 3, s - 3);
       }
     }
-    placing.ok = placing.k === K.wall ? placing.tiles.length > 0 : ok;
-    if (placing.k === K.wall && spots.length > 1) {
+    placing.ok = isLine ? placing.tiles.length > 0 : ok;
+    if (isLine && spots.length > 1) {
       const [lx, ly] = toScreen(tx + 1, ty);
       ctx.font = `8px ${FONT}`; ctx.textAlign = 'left'; ctx.fillStyle = '#000'; ctx.fillText(`×${placing.tiles.length}`, lx + 5, ly + 1); ctx.fillStyle = '#ffd23f'; ctx.fillText(`×${placing.tiles.length}`, lx + 4, ly);
     }
@@ -3641,6 +4346,17 @@ function smartWorld(sel, x, y, t) {
   }
   const ids = units.map(u => u.id), workers = units.filter(u => u.k === K.worker), others = units.filter(u => u.k !== K.worker);
   if (t && t.o >= 0 && enemies(G, G.me, t.o)) { issue({ c: 'attack', ids, id: t.id }); mark(t.x, t.y, '#ff4f4f'); ack(units, true); return; }
+  // walkers onto your own transport
+  if (t && t.k === K.transport && t.o === G.me && units.some(u => !u.sea && !u.fly)) {
+    issue({ c: 'board', ids: units.filter(u => !u.sea && !u.fly).map(u => u.id), id: t.id }); mark(t.x, t.y, '#3ff0ff'); ack(units); return;
+  }
+  // a loaded transport sent onto land lets everyone off there
+  const full = units.filter(u => u.k === K.transport && u.cAmt > 0), tx = Math.floor(x), ty = Math.floor(y);
+  if (full.length && inMap(G, tx, ty) && WALKABLE[G.ter[ty * G.W + tx]] === 1) {
+    issue({ c: 'unload', ids: full.map(u => u.id), x, y });
+    const rest = units.filter(u => !full.includes(u)); if (rest.length) issue({ c: 'move', ids: rest.map(u => u.id), x, y });
+    mark(x, y, '#3ff0ff'); ack(units); return;
+  }
   const tree = !t && treeAt(x, y);
   if (workers.length && t && t.size && t.o === G.me && t.built && t.k !== K.mine && t.hp < def(G, t).hp && RACES[myP().race].repair) {
     issue({ c: 'repair', ids: workers.map(u => u.id), id: t.id });
@@ -3673,6 +4389,7 @@ function doTarget(sx, sy) {
     mark(x, y, '#ffd23f');
   }
   if (mode === 'rally') smartWorld(sel.filter(e => e.size), x, y, t);
+  if (mode === 'unload') { issue({ c: 'unload', ids: sel.filter(e => e.k === K.transport).map(e => e.id), x, y }); mark(x, y, '#3ff0ff'); }
   if (mode === 'repair') {
     if (t && t.size && t.o === G.me && t.built) issue({ c: 'repair', ids: sel.filter(e => e.k === K.worker).map(e => e.id), id: t.id });
     else { msg('Pick one of your buildings.', '#ff4fa3'); sfx('nope'); return; }
@@ -3689,17 +4406,17 @@ function wallLine(a, b) {
 function tryPlace() {
   if (!placing || placing.tx === undefined) return;
   if (!placing.ok) { msg(placing.why || 'Can\'t build there.', '#ff4fa3'); sfx('nope'); return; }
-  if (placing.k === K.wall && placing.tiles && placing.tiles.length) {
-    const P = myP(), d = DEFS[P.race][K.wall], tiles = placing.tiles;
+  if ((placing.k === K.wall || placing.k === K.bridge) && placing.tiles && placing.tiles.length) {
+    const P = myP(), d = DEFS[P.race][placing.k], tiles = placing.tiles;
     if (!canAfford(P, d)) { msg('Not enough gold or wood.', '#ff4fa3'); sfx('nope'); return; }
     const wk = ownSel().filter(e => e.k === K.worker);
     if (!wk.length) return;
-    // split the line between the selected workers, nearest first
-    const per = Math.ceil(tiles.length / wk.length);
+    // split the line between the selected workers, nearest first (a bridge is laid by one, from the shore out)
+    const per = placing.k === K.bridge ? tiles.length : Math.ceil(tiles.length / wk.length);
     wk.sort((a, b) => (a.hidden - b.hidden) || dist(a.x, a.y, tiles[0].tx, tiles[0].ty) - dist(b.x, b.y, tiles[0].tx, tiles[0].ty));
     wk.forEach((u, i) => {
       const part = tiles.slice(i * per, (i + 1) * per); if (!part.length) return;
-      issue({ c: 'build', ids: [u.id], k: K.wall, tx: part[0].tx, ty: part[0].ty, more: part.slice(1).map(t => [t.tx, t.ty]) });
+      issue({ c: 'build', ids: [u.id], k: placing.k, tx: part[0].tx, ty: part[0].ty, more: part.slice(1).map(t => [t.tx, t.ty]) });
     });
     mark(tiles[0].tx + 0.5, tiles[0].ty + 0.5, '#3ff0ff'); ack(wk);
     if (!keysDown.has('Shift')) { placing = null; buildMenu = false; }
@@ -3738,7 +4455,7 @@ cv.addEventListener('pointerdown', e => {
   if (e.button === 1) { drag = { pan: true, x0: e.clientX, y0: e.clientY, cx: cam.x, cy: cam.y }; e.preventDefault(); return; }
   if (e.button === 2) { if (!cancelModes()) smartAt(e.clientX, e.clientY); return; }
   if (e.button !== 0) return;
-  if (placing) { if (placing.k === K.wall) { placing.from = { tx: placing.tx, ty: placing.ty }; return; } tryPlace(); return; }
+  if (placing) { if (placing.k === K.wall || placing.k === K.bridge) { placing.from = { tx: placing.tx, ty: placing.ty }; return; } tryPlace(); return; }
   if (targeting) { doTarget(e.clientX, e.clientY); return; }
   drag = { x0: e.clientX, y0: e.clientY, box: false, shift: e.shiftKey };
 });
@@ -3937,6 +4654,7 @@ function drawIcon(c, name, S, w) {
     case 'upAtk': line(c, 10 * u, 36 * u, 30 * u, 14 * u, '#dfe6ee', 5 * u); line(c, 14 * u, 26 * u, 20 * u, 32 * u, '#c9a85a', 4 * u); box(c, 30 * u, 26 * u, 12 * u, 4 * u, '#7dff6a'); box(c, 34 * u, 22 * u, 4 * u, 12 * u, '#7dff6a'); break;
     case 'upWood': line(c, 12 * u, 36 * u, 28 * u, 12 * u, '#7a5530', 4 * u); poly(c, '#b8bec8', 24 * u, 6 * u, 36 * u, 12 * u, 30 * u, 22 * u, 22 * u, 16 * u); box(c, 30 * u, 26 * u, 12 * u, 4 * u, '#7dff6a'); box(c, 34 * u, 22 * u, 4 * u, 12 * u, '#7dff6a'); break;
     case 'upArm': poly(c, '#9aa2ad', 8 * u, 8 * u, 32 * u, 8 * u, 30 * u, 26 * u, 20 * u, 36 * u, 10 * u, 26 * u); box(c, 30 * u, 26 * u, 12 * u, 4 * u, '#7dff6a'); box(c, 34 * u, 22 * u, 4 * u, 12 * u, '#7dff6a'); break;
+    case 'unload': poly(c, '#8a5a34', 6 * u, 22 * u, 40 * u, 22 * u, 34 * u, 32 * u, 12 * u, 32 * u); box(c, 4 * u, 34 * u, 38 * u, 4 * u, '#3f8cff'); poly(c, '#7dff6a', 23 * u, 4 * u, 31 * u, 12 * u, 26 * u, 12 * u, 26 * u, 19 * u, 20 * u, 19 * u, 20 * u, 12 * u, 15 * u, 12 * u); break;
   }
 }
 function card(icon, key, title, text, on, opts = {}) { return { icon, key, title, text, on, ...opts }; }
@@ -3950,7 +4668,7 @@ function buildCards() {
   if (units.length) {
     const workers = units.filter(e => e.k === K.worker);
     if (buildMenu && workers.length) {
-      for (const [kind, key] of [['hall', 'H'], ['farm', 'F'], ['barracks', 'B'], ['mill', 'M'], ['lab', 'L'], ['tower', 'T'], ['workshop', 'S'], ['altar', 'A'], ['wall', 'W']]) {
+      for (const [kind, key] of [['hall', 'H'], ['farm', 'F'], ['barracks', 'B'], ['mill', 'M'], ['lab', 'L'], ['tower', 'T'], ['workshop', 'S'], ['altar', 'A'], ['wall', 'W'], ['shipyard', 'Y'], ...(R.bridge ? [['bridge', 'N']] : [])]) {
         const d = DEFS[P.race][K[kind]], req = d.req && !hasReq(w, w.me, d);
         cards.push(card({ bld: K[kind], race: P.race, color: col }, key, d.name, descOf(P.race, kind), () => { placing = { k: K[kind] }; targeting = null; refreshHud(true); },
           { cost: [d.g, d.w], disabled: req, why: req ? `Needs a ${R.names[d.req]}.` : '', on2: placing && placing.k === K[kind] }));
@@ -3970,6 +4688,9 @@ function buildCards() {
     }
     const boomers = units.filter(u => def(w, u).kaboom);
     if (boomers.length) cards.push(card('boom', 'D', 'Detonate', 'Blow up right here, right now.', () => issue({ c: 'boom', ids: boomers.map(u => u.id) })));
+    else if (R.fuse && units.some(u => !u.sea && u.fuse === undefined)) cards.push(card('boom', 'D', 'Oh no!', `Light the fuse: in ${R.fuse} seconds they go off, taking everyone nearby with them.`, () => issue({ c: 'boom', ids: units.filter(u => !u.sea).map(u => u.id) })));
+    const boats = units.filter(u => u.k === K.transport);
+    if (boats.length) cards.push(card('unload', 'U', 'Unload', `Sail to the nearest shore by the spot you click and let everyone off. (Or right-click land.) Walkers get on by right-clicking the ${R.names.transport}.`, setT('unload'), { on2: targeting === 'unload', disabled: !boats.some(b => b.cAmt > 0), why: boats.some(b => b.cAmt > 0) ? '' : 'Nobody on board.' }));
     return cards;
   }
   const b = blds[0], d = def(w, b);
@@ -4044,7 +4765,7 @@ function renderInfo() {
   const list = [...selection].map(id => w.byId.get(id)).filter(e => e && !e.dead);
   if (list.length !== selection.size) { selection = new Set(list.map(e => e.id)); }
   const P = myP();
-  const sig = list.map(e => `${e.id}:${Math.ceil(e.hp)}:${Math.ceil(e.sh || 0)}:${e.carry || 0}:${e.built ? 1 : 0}:${Math.round((e.prog || 0) * 50)}:${(e.queue || []).join('.')}:${Math.round((e.qt || 0) * 4)}:${e.gold || 0}:${e.st === 'inside' ? 1 : 0}:${e.k === K.mine ? (w.replica ? e.busy : mineCount(w, e)) : ''}`).join(',') + (P ? P.up.join('') : '');
+  const sig = list.map(e => `${e.id}:${Math.ceil(e.hp)}:${Math.ceil(e.sh || 0)}:${e.cAmt || 0}:${Math.ceil(e.fuse || 0)}:${e.carry || 0}:${e.built ? 1 : 0}:${Math.round((e.prog || 0) * 50)}:${(e.queue || []).join('.')}:${Math.round((e.qt || 0) * 4)}:${e.gold || 0}:${e.st === 'inside' ? 1 : 0}:${e.k === K.mine ? (w.replica ? e.busy : mineCount(w, e)) : ''}`).join(',') + (P ? P.up.join('') : '');
   const full = sig + (P || list.length ? '' : scoreSig(w) + '|' + (box.querySelector('.score') ? 's' : ''));
   if (full === infoSig) return;
   infoSig = full;
@@ -4087,7 +4808,7 @@ function renderInfo() {
     const s2 = document.createElement('div'); s2.className = 'sub'; s2.textContent = P ? `Right-click it with ${RACES[P.race].workers} selected to start mining.` : 'Workers bring gold out of here.'; txt.append(s2);
   } else {
     const hb = document.createElement('div'); hb.className = 'hpbar'; const hi = document.createElement('i'); hi.style.width = clamp(e.hp / d.hp, 0, 1) * 100 + '%'; hb.append(hi);
-    const hp = document.createElement('div'); hp.className = 'sub'; hp.textContent = `${Math.ceil(e.hp)} / ${d.hp} HP` + (d.shield ? ` · SHIELD ${Math.ceil(e.sh || 0)} / ${d.shield}` : '');
+    const hp = document.createElement('div'); hp.className = 'sub'; hp.textContent = `${Math.ceil(e.hp)} / ${d.hp} HP` + (d.shield ? ` · SHIELD ${Math.ceil(e.sh || 0)} / ${d.shield}` : '') + (d.seats ? ` · ${e.cAmt || 0} ON BOARD` : '') + (e.fuse > 0 ? ` · OH NO! ${Math.ceil(e.fuse)}` : '');
     txt.append(hb, hp);
     const desc = (isBldK(e.k) && owner ? descOf(owner.race, d.kind) : d.desc) || '';
     if (isUnitK(e.k)) {
@@ -4212,7 +4933,7 @@ $('menuBtn').onclick = () => { audio(); togglePause(); };
 // ====================================================================
 //  Snapshots: how the host's world reaches the guests
 // ====================================================================
-// unit:     [id, kind, owner, x*20, y*20, hp, flags, face, carried, shield]
+// unit:     [id, kind, owner, x*20, y*20, hp, flags, face, carried (or passengers), shield, fuse]
 // building: [id, kind, owner, bx, by, hp, built, prog*1000, queue, qt*10]
 // mine:     [id, 9, -1, bx, by, gold, busy]
 const F_MOVE = 1, F_ATK = 2, F_GOLD = 4, F_WOOD = 8, F_HIDDEN = 16, F_CHOP = 32, F_IDLE = 64, F_RAISED = 128;
@@ -4223,7 +4944,7 @@ function encodeEnts(w) {
     if (e.k === K.mine) return [e.id, e.k, -1, e.bx, e.by, e.gold, busy.get(e.id) || 0];
     if (e.size) return [e.id, e.k, e.o, e.bx, e.by, Math.ceil(e.hp), e.built ? 1 : 0, Math.round(e.prog * 1000), e.queue.slice(), Math.round(e.qt * 10)];
     const f = (e.moving ? F_MOVE : 0) | (e.atkT > 0.15 ? F_ATK : 0) | (e.carry === 1 ? F_GOLD : 0) | (e.carry === 2 ? F_WOOD : 0) | (e.hidden ? F_HIDDEN : 0) | (e.chopping || e.st === 'repair' ? F_CHOP : 0) | (e.st === 'idle' ? F_IDLE : 0) | (e.raised ? F_RAISED : 0);
-    return [e.id, e.k, e.o, Math.round(e.x * 20), Math.round(e.y * 20), Math.ceil(e.hp), f, e.face, e.cAmt || 0, Math.ceil(e.sh || 0)];
+    return [e.id, e.k, e.o, Math.round(e.x * 20), Math.round(e.y * 20), Math.ceil(e.hp), f, e.face, e.cAmt || 0, Math.ceil(e.sh || 0), e.fuse > 0 ? Math.ceil(e.fuse * 4) / 4 : 0];
   });
 }
 let netEv = [];
@@ -4263,6 +4984,8 @@ function applySnapshot(w, m) {
       e.size = BASE[KINDS[k]].size; e.bx = d[3] | 0; e.by = d[4] | 0; e.x = e.bx + e.size / 2; e.y = e.by + e.size / 2; e.r = e.size / 2;
       if (k === K.mine) { e.gold = d[5] | 0; e.busy = clamp(d[6] | 0, 0, MINE_SLOTS); e.built = true; }
       else { e.hp = +d[5] || 1; e.built = !!d[6]; e.prog = (+d[7] || 0) / 1000; e.queue = Array.isArray(d[8]) ? d[8].map(q => q | 0) : []; e.qt = (+d[9] || 0) / 10; }
+      // bridges that were there before we joined
+      if (k === K.bridge && e.built && inMap(w, e.bx, e.by) && w.ter[e.by * w.W + e.bx] !== T_BRIDGE) { w.ter[e.by * w.W + e.bx] = T_BRIDGE; labelRegions(w); repaintAround(w, e.bx, e.by); }
     } else {
       const nx = (+d[3] || 0) / 20, ny = (+d[4] || 0) / 20;
       if (e.fresh || e.hidden) { e.x = e.px = e.nx = nx; e.y = e.py = e.ny = ny; }
@@ -4271,13 +4994,13 @@ function applySnapshot(w, m) {
       e.hp = +d[5] || 1; const f = d[6] | 0;
       e.moving = !!(f & F_MOVE); if (f & F_ATK) e.atkT = 0.3;
       e.carry = f & F_GOLD ? 1 : f & F_WOOD ? 2 : 0; e.hidden = !!(f & F_HIDDEN); e.chopping = !!(f & F_CHOP); e.st = f & F_IDLE ? 'idle' : 'busy'; e.raised = !!(f & F_RAISED);
-      e.face = d[7] < 0 ? -1 : 1; e.cAmt = d[8] | 0; e.sh = Math.max(0, +d[9] || 0);
-      e.r = def(w, e).r; e.fly = !!def(w, e).fly;
+      e.face = d[7] < 0 ? -1 : 1; e.cAmt = d[8] | 0; e.sh = Math.max(0, +d[9] || 0); e.fuse = +d[10] > 0 ? +d[10] : undefined;
+      e.r = def(w, e).r; e.fly = !!def(w, e).fly; e.sea = !!def(w, e).sea;
     }
   }
   for (const e of w.ents.slice()) if (!seen.has(e.id)) { w.byId.delete(e.id); w.ents.splice(w.ents.indexOf(e), 1); e.dead = true; }
   w.occ.fill(0);
-  for (const e of w.ents) if (e.size) for (let y = e.by; y < e.by + e.size; y++) for (let x = e.bx; x < e.bx + e.size; x++) if (inMap(w, x, y)) w.occ[y * w.W + x] = e.id;
+  for (const e of w.ents) if (e.size && !(e.k === K.bridge && e.built)) for (let y = e.by; y < e.by + e.size; y++) for (let x = e.bx; x < e.bx + e.size; x++) if (inMap(w, x, y)) w.occ[y * w.W + x] = e.id;
   if (Array.isArray(m.p)) m.p.forEach((d, i) => {
     const P = w.players[i]; if (!P || !Array.isArray(d)) return;
     [P.g, P.w, P.food, P.cap] = d.map(v => +v || 0); P.up = [d[4] | 0, d[5] | 0, d[7] | 0]; P.alive = !!d[6];
@@ -4318,7 +5041,7 @@ function battleConfig() {
     const diff = AI_DIFF[s.ctrl] ? s.ctrl : 'normal';
     return { name: s.name || CPU_NAMES[i], race, team: s.team, kind: 'cpu', diff };
   });
-  return { seed: (Math.random() * 2 ** 31) | 0, size: SIZES[setup.size][0], theme: setup.theme, res: START_RES[setup.res].slice(0, 2), players, you: watching() ? -1 : 0 };
+  return { seed: (Math.random() * 2 ** 31) | 0, size: SIZES[setup.size][0], mapType: setup.mapType, theme: setup.theme, res: START_RES[setup.res].slice(0, 2), players, you: watching() ? -1 : 0 };
 }
 let lastCfg = null;
 async function startBattle(cfg) {
@@ -4396,7 +5119,7 @@ function quitToSetup() {
 function startDemo() {
   if (G && !G.demo) return;
   const races = RACE_KEYS.slice().sort(() => Math.random() - 0.5);
-  const cfg = { seed: (Math.random() * 2 ** 31) | 0, size: 48, theme: Math.random() * THEMES.length | 0, res: [800, 500],
+  const cfg = { seed: (Math.random() * 2 ** 31) | 0, size: 48, mapType: Math.random() < 0.35 ? 'islands' : 'land', theme: Math.random() * THEMES.length | 0, res: [800, 500],
     players: [0, 1].map(i => ({ name: CPU_NAMES[i], race: races[i], team: i + 1, kind: 'cpu', diff: 'hard' })), you: -1 };
   G = makeWorld(cfg, false);
   G.demo = true;
@@ -4447,7 +5170,8 @@ const defaultSlots = () => [
   { name: 'Bugsy Malone', ctrl: 'normal', race: 'bugs', team: 8 },
 ];
 function load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } }
-const setup = Object.assign({ mode: 'local', size: 1, theme: 0, res: 1, n: 2, myName: '', myRace: 'humans', look: 'cheerful' }, load());
+const setup = Object.assign({ mode: 'local', size: 1, theme: 0, res: 1, n: 2, myName: '', myRace: 'humans', look: 'cheerful', mapType: 'land' }, load());
+if (setup.mapType !== 'islands') setup.mapType = 'land';
 if (!Array.isArray(setup.slots)) setup.slots = defaultSlots();
 // older saves had fewer rows: top them up from the defaults
 setup.slots = defaultSlots().map((d, i) => setup.slots[i] && typeof setup.slots[i] === 'object' ? setup.slots[i] : d);
@@ -4482,6 +5206,7 @@ function renderSetup() {
   const join = setup.mode === 'join';
   $('hostSide').hidden = join; $('joinSide').hidden = !join;
   if (join) { renderLobby(); return; }
+  seg('optKind', [['land', 'CONTINENT'], ['islands', 'ISLANDS']], setup.mapType, v => { setup.mapType = v; }, 'var(--cyan)');
   seg('optSize', SIZES.map(([, l], i) => [i, l]), setup.size, v => { setup.size = v; if (v !== HUGE && setup.n > SMALL_MAX_P) { setup.n = SMALL_MAX_P; if (net.role === 'host') assignSlots(); } });
   seg('optTheme', THEMES.map((t, i) => [i, t.name]), setup.theme, v => { setup.theme = v; }, 'var(--green)');
   seg('optLook', [['cheerful', 'CHEERFUL'], ['grim', 'GRIMDARK']], setup.look, v => { setup.look = v; }, 'var(--pink)');
@@ -4545,7 +5270,7 @@ function renderLobby() {
   const L = net.lobby;
   $('joinBtn').hidden = net.role === 'client';
   $('lobbyRows').replaceChildren(...(L ? [
-    (() => { const d = document.createElement('div'); d.className = 'lbl'; d.style.margin = '14px 0 4px'; d.textContent = `${SIZES[clamp(L.size | 0, 0, SIZES.length - 1)][1]} MAP · ${THEMES[clamp(L.theme | 0, 0, THEMES.length - 1)].name}${L.watch ? ' · THE HOST IS WATCHING' : ''}`; return d; })(),
+    (() => { const d = document.createElement('div'); d.className = 'lbl'; d.style.margin = '14px 0 4px'; d.textContent = `${L.mapType === 'islands' ? 'ISLANDS · ' : ''}${SIZES[clamp(L.size | 0, 0, SIZES.length - 1)][1]} MAP · ${THEMES[clamp(L.theme | 0, 0, THEMES.length - 1)].name}${L.watch ? ' · THE HOST IS WATCHING' : ''}`; return d; })(),
     ...L.rows.map(r => {
       const row = document.createElement('div'); row.className = 'team'; row.style.gridTemplateColumns = '18px minmax(0,1fr) auto auto';
       const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = r.color;
@@ -4647,7 +5372,7 @@ function assignSlots() {
   net.players.forEach((p, k) => { p.slot = k < open.length ? open[k] : -1; });
 }
 function lobbyMsg(p) {
-  return { t: 'lobby', code: net.code, size: setup.size, theme: setup.theme, watch: watching(),
+  return { t: 'lobby', code: net.code, size: setup.size, mapType: setup.mapType, theme: setup.theme, watch: watching(),
     rows: fighterRows().map(({ s, i }) => {
       const q = s.ctrl === 'remote' ? net.players.find(x => x.slot === i) : null;
       return { name: i === 0 ? cleanName(setup.myName) || s.name : q ? q.name : s.ctrl === 'remote' ? 'free seat' : s.name, race: q ? q.race : s.race, team: s.team, color: rowColor(i), you: !!(q && p && q.id === p.id),
@@ -4723,7 +5448,7 @@ async function startClient(m) {
   await fontsReady;
   audio();
   const players = c.players.slice(0, MAX_P).map((p, i) => ({ name: cleanName(p.name) || `Player ${i + 1}`, race: RACES[p.race] ? p.race : 'humans', team: clamp(p.team | 0, 1, MAX_P), kind: 'remote' }));
-  const cfg = { seed: c.seed | 0, size: SIZES.some(s => s[0] === c.size) ? c.size : 64, theme: clamp(c.theme | 0, 0, THEMES.length - 1), res: [0, 0], players, you: clamp(c.you | 0, -1, players.length - 1) };
+  const cfg = { seed: c.seed | 0, size: SIZES.some(s => s[0] === c.size) ? c.size : 64, mapType: c.mapType === 'islands' ? 'islands' : 'land', theme: clamp(c.theme | 0, 0, THEMES.length - 1), res: [0, 0], players, you: clamp(c.you | 0, -1, players.length - 1) };
   G = makeWorld(cfg, true);
   for (const i of m.removed || []) { const n = i | 0; if (n >= 0 && n < G.N && G.ter[n] === T_TREE) { G.ter[n] = T_STUMP; G.wood[n] = 0; } }
   net.code = m.code || net.code;
@@ -4791,7 +5516,7 @@ function hostSteps(n) {
   }
 }
 function frame(now) {
-  const dt = Math.min(0.1, (now - last) / 1000); last = now; lastWall = now; frameDt = dt;
+  const dt = clamp((now - last) / 1000, 0, 0.1); last = now; lastWall = now; frameDt = dt;
   sfxBudget = 0;
   if (G) {
     if (!G.replica) {

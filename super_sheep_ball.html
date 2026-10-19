@@ -132,6 +132,7 @@ summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);
       <summary>HOW TO PLAY</summary>
       <p>Tilt the stage to roll your sheep to the <b style="color:var(--yellow);font-weight:400">GOAL</b> as fast as you can. Every coin is worth bonus points. Fall off and you're put back at the last flag.</p>
       <p><b style="color:var(--cyan);font-weight:400">World 2</b>, the Woolly Wonderworks, is a toy factory full of springs and trampolines, conveyor belts, sweeping bars, pistons, lifts, rocking planks, fans that blow you upward, tiles that blink away and loop-the-loops. Hit a loop fast!</p>
+      <p>Finished? Your camera follows whoever is still rolling; steer left or right to switch sheep. Friends who join in the middle of a race watch it and join from the next stage.</p>
       <p>Racers never bump into each other. You see everyone else roll, and anyone close to you turns see-through so you always know which ball is yours.</p>
       <p><b style="color:var(--cyan);font-weight:400">Online:</b> pick HOST ONLINE and open a room. Friends pick JOIN ONLINE and type the room code, or open the invite link.</p>
       <p><b style="color:var(--yellow);font-weight:400">Points:</b> 1st 1000, 2nd 750, 3rd 550, 4th 400 and so on, plus 50 for every coin. When the first sheep reaches the goal, the rest have 20 seconds left.</p>
@@ -141,6 +142,7 @@ summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);
         <b>NUMPAD 8 4 5 6</b><span>Tilt for another player</span>
         <b>GAMEPAD</b><span>Left stick or d-pad</span>
         <b>TOUCH</b><span>Drag anywhere on the screen</span>
+        <b>◀ ▶</b><span>After you finish: watch the other sheep</span>
         <b>R</b><span>Restart the stage (playing alone)</span>
         <b>P · ESC · M</b><span>Pause · pause · mute</span>
       </div>
@@ -1279,6 +1281,12 @@ function newGame(si, racers, opts = {}) {
     }
     game.racers.push(rc);
   }
+  if (opts.watch) {      // joined mid-race: you only watch this stage
+    const rc = { id: 'watcher', name: '', color: '#ffffff', mesh: new THREE.Group(), st: 0, prog: 0, coins: 0, time: null };
+    game.locals.push({ rc, spectator: true, ctrl: 'any', ball: newBall(start), cam: new THREE.PerspectiveCamera(60, 1, 0.1, 600), yaw: S.startYaw,
+      tilt: { x: 0, y: 0 }, got: new Set(), state: 'watch', runT: 0, deadline: S.limit, msg: null, snap: true, view: null });
+  }
+  if (opts.at > 0) game.t = game.pt = Math.min(opts.at, 999);
   game.solo = !game.online && game.locals.length === 1;
   const b = best[si];
   if (game.solo && b && b.ghost) {
@@ -1309,11 +1317,11 @@ function update(dt) {
   const g = game;
   g.t += dt;
   // phases
-  if (g.phase === 'intro' && g.t >= INTRO) { g.phase = 'ready'; for (const P of g.locals) { P.snap = true; msg(P, 'READY?', '#ffd23f', READY); } sfx('beep'); }
+  if (g.phase === 'intro' && g.t >= INTRO) { g.phase = 'ready'; for (const P of g.locals) if (!P.spectator) { P.snap = true; msg(P, 'READY?', '#ffd23f', READY); } sfx('beep'); }
   if (g.phase === 'ready') {
     const left = GO_AT - g.t;
     if (left < 1 && g.beeped < 1) { g.beeped = 1; sfx('beep'); }
-    if (left <= 0) { g.phase = 'run'; for (const P of g.locals) { P.state = 'run'; msg(P, 'GO!', '#7dff6a', 1); } sfx('go'); }
+    if (left <= 0) { g.phase = 'run'; for (const P of g.locals) if (!P.spectator) { P.state = 'run'; msg(P, 'GO!', '#7dff6a', 1); } sfx('go'); }
   }
   // tilt
   for (const P of g.locals) {
@@ -1328,7 +1336,7 @@ function update(dt) {
     g.acc -= SUB; g.pt += SUB;
     updateColliders(g.pt);
     for (const P of g.locals) {
-      if (P.state === 'ready') continue;
+      if (P.state === 'ready' || P.spectator) continue;
       if (P.state === 'done' || P.state === 'timeout') { const k = 1 - 3 * SUB; P.ball.v.x *= k; P.ball.v.z *= k; }   // brake to a stop after the goal
       stepBall(P.ball, gravityFor(P), SUB);
     }
@@ -1360,6 +1368,12 @@ function gravityFor(P) {
 
 function updateLocal(P, dt) {
   const g = game, b = P.ball, rc = P.rc;
+  if (P.spectator) { watchTick(P); placeCamera(P, dt); return; }
+  if (P.state === 'done' || P.state === 'timeout') {
+    watchTick(P);
+    // rolled off the end after finishing: back onto the goal pad, so anyone watching still sees you
+    if (b.p.y < S.killY) { b.p.copy(S.goal).add(_t.set(0, R + 0.05, 0)); b.v.set(0, 0, 0); b.carry.set(0, 0, 0); }
+  }
   if (b.hit > 7) sfx('bump');
   b.hit = 0;
   if (b.bumped) { sfx('bumper'); b.bumped = 0; }
@@ -1412,6 +1426,26 @@ function updateLocal(P, dt) {
   if (P.state !== 'done') rc.prog = routeInfo(b.p).prog;
   placeCamera(P, dt);
 }
+// after you finish (or when you only watch), follow the others: left/right switches sheep
+function watchTick(P) {
+  const g = game;
+  P.doneAt ??= g.t;
+  if (!P.spectator && g.t - P.doneAt < 2.5) return;      // enjoy your own finish first
+  const list = g.racers.filter(r => !r.gone);
+  if (!list.length) return;
+  const x = readInput(P.ctrl).x, dir = x > 0.6 ? 1 : x < -0.6 ? -1 : 0;
+  let cur = list.find(r => r.id === P.watch);
+  if (dir && dir !== P.watchDir) {
+    const i = Math.max(0, list.indexOf(cur));
+    cur = list[(i + dir + list.length) % list.length];
+    P.picked = true; sfx('beep');
+  } else if (!cur || (!P.picked && cur.st >= 2)) {
+    // nobody chosen yet, or they finished: follow the front-runner who is still rolling
+    cur = standings().find(r => r.st < 2 && r !== P.rc) || cur || (P.spectator ? list[0] : P.rc);
+  }
+  P.watchDir = dir;
+  if (cur && cur.id !== P.watch) { P.watch = cur.id; P.wsnap = true; if (cur !== P.rc) P.msg = null; }
+}
 function finishLocal(P) {
   const g = game, rc = P.rc;
   P.state = 'done'; rc.st = 2; rc.prog = S.total + 1;
@@ -1456,6 +1490,8 @@ function checkEnd() {
   const g = game;
   if (g.done) { if (g.t - g.endAt > 2.6 && g.pendingRes) { showResults(g.pendingRes); g.pendingRes = null; } return; }
   const live = g.racers.filter(r => !r.gone);
+  // a guest whose game stalled (tab asleep, phone locked) can't hold up the race forever
+  if (g.t > GO_AT + S.limit + 6) for (const r of live) if (!r.res) recordResult(r.id, null, r.coins);
   if (!live.length || !live.every(r => r.res)) return;
   g.done = true; g.endAt = g.t;
   const rows = g.racers.filter(r => r.res).map(r => ({ id: r.id, name: r.name, color: r.color, time: r.res.time, coins: r.res.coins }));
@@ -1540,6 +1576,9 @@ function placeCamera(P, dt) {
     cam.lookAt(_t.lerpVectors(S.goal, _look, k));
     return;
   }
+  P.focusR = null;
+  const w = P.watch && P.watch !== P.rc.id && (P.spectator || P.state === 'done' || P.state === 'timeout') ? g.racers.find(r => r.id === P.watch && !r.gone) : null;
+  if (w) { followCam(P, w, dt); return; }
   if (P.state === 'fall') { cam.lookAt(b.p); return; }
   // going round a loop: swing out to watch from the side
   if (b.loop) { P.loopL = b.loop; P.loopT = 0.5; } else if (P.loopT > 0) P.loopT -= dt;
@@ -1562,6 +1601,20 @@ function placeCamera(P, dt) {
   cam.lookAt(_look);
   cam.rotateZ(P.tilt.x * 0.14);
   cam.rotateX(-P.tilt.y * 0.07);
+}
+function followCam(P, r, dt) {
+  const cam = P.cam, pos = r.mesh.position, v = r.local ? r.local.ball.v : r.tv, sp = Math.hypot(v.x, v.z);
+  P.focusR = r;
+  if (P.wsnap) P.wyaw = r.local ? r.local.yaw : sp > 1.5 ? Math.atan2(-v.x, -v.z) : routeInfo(pos).yaw;
+  else if (r.st >= 2) P.wyaw += dt * 0.45;
+  else if (r.local) P.wyaw += angDiff(r.local.yaw, P.wyaw) * Math.min(1, dt * 6);
+  else if (sp > 1.5) P.wyaw += angDiff(Math.atan2(-v.x, -v.z), P.wyaw) * Math.min(1, dt * 2.4 * Math.min(1, sp / 7));
+  const fx = -Math.sin(P.wyaw), fz = -Math.cos(P.wyaw);
+  _cp.set(pos.x - fx * 5.4, pos.y + 2.5, pos.z - fz * 5.4);
+  if (r.st === 1) _cp.y = Math.max(_cp.y, cam.position.y);      // falling: stay up and watch them drop
+  if (P.wsnap) { cam.position.copy(_cp); P.wsnap = false; }
+  else cam.position.lerp(_cp, 1 - Math.exp(-dt * 9));
+  cam.lookAt(r.st === 1 ? pos : _look.set(pos.x + fx * 1.6, pos.y + 0.35, pos.z + fz * 1.6));
 }
 function behind(P, pos, look) {
   const b = P.ball, fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
@@ -1594,19 +1647,20 @@ function layoutViews() {
 function render() {
   if (!game) { renderer.setScissorTest(false); renderer.setClearColor(0x0f0820); renderer.clear(); hctx.clearRect(0, 0, hud.width, hud.height); return; }
   // sun follows the first local ball so its shadow stays sharp
-  const focus = game.locals[0] ? game.locals[0].ball.p : S.goal;
+  const L0 = game.locals[0], focus = L0 ? (L0.focusR ? L0.focusR.mesh.position : L0.ball.p) : S.goal;
   sun.target.position.copy(focus); sun.position.copy(focus).add(new V3(18, 40, 12));
   renderer.shadowMap.needsUpdate = true;
   renderer.setScissorTest(true);
   for (const P of game.locals) {
     const [x, y, w, h] = P.view;
     renderer.setViewport(x, H - y - h, w, h); renderer.setScissor(x, H - y - h, w, h);
+    const fr = P.focusR || P.rc, fp = P.focusR ? fr.mesh.position : P.ball.p;
     for (const r of game.racers) {
-      if (r === P.rc) { setAlpha(r.mesh, 1); continue; }
-      const d = r.mesh.position.distanceTo(P.ball.p);
+      if (r === fr) { setAlpha(r.mesh, 1); continue; }
+      const d = r.mesh.position.distanceTo(fp);
       setAlpha(r.mesh, 0.12 + 0.78 * smooth(1.2, 6.5, d));
     }
-    if (game.ghost) setAlpha(game.ghost.mesh, 0.15 + 0.35 * smooth(1.2, 6.5, game.ghost.mesh.position.distanceTo(P.ball.p)));
+    if (game.ghost) setAlpha(game.ghost.mesh, 0.15 + 0.35 * smooth(1.2, 6.5, game.ghost.mesh.position.distanceTo(fp)));
     for (let i = 0; i < S.coinMeshes.length; i++) S.coinMeshes[i].visible = !P.got.has(i);
     renderer.render(scene, P.cam);
   }
@@ -1642,12 +1696,13 @@ function drawHud() {
     const [x, y, w, h] = P.view, s = clamp(Math.min(w, h * 1.6) / 900, 0.6, 1.25);
     hctx.save(); hctx.beginPath(); hctx.rect(x, y, w, h); hctx.clip();
     if (g.locals.length > 1) { hctx.strokeStyle = '#0f0820'; hctx.lineWidth = 4; hctx.strokeRect(x, y, w, h); }
+    const fr = P.focusR, fp = fr ? fr.mesh.position : P.ball.p;
     // name tags for everybody else
     for (const r of g.racers) {
       if (r === P.rc || r.gone) continue;
       _pr.copy(r.mesh.position); _pr.y += 0.95; _pr.project(P.cam);
       if (_pr.z > 1 || Math.abs(_pr.x) > 1.1 || Math.abs(_pr.y) > 1.1) continue;
-      const d = r.mesh.position.distanceTo(P.ball.p);
+      const d = r === fr ? 99 : r.mesh.position.distanceTo(fp);
       if (d > 70) continue;
       hctx.globalAlpha = 0.35 + 0.65 * smooth(1.2, 6.5, d);
       txt(r.name.toUpperCase(), x + (_pr.x + 1) / 2 * w, y + (1 - _pr.y) / 2 * h, Math.round(9 * s), r.color, 'center', 'bottom');
@@ -1657,6 +1712,10 @@ function drawHud() {
       _pr.copy(g.ghost.mesh.position); _pr.y += 0.95; _pr.project(P.cam);
       if (_pr.z < 1) { hctx.globalAlpha = 0.6; txt('BEST', x + (_pr.x + 1) / 2 * w, y + (1 - _pr.y) / 2 * h, Math.round(8 * s), '#ffffff', 'center', 'bottom'); hctx.globalAlpha = 1; }
     }
+    if (P.spectator) {
+      txt('SPECTATING', x + w / 2, y + 16 * s, Math.round(16 * s), '#3ff0ff', 'center');
+      txt('YOU RACE FROM THE NEXT STAGE', x + w / 2, y + 44 * s, Math.round(8 * s), '#a898cf', 'center');
+    } else {
     // timer
     const left = g.phase === 'run' ? Math.max(0, P.deadline - P.runT) : S.limit;
     const shown = P.state === 'done' ? P.rc.time : left;
@@ -1673,8 +1732,9 @@ function drawHud() {
       txt(ord(pl), x + w - 16 * s, y + 14 * s, Math.round(22 * s), pl === 1 ? '#ffd23f' : '#ffffff', 'right');
       txt(`OF ${order.length}`, x + w - 16 * s, y + 44 * s, Math.round(8 * s), '#a898cf', 'right');
     }
-    // speed
-    const sp = Math.hypot(P.ball.v.x, P.ball.v.y, P.ball.v.z) * 3.6;
+    }
+    // speed (of whoever you're looking at)
+    const fv = fr ? (fr.local ? fr.local.ball.v : fr.tv) : P.ball.v, sp = fv.length() * 3.6;
     txt(`${Math.round(sp)} KM/H`, x + 16 * s, y + h - 16 * s, Math.round(10 * s), '#3ff0ff', 'left', 'bottom');
     if (g.locals.length > 1) txt(P.rc.name.toUpperCase(), x + w - 16 * s, y + h - 16 * s, Math.round(10 * s), P.rc.color, 'right', 'bottom');
     // big messages
@@ -1687,7 +1747,13 @@ function drawHud() {
       const a = Math.min(1, (g.t - P.msg.at) * 6), pop = 1 + (1 - a) * 0.6;
       txt(P.msg.text, x + w / 2, y + h * 0.42, Math.round(Math.min(34, 1100 / Math.max(6, P.msg.text.length) / 2) * s * pop), P.msg.color, 'center', 'middle');
     }
-    if (P.state === 'done' && many) txt(`${ord(order.indexOf(P.rc) + 1)} PLACE`, x + w / 2, y + h * 0.42 + 40 * s, Math.round(12 * s), '#ffffff', 'center', 'middle');
+    if (P.state === 'done' && many && !fr) txt(`${ord(order.indexOf(P.rc) + 1)} PLACE`, x + w / 2, y + h * 0.42 + 40 * s, Math.round(12 * s), '#ffffff', 'center', 'middle');
+    // who you're watching, and how to switch
+    if (fr || ((P.state === 'done' || P.state === 'timeout') && many && g.t - (P.doneAt ?? g.t) > 2.5)) {
+      const who = fr || P.rc, yy = y + h - 46 * s;
+      txt(fr ? `WATCHING ${who.name.toUpperCase()}${who.st === 2 ? ' ✓' : ''}` : 'WATCHING YOURSELF', x + w / 2, yy, Math.round(11 * s), who.color, 'center', 'bottom');
+      txt('◀  ▶  SWITCH SHEEP', x + w / 2, yy + 20 * s, Math.round(8 * s), '#a898cf', 'center', 'bottom');
+    }
     hctx.restore();
   }
   // leaderboard when there's room for it
@@ -1722,6 +1788,13 @@ function frame(now) {
   if (game && !game.paused) update(dt);
   render();
 }
+// a hidden tab gets no animation frames, but an online race has to keep going for everyone
+// else (the host runs the clock and relays everybody), so tick it from a timer instead
+setInterval(() => {
+  if (!document.hidden || !game || !game.online) return;
+  const now = performance.now(), dt = Math.min(1, (now - lastT) / 1000); lastT = now;
+  update(dt);
+}, 250);
 
 // ====================================================================
 //  Overlays and setup screen
@@ -1814,7 +1887,7 @@ function renderSetup() {
     if (hosting) {
       $('roomCode').textContent = net.code;
       $('hostRows').replaceChildren(row(COLORS[0], nameSpan(cleanName(setup.myName) || 'Host'), 'YOU', true),
-        ...net.players.map((p, k) => row(COLORS[(k + 1) % COLORS.length], nameSpan(p.name), p.waiting ? 'NEXT STAGE' : 'ONLINE')));
+        ...net.players.map((p, k) => row(COLORS[(k + 1) % COLORS.length], nameSpan(p.name), p.waiting ? 'WATCHING' : 'ONLINE')));
       if (!$('hostStatus').classList.contains('err')) setStatus('hostStatus', net.players.length ? `${net.players.length} joined. Start when everyone's in.` : 'Waiting for friends to join…', net.players.length ? 'ok' : '');
     }
     $('startBtn').textContent = hosting ? '▶ START RACE' : '▶ OPEN ROOM';
@@ -1905,7 +1978,8 @@ function loadPeerLib() {
 }
 function roomCode() { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 5; i++) s += a[Math.random() * a.length | 0]; return s; }
 function send(conn, m) { try { if (conn && conn.open) conn.send(m); } catch (e) { /* dropped connection */ } }
-function broadcast(m) { if (net.role === 'host') for (const p of net.players) if (!p.waiting || m.t === 'lobby') send(p.conn, m); }
+// people who joined mid-race (waiting) watch it: they get everything but the hurry-up
+function broadcast(m) { if (net.role === 'host') for (const p of net.players) if (!p.waiting || m.t !== 'hurry') send(p.conn, m); }
 
 // ---------- host ----------
 async function openRoom() {
@@ -1939,6 +2013,8 @@ function hostOnData(conn, m) {
     net.players.push(p);
     sfx('join');
     broadcastLobby();
+    if (p.waiting) send(conn, { t: 'start', si: game.si, no: cup.pos + 1, of: cup.list.length, at: game.t,
+      racers: game.racers.filter(r => !r.gone).map(r => ({ id: r.id, name: r.name, color: r.color })), you: null });
     renderSetup();
     return;
   }
@@ -2022,14 +2098,14 @@ function clientOnData(m) {
     case 'lobby':
       net.lobby = m;
       if (game && !m.playing) { teardown(); disposeStage(); }
-      if (!game) { setup.mode = 'join'; show('setup'); renderSetup(); setStatus('joinStatus', m.playing ? 'A race is on. You join from the next stage!' : 'Connected! Waiting for the host to start…', 'ok'); }
+      if (!game) { setup.mode = 'join'; show('setup'); renderSetup(); setStatus('joinStatus', m.playing ? 'A race is on. You can watch it and join from the next stage!' : 'Connected! Waiting for the host to start…', 'ok'); }
       break;
     case 'start': {
       const si = clamp(m.si | 0, 0, STAGES.length - 1);
       cup = { list: [], pos: (m.no | 0) - 1, totals: {} }; cup.list.length = m.of | 0 || 1;
       const racers = (m.racers || []).slice(0, MAX_ONLINE).map(r => ({ id: String(r.id), name: cleanName(r.name) || 'Sheep', color: COLORS.includes(r.color) ? r.color : COLORS[1], local: r.id === m.you ? { ctrl: 'any' } : null }));
       audio();
-      newGame(si, racers);
+      newGame(si, racers, { watch: !racers.some(r => r.local), at: typeof m.at === 'number' && isFinite(m.at) ? m.at : 0 });
       break;
     }
     case 'P':
@@ -2058,7 +2134,7 @@ function netTick(dt) {
   game.sendT += dt;
   if (game.sendT < 1 / 15) return;
   game.sendT = 0;
-  const me = game.locals[0] && game.locals[0].rc;
+  const me = game.locals[0] && !game.locals[0].spectator && game.locals[0].rc;
   if (net.role === 'client') { if (me) send(net.conn, { t: 'p', d: myState(me) }); return; }
   const all = { ...net.latest };
   if (me) all.host = myState(me);

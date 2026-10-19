@@ -95,6 +95,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hi
 .score .head{cursor:default;font-family:'Press Start 2P',monospace;font-size:7px;color:var(--dim)}
 .score .head:hover{border-color:transparent}
 @media (max-width:600px){ .score button{grid-template-columns:12px minmax(0,1fr) repeat(2,minmax(30px,auto))} .score .wide{display:none} }
+/* more than 4 players: two columns (1-4 and 5-8), army and workers only */
+.score.many{grid-template-columns:1fr 1fr;column-gap:12px}
+.score.many .span{grid-column:1 / -1}
+.score.many .wide{display:none}
+.score.many button{grid-template-columns:12px minmax(0,1fr) repeat(2,minmax(30px,auto));gap:6px}
+.score.many button:not(.head){font-size:17px}
+@media (max-width:600px){
+  .score.many{grid-template-columns:1fr;overflow-y:auto;max-height:100%}
+  .score.many > button{grid-column:auto !important;grid-row:auto !important}
+  .score.many > .head + .head{display:none}
+}
 
 @media (max-width:760px){
   :root{--hud:128px}
@@ -315,10 +326,11 @@ const ROOM_PREFIX = 'rocksheep-lord-of-the-pings-';
 const SAVE_KEY = 'lord-of-the-pings-setup';
 const TS = 32;                 // pixels per tile at zoom 1
 const TICK = 1 / 20;           // the simulation runs at 20 steps a second
-const SNAP_EVERY = 2;          // host sends a snapshot every 2 steps (10 a second)
-const MAX_P = 4;
-const COLORS = ['#ff4f4f', '#3f8cff', '#ffd23f', '#c77dff'];
-const CPU_NAMES = ['Sir Lagsalot', 'Grumpf', 'Boss Nibbles', 'Morel Compass'];
+const SNAP_EVERY = 2;          // host sends a snapshot every 2 steps (10 a second), less often in huge battles
+const MAX_P = 8;
+const SMALL_MAX_P = 4;         // more than 4 players only fit on the huge map
+const COLORS = ['#ff4f4f', '#3f8cff', '#ffd23f', '#c77dff', '#7dff6a', '#ff9a3c', '#3ff0ff', '#ff4fa3'];
+const CPU_NAMES = ['Sir Lagsalot', 'Grumpf', 'Boss Nibbles', 'Morel Compass', 'Null Pointer', 'Captain Cache', 'Lady Latency', 'Byte Me'];
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.random() * a.length | 0];
@@ -496,7 +508,8 @@ const THEMES = [
   { name: 'GRIMDARK', grass: ['#615c44', '#6a654b', '#58533d'], dirt: '#5e4a34', water: '#2e3a38', water2: '#3e4a48', rock: '#5e5a5c', rock2: '#77727a',
     leaf: ['#3a4430', '#434d36', '#323b29'], trunk: '#3a2a1c', stump: '#4a3826', grim: true, mini: { g: '#615c44', t: '#323b29', w: '#2e3a38', r: '#5e5a5c', d: '#5e4a34' } },
 ];
-const SIZES = [[48, 'SMALL'], [64, 'MEDIUM'], [80, 'LARGE']];
+const SIZES = [[48, 'SMALL'], [64, 'MEDIUM'], [80, 'LARGE'], [112, 'HUGE · 8']];
+const HUGE = SIZES.length - 1;   // the 8-player map: room for a base on every corner and every side
 const START_RES = [[300, 150, 'A LITTLE'], [500, 300, 'NORMAL'], [1500, 1000, 'LOADS']];
 const CTRLS = [['you', 'YOU'], ['remote', 'ONLINE PLAYER'], ['easy', 'CPU · EASY'], ['normal', 'CPU · NORMAL'], ['hard', 'CPU · HARD']];
 const AI_DIFF = {
@@ -597,8 +610,10 @@ function valueNoise(rng, W, H, cell) {
   }
   return out;
 }
-// start corners in the order they're handed out: 2 players get opposite corners
+// start spots in the order they're handed out: 2 players get opposite corners. The huge map
+// also has a spot in the middle of every side.
 const CORNERS = [[0, 0], [1, 1], [1, 0], [0, 1]];
+const SIDES = [[0.5, 0], [0.5, 1], [0, 0.5], [1, 0.5]];
 function genMap(seed, W, nPlayers) {
   const H = W, rng = mulberry32(seed), N = W * H;
   const ter = new Uint8Array(N), wood = new Uint8Array(N), deco = new Uint8Array(N);
@@ -619,12 +634,20 @@ function genMap(seed, W, nPlayers) {
     for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++)
       if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r) set(x, y, t === T_GRASS && ter[y * W + x] === T_DIRT ? T_DIRT : t);
   };
-  const inset = W <= 48 ? 7 : 8;
-  let corners = CORNERS.slice(0, Math.max(2, nPlayers));
-  if (nPlayers === 2 && rng() < 0.5) corners = [CORNERS[2], CORNERS[3]];
-  const starts = corners.map(([cx, cy]) => ({ x: cx ? W - 1 - inset : inset, y: cy ? H - 1 - inset : inset, dx: cx ? -1 : 1, dy: cy ? -1 : 1 }));
-  const mines = [];
+  const inset = W <= 48 ? 7 : W >= 96 ? 9 : 8, huge = W >= 96;
   const mid = (W - 1) / 2;
+  const spots = huge ? [...CORNERS, ...SIDES] : CORNERS;
+  let corners = spots.slice(0, Math.max(2, nPlayers));
+  if (nPlayers === 2 && rng() < 0.5) corners = [CORNERS[2], CORNERS[3]];
+  // who gets which of those spots is shuffled too, so no player is always stuck with the same one
+  for (let i = corners.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [corners[i], corners[j]] = [corners[j], corners[i]]; }
+  // a base on a side faces the middle, with its mine straight in front and forest behind and on both flanks
+  // (ax, ay) points from a side base straight at the middle
+  const spotAt = ([cx, cy]) => cx === 0.5 ? { x: cy ? Math.ceil(mid) : Math.floor(mid), y: cy ? H - 1 - inset : inset, dx: cy ? -1 : 1, dy: cy ? -1 : 1, side: true, ax: 0, ay: cy ? -1 : 1 }
+    : cy === 0.5 ? { x: cx ? W - 1 - inset : inset, y: cx ? Math.floor(mid) : Math.ceil(mid), dx: cx ? -1 : 1, dy: cx ? 1 : -1, side: true, ax: cx ? -1 : 1, ay: 0 }
+    : { x: cx ? W - 1 - inset : inset, y: cy ? H - 1 - inset : inset, dx: cx ? -1 : 1, dy: cy ? -1 : 1 };
+  const starts = corners.map(spotAt);
+  const mines = [];
   // roads from every start to the middle so nobody is walled in
   for (const s of starts) {
     const steps = Math.ceil(dist(s.x, s.y, mid, mid));
@@ -634,25 +657,56 @@ function genMap(seed, W, nPlayers) {
       if (rng() < 0.5) set(Math.round(x), Math.round(y), T_DIRT);
     }
   }
+  if (huge) {
+    // the Moat: a ring of water round the middle, crossed by four bridges, with a road all the way round
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const dx = x + 0.5 - (mid + 0.5), dy = y + 0.5 - (mid + 0.5), r = Math.hypot(dx, dy);
+      if (r < 9) set(x, y, rng() < 0.12 ? T_DIRT : T_GRASS);
+      else if (r < 11.5) set(x, y, Math.abs(dx) < 1.6 || Math.abs(dy) < 1.6 ? T_DIRT : T_WATER);
+      else if (r < 14.5) set(x, y, rng() < 0.35 ? T_DIRT : T_GRASS);
+    }
+  }
   for (const s of starts) {
     clearDisc(s.x, s.y, 7.5);
-    // a block of forest behind the base, along the wall
-    for (let y = -3; y <= 3; y++) for (let x = 0; x < 3; x++) set(s.x - s.dx * (6 + x), s.y + y, T_TREE);
-    for (let x = -3; x <= 3; x++) for (let y = 0; y < 2; y++) set(s.x + x, s.y - s.dy * (6 + y), T_TREE);
-    // the home gold mine sits beside the hall (MINE_GAP open squares away), towards the middle
-    const mx = s.x + s.dx * (MINE_GAP + 3) - 1, my = s.y + s.dy * 3 - 1;
+    let mx, my;
+    if (s.side) {
+      const px = Math.abs(s.ay), py = Math.abs(s.ax);
+      for (let k = -3; k <= 3; k++) for (let d = 0; d < 2; d++) {
+        set(s.x - s.ax * (6 + d) + px * k, s.y - s.ay * (6 + d) + py * k, T_TREE);
+        if (!d && k <= 1) for (const sg of [-1, 1]) set(s.x + px * sg * 7 + s.ax * k, s.y + py * sg * 7 + s.ay * k, T_TREE);
+      }
+      // one square further out than MINE_GAP: a straight walk would otherwise beat the corners' angled one
+      mx = s.x + s.ax * (MINE_GAP + 4) - 1; my = s.y + s.ay * (MINE_GAP + 4) - 1;
+    } else {
+      // a block of forest behind the base, along the wall
+      for (let y = -3; y <= 3; y++) for (let x = 0; x < 3; x++) set(s.x - s.dx * (6 + x), s.y + y, T_TREE);
+      for (let x = -3; x <= 3; x++) for (let y = 0; y < 2; y++) set(s.x + x, s.y - s.dy * (6 + y), T_TREE);
+      // the home gold mine sits beside the hall (MINE_GAP open squares away), towards the middle
+      mx = s.x + s.dx * (MINE_GAP + 3) - 1; my = s.y + s.dy * 3 - 1;
+    }
     clearDisc(mx + 1, my + 1, 3.5);
     mines.push({ x: mx, y: my, gold: 8000 });
     s.mine = mines.length - 1;
     for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++) set(s.x + x, s.y + y, T_DIRT);
   }
-  // expansions: the middle, and the middle of each side on bigger maps
-  const extra = [[mid, mid]];
-  if (W >= 64) extra.push([mid, 6], [mid, H - 7], [6, mid], [W - 7, mid]);
-  for (const [x, y] of extra) {
+  // expansions: the middle, and the middle of each side on bigger maps. The huge map has a rich
+  // mine on the island in the Moat, one between every pair of neighbouring bases, and a mine on
+  // every start spot nobody took.
+  const extra = [[mid, mid, huge ? 20000 : 10000]];
+  if (huge) {
+    for (const [fx, fy] of [[0.29, 0.14], [0.71, 0.14], [0.29, 0.86], [0.71, 0.86], [0.14, 0.29], [0.86, 0.29], [0.14, 0.71], [0.86, 0.71]]) extra.push([fx * (W - 1), fy * (H - 1)]);
+    for (const sp of spots) if (!corners.includes(sp)) { const s = spotAt(sp); extra.push([s.x, s.y]); }
+  } else if (W >= 64) extra.push([mid, 6], [mid, H - 7], [6, mid], [W - 7, mid]);
+  for (const [x, y, gold] of extra) {
     const mx = Math.round(x) - 1, my = Math.round(y) - 1;
+    // on the huge map every mine gets a road to the ring road, so lakes and rocks can't wall it off
+    const away = Math.hypot(x - mid, y - mid);
+    if (huge && away > 14) {
+      const ex = mid + (x - mid) / away * 13, ey = mid + (y - mid) / away * 13, n = Math.ceil(away - 13);
+      for (let k = 0; k <= n; k++) clearDisc(x + (ex - x) * k / n, y + (ey - y) * k / n, 1.4);
+    }
     clearDisc(mx + 1, my + 1, 4);
-    mines.push({ x: mx, y: my, gold: 10000 });
+    mines.push({ x: mx, y: my, gold: gold || 10000 });
   }
   for (const m of mines) for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) ter[(m.y + y) * W + m.x + x] = T_DIRT;
   for (let i = 0; i < N; i++) if (ter[i] === T_TREE) wood[i] = TREE_LOADS;
@@ -1324,16 +1378,16 @@ function mineDry(w, m) {
   for (const u of w.ents) if (u.res && u.res.mine === m.id) u.res = { mineNear: { x: m.x, y: m.y } };
 }
 // a mine's door: the free tile just below its middle, or the next best side if something's built there
-// which side a mine's door is on: towards the base it belongs to (b = bottom, l = left, r = right).
+// which side a mine's door is on: towards the base it belongs to (b = bottom, t = top, l = left, r = right).
 // Worked out from the seeded map, so host and guests agree without sending it.
 function mineDoor(w, m) {
   let best = null, bd = 12;
   for (const st of w.starts) { const d = dist(st.x, st.y, m.bx + 1.5, m.by + 1.5); if (d < bd) { bd = d; best = st; } }
   if (!best) return 'b';
   const vx = best.x - (m.bx + 1.5), vy = best.y - (m.by + 1.5);
-  return vy > 0 && vy >= Math.abs(vx) ? 'b' : vx < 0 ? 'l' : 'r';
+  return vy > 0 && vy >= Math.abs(vx) ? 'b' : vy < 0 && -vy >= Math.abs(vx) ? 't' : vx < 0 ? 'l' : 'r';
 }
-const DOOR_TILES = { b: [[1, 3], [0, 3], [2, 3]], l: [[-1, 1], [-1, 2], [-1, 0]], r: [[3, 1], [3, 2], [3, 0]] };
+const DOOR_TILES = { b: [[1, 3], [0, 3], [2, 3]], t: [[1, -1], [0, -1], [2, -1]], l: [[-1, 1], [-1, 2], [-1, 0]], r: [[3, 1], [3, 2], [3, 0]] };
 function mineEntrance(w, m) {
   const bx = m.bx, by = m.by, door = m.door || (m.door = mineDoor(w, m));
   for (const [ox, oy] of [...DOOR_TILES[door], ...DOOR_TILES.b, ...DOOR_TILES.l, ...DOOR_TILES.r, [1, -1]])
@@ -1674,8 +1728,20 @@ function aiNewUnit(w, P, u) {
   else {
     const h = P.home;
     if (P.ai.raid) applyCmd(w, P.slot, { c: 'move', ids: [u.id], x: P.ai.raid.x, y: P.ai.raid.y, a: true });
-    else if (h) applyCmd(w, P.slot, { c: 'move', ids: [u.id], x: h.x + rand(-3, 3) + (h.mine ? (h.mine.x - h.x) * -0.5 : 0), y: h.y + rand(-3, 3) + 3, a: true });
+    else if (h) { const r = aiRally(w, h); applyCmd(w, P.slot, { c: 'move', ids: [u.id], x: r.x + rand(-2, 2), y: r.y + rand(-2, 2), a: true }); }
   }
+}
+// where new troops wait: in front of the hall, towards the middle of the map. When the mine is
+// straight in front (bases on the sides of the huge map) they stand beside its path instead, always
+// on the same turning side, so every base on the map behaves alike.
+function aiRally(w, h) {
+  const mid = (w.W - 1) / 2, dl = Math.hypot(mid - h.x, mid - h.y) || 1, dx = (mid - h.x) / dl, dy = (mid - h.y) / dl;
+  let r = { x: h.x + dx * 7, y: h.y + dy * 7 };
+  if (h.mine) {
+    const ml = Math.hypot(h.mine.x + 1.5 - h.x, h.mine.y + 1.5 - h.y) || 1, mx = (h.mine.x + 1.5 - h.x) / ml, my = (h.mine.y + 1.5 - h.y) / ml;
+    if (mx * dx + my * dy > 0.9) r = { x: h.x + dx * 3 - my * 5, y: h.y + dy * 3 + mx * 5 };
+  }
+  return { x: clamp(r.x, 1, w.W - 2), y: clamp(r.y, 1, w.H - 2) };
 }
 function aiAttacked(w, P, src) {
   if (src.o < 0 || !P.ai) return;
@@ -1839,7 +1905,7 @@ function aiThink(w, P) {
   }
   // attack
   if (w.t >= ai.attackAt && army.length >= ai.need) {
-    ai.wave++; ai.need += D.grow; ai.attackAt = w.t + D.every;
+    ai.wave++; ai.need += D.grow; ai.attackAt = w.t + D.every; ai.foe = -1;
     aiAttackWith(w, P, army);
   } else if (ai.raid) {
     // keep the raid going: idle raiders pick the next thing to knock down
@@ -1850,8 +1916,18 @@ function aiThink(w, P) {
 function aiAttackWith(w, P, units) {
   if (!units.length) return;
   const c = units.reduce((a, u) => ({ x: a.x + u.x / units.length, y: a.y + u.y / units.length }), { x: 0, y: 0 });
+  // each wave goes after one enemy: the closest, give or take a bit, so a CPU sitting between two
+  // equally close neighbours doesn't always pick the same one (it decided whole 8-player games)
+  const F = w.players[P.ai.foe];
+  if (!F || !F.alive || !enemies(w, P.slot, F.slot)) {
+    let fd = 1e9; P.ai.foe = -1;
+    for (const Q of w.players) if (Q.alive && enemies(w, P.slot, Q.slot) && Q.home) { const dd = dist(Q.home.x, Q.home.y, c.x, c.y) + rand(0, 12); if (dd < fd) { fd = dd; P.ai.foe = Q.slot; } }
+  }
   let best = null, bd = 1e9;
-  for (const e of w.ents) if (isBldK(e.k) && enemies(w, P.slot, e.o)) { const dd = dist(e.x, e.y, c.x, c.y); if (dd < bd) { bd = dd; best = e; } }
+  for (const pass of [0, 1]) {
+    for (const e of w.ents) if (isBldK(e.k) && enemies(w, P.slot, e.o) && (pass || e.o === P.ai.foe)) { const dd = dist(e.x, e.y, c.x, c.y); if (dd < bd) { bd = dd; best = e; } }
+    if (best) break;
+  }
   if (!best) { P.ai.raid = null; return; }
   P.ai.raid = { x: best.x, y: best.y };
   const boomers = units.filter(u => def(w, u).kaboom), rest = units.filter(u => !def(w, u).kaboom);
@@ -2714,6 +2790,11 @@ function paintBuilding(c, race, k, color, W, s, variant) {
       const x = variant === 'l' ? W * 0.13 : W * 0.87, f = variant === 'l' ? 1 : -1;
       c.fillStyle = '#1a1208'; c.beginPath(); c.ellipse(x, W * 0.72, W * 0.1, W * 0.2, 0, f > 0 ? -Math.PI / 2 : Math.PI / 2, f > 0 ? Math.PI / 2 : Math.PI * 1.5, true); c.fill();
       box(c, x - W * 0.02, W * 0.5, W * 0.04, W * 0.42, '#7a5530'); box(c, x - W * 0.02 + f * W * 0.12, W * 0.5, W * 0.04, W * 0.42, '#7a5530'); box(c, Math.min(x, x + f * W * 0.14) - W * 0.02, W * 0.48, W * 0.18, W * 0.04, '#7a5530');
+    } else if (variant === 't') {
+      // a shaft going down from the top, with a little winch over it
+      ell(c, W * 0.5, W * 0.24, W * 0.16, W * 0.09, '#1a1208');
+      box(c, W * 0.33, W * 0.06, W * 0.04, W * 0.2, '#7a5530'); box(c, W * 0.63, W * 0.06, W * 0.04, W * 0.2, '#7a5530'); box(c, W * 0.31, W * 0.05, W * 0.38, W * 0.04, '#7a5530');
+      line(c, W * 0.5, W * 0.09, W * 0.5, W * 0.22, '#c9a06a', u);
     } else {
       c.fillStyle = '#1a1208'; c.beginPath(); c.ellipse(W * 0.5, W * 0.95, W * 0.17, W * 0.25, 0, Math.PI, 0); c.fill();
       box(c, W * 0.31, W * 0.68, W * 0.04, W * 0.27, '#7a5530'); box(c, W * 0.65, W * 0.68, W * 0.04, W * 0.27, '#7a5530'); box(c, W * 0.3, W * 0.66, W * 0.4, W * 0.05, '#7a5530');
@@ -2969,7 +3050,7 @@ function buildingLife(c, race, e, color, sx, sy, s, t) {
     const k = Math.floor(ph * 1.5) % 6, spots = [[0.22, 0.6], [0.75, 0.5], [0.55, 0.28], [0.3, 0.38], [0.82, 0.78], [0.12, 0.8]];
     const fr = (ph * 1.5) % 1, [mx, my] = spots[k], r = Math.sin(fr * Math.PI) * 4 * u;
     line(c, sx + Wpx * mx - r, sy + Wpx * my, sx + Wpx * mx + r, sy + Wpx * my, '#fff', 1.5); line(c, sx + Wpx * mx, sy + Wpx * my - r, sx + Wpx * mx, sy + Wpx * my + r, '#fff', 1.5);
-    if (G.replica ? e.busy : G.ents.some(w => w.inId === e.id)) ell(c, sx + Wpx * (e.door === 'l' ? 0.13 : e.door === 'r' ? 0.87 : 0.5), sy + Wpx * (e.door === 'b' || !e.door ? 0.85 : 0.72), s * 0.3, s * 0.3, `rgba(255,210,63,${0.25 + Math.sin(t * 6) * 0.1})`);
+    if (G.replica ? e.busy : G.ents.some(w => w.inId === e.id)) ell(c, sx + Wpx * (e.door === 'l' ? 0.13 : e.door === 'r' ? 0.87 : 0.5), sy + Wpx * (e.door === 'b' || !e.door ? 0.85 : e.door === 't' ? 0.24 : 0.72), s * 0.3, s * 0.3, `rgba(255,210,63,${0.25 + Math.sin(t * 6) * 0.1})`);
     return;
   }
   // chimney smoke from halls and goblin shacks
@@ -4053,9 +4134,15 @@ function scoreboard(w) {
   const all = document.createElement('button'); all.type = 'button'; all.className = eyeOf(w) < 0 ? 'on' : '';
   all.innerHTML = '<span class="sw" style="background:#efe6ff"></span><span class="pn">Everyone, no fog · 0</span><span></span><span></span><span class="wide"></span><span class="wide"></span>';
   all.onpointerdown = ev => { ev.preventDefault(); setPov(-1); };
-  box.append(head, all);
+  const many = w.players.length > 4;
+  if (many) {
+    box.classList.add('many'); all.classList.add('span');
+    head.innerHTML = '<span></span><span>PLAYER</span><span>ARMY</span><span>WORK</span>';
+    box.append(head, head.cloneNode(true), all);
+  } else box.append(head, all);
   w.players.forEach((P, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = eyeOf(w) === i ? 'on' : '';
+    if (many) { b.style.gridColumn = i < 4 ? '1' : '2'; b.style.gridRow = String(3 + i % 4); }
     b.innerHTML = `<span class="sw" style="background:${P.color}"></span><span class="pn"></span>` + [0, 1, 2, 3].map(k => `<span class="${k > 1 ? 'wide' : ''}"><b></b></span>`).join('');
     b.querySelector('.pn').textContent = `${i + 1}. ${P.name} · ${RACES[P.race].name} · team ${P.team}`;
     b.onpointerdown = ev => { ev.preventDefault(); setPov(eyeOf(w) === i ? -1 : i); };
@@ -4140,6 +4227,8 @@ function encodeEnts(w) {
   });
 }
 let netEv = [];
+// big battles make big snapshots: send them less often so slow connections keep up
+const snapEvery = w => w.ents.length > 700 ? 4 : w.ents.length > 350 ? 3 : SNAP_EVERY;
 function sendSnapshots(w) {
   const e = encodeEnts(w);
   const p = w.players.map(P => [Math.floor(P.g), Math.floor(P.w), P.food, P.cap, P.up[0], P.up[1], P.alive ? 1 : 0, P.up[2]]);
@@ -4154,6 +4243,8 @@ function sendSnapshots(w) {
 }
 function applySnapshot(w, m) {
   if (!Array.isArray(m.e)) return;
+  // how long since the last snapshot, so units glide between the two at the right speed
+  if (w.frame && (m.f | 0) > w.frame) w.snapDt = clamp(((m.f | 0) - w.frame) * TICK, TICK, 0.5);
   w.t = +m.tm || w.t; w.frame = m.f | 0;
   const seen = new Set();
   for (const d of m.e) {
@@ -4202,7 +4293,7 @@ function removeTree(w, i) {
 function replicaTick(w, dt) {
   for (const e of w.ents) {
     if (e.nx === undefined) continue;
-    e.lerp = Math.min(1, (e.lerp || 0) + dt / (TICK * SNAP_EVERY));
+    e.lerp = Math.min(1, (e.lerp || 0) + dt / (w.snapDt || TICK * SNAP_EVERY));
     e.x = e.px + (e.nx - e.px) * e.lerp; e.y = e.py + (e.ny - e.py) * e.lerp;
     e.atkT = Math.max(0, (e.atkT || 0) - dt);
   }
@@ -4262,8 +4353,8 @@ function enterBattle() {
     const R = RACES[G.players[G.me].race];
     msg(`You lead the ${R.name}. ${R.passive}`, '#ffd23f');
     msg(`Right-click the gold mine with your ${R.workers} selected to start mining.`, '#a898cf');
-  } else if (net.role === 'client') msg('A battle is on: you\'re watching. Click a player in the scoreboard (or press 1-4) to see what they see.', '#3ff0ff');
-  else msg('You\'re watching. Click a player in the scoreboard (or press 1-4) to see what they see, 0 for everything.' + (G.replica ? '' : ' [ and ] change the speed.'), '#3ff0ff');
+  } else if (net.role === 'client') msg('A battle is on: you\'re watching. Click a player in the scoreboard (or press 1-8) to see what they see.', '#3ff0ff');
+  else msg('You\'re watching. Click a player in the scoreboard (or press 1-8) to see what they see, 0 for everything.' + (G.replica ? '' : ' [ and ] change the speed.'), '#3ff0ff');
   renderSpeed();
 }
 function endBattle(w, team) {
@@ -4349,21 +4440,25 @@ const defaultSlots = () => [
   { name: CPU_NAMES[1], ctrl: 'normal', race: 'orcs', team: 2 },
   { name: CPU_NAMES[2], ctrl: 'normal', race: 'goblins', team: 3 },
   { name: CPU_NAMES[3], ctrl: 'normal', race: 'funguys', team: 4 },
-  { name: 'Bugsy Malone', ctrl: 'normal', race: 'bugs', team: 4 },
+  { name: CPU_NAMES[4], ctrl: 'normal', race: 'bugs', team: 5 },
+  { name: CPU_NAMES[5], ctrl: 'normal', race: 'undead', team: 6 },
+  { name: CPU_NAMES[6], ctrl: 'normal', race: 'mechs', team: 7 },
+  { name: CPU_NAMES[7], ctrl: 'normal', race: 'random', team: 8 },
+  { name: 'Bugsy Malone', ctrl: 'normal', race: 'bugs', team: 8 },
 ];
 function load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } }
 const setup = Object.assign({ mode: 'local', size: 1, theme: 0, res: 1, n: 2, myName: '', myRace: 'humans', look: 'cheerful' }, load());
-if (!Array.isArray(setup.slots) || setup.slots.length < MAX_P) setup.slots = defaultSlots();
-if (setup.slots.length === MAX_P) setup.slots.push(defaultSlots()[MAX_P]);
-setup.slots.length = MAX_P + 1;
+if (!Array.isArray(setup.slots)) setup.slots = defaultSlots();
+// older saves had fewer rows: top them up from the defaults
+setup.slots = defaultSlots().map((d, i) => setup.slots[i] && typeof setup.slots[i] === 'object' ? setup.slots[i] : d);
 for (const [i, s] of setup.slots.entries()) {
   if (i === 0) { if (s.ctrl !== 'watch') s.ctrl = 'you'; }
   else if (!CTRLS.some(c => c[0] === s.ctrl) || s.ctrl === 'you') s.ctrl = 'normal';
   if (s.race !== 'random' && !RACES[s.race]) s.race = 'humans';
-  s.team = clamp(s.team | 0, 1, 4);
+  s.team = clamp(s.team | 0, 1, MAX_P);
 }
 setup.size = clamp(setup.size | 0, 0, SIZES.length - 1); setup.theme = clamp(setup.theme | 0, 0, THEMES.length - 1);
-setup.res = clamp(setup.res | 0, 0, START_RES.length - 1); setup.n = clamp(setup.n | 0, 2, MAX_P);
+setup.res = clamp(setup.res | 0, 0, START_RES.length - 1); setup.n = clamp(setup.n | 0, 2, setup.size === HUGE ? MAX_P : SMALL_MAX_P);
 if (setup.mode === 'host') setup.mode = 'local';
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...setup, mode: setup.mode === 'join' ? 'join' : 'local' })); } catch (e) { /* private mode */ } }
 
@@ -4387,11 +4482,12 @@ function renderSetup() {
   const join = setup.mode === 'join';
   $('hostSide').hidden = join; $('joinSide').hidden = !join;
   if (join) { renderLobby(); return; }
-  seg('optSize', SIZES.map(([, l], i) => [i, l]), setup.size, v => { setup.size = v; });
+  seg('optSize', SIZES.map(([, l], i) => [i, l]), setup.size, v => { setup.size = v; if (v !== HUGE && setup.n > SMALL_MAX_P) { setup.n = SMALL_MAX_P; if (net.role === 'host') assignSlots(); } });
   seg('optTheme', THEMES.map((t, i) => [i, t.name]), setup.theme, v => { setup.theme = v; }, 'var(--green)');
   seg('optLook', [['cheerful', 'CHEERFUL'], ['grim', 'GRIMDARK']], setup.look, v => { setup.look = v; }, 'var(--pink)');
   seg('optRes', START_RES.map((r, i) => [i, r[2]]), setup.res, v => { setup.res = v; }, 'var(--yellow)');
-  seg('optN', [2, 3, 4].map(n => [n, String(n)]), setup.n, v => { setup.n = v; if (net.role === 'host') assignSlots(); }, 'var(--orange)');
+  // 5 to 8 players need the huge map, so picking one of those switches to it
+  seg('optN', [2, 3, 4, 5, 6, 7, 8].map(n => [n, String(n)]), setup.n, v => { setup.n = v; if (v > SMALL_MAX_P) setup.size = HUGE; if (net.role === 'host') assignSlots(); }, 'var(--orange)');
   renderSlots();
   const hosting = net.role === 'host';
   $('roomBox').hidden = !hosting || !net.code;
@@ -4439,7 +4535,7 @@ function renderSlots() {
     race.value = guest ? guest.race : s.race; race.disabled = !!guest;
     race.onchange = () => { s.race = race.value; save(); broadcastLobby(); };
     const team = document.createElement('select'); team.setAttribute('aria-label', `Player ${i + 1} team`);
-    for (let t = 1; t <= 4; t++) option(team, t, `TEAM ${t}`);
+    for (let t = 1; t <= MAX_P; t++) option(team, t, `TEAM ${t}`);
     team.value = s.team; team.onchange = () => { s.team = +team.value; save(); broadcastLobby(); };
     row.append(sw, nameEl, ctl, race, team);
     return row;
@@ -4449,7 +4545,7 @@ function renderLobby() {
   const L = net.lobby;
   $('joinBtn').hidden = net.role === 'client';
   $('lobbyRows').replaceChildren(...(L ? [
-    (() => { const d = document.createElement('div'); d.className = 'lbl'; d.style.margin = '14px 0 4px'; d.textContent = `${SIZES[clamp(L.size | 0, 0, 2)][1]} MAP · ${THEMES[clamp(L.theme | 0, 0, THEMES.length - 1)].name}${L.watch ? ' · THE HOST IS WATCHING' : ''}`; return d; })(),
+    (() => { const d = document.createElement('div'); d.className = 'lbl'; d.style.margin = '14px 0 4px'; d.textContent = `${SIZES[clamp(L.size | 0, 0, SIZES.length - 1)][1]} MAP · ${THEMES[clamp(L.theme | 0, 0, THEMES.length - 1)].name}${L.watch ? ' · THE HOST IS WATCHING' : ''}`; return d; })(),
     ...L.rows.map(r => {
       const row = document.createElement('div'); row.className = 'team'; row.style.gridTemplateColumns = '18px minmax(0,1fr) auto auto';
       const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = r.color;
@@ -4463,7 +4559,7 @@ function renderRaceInfo() {
   $('raceInfo').replaceChildren(...RACE_KEYS.map((rk, i) => {
     const R = RACES[rk], d = document.createElement('div');
     const c = document.createElement('canvas'); c.width = 96; c.height = 96;
-    const x = c.getContext('2d'); x.scale(2, 2); drawUnit(x, rk, K.melee, COLORS[i % 4], 24, 42, 44, { t: 0, face: 1 });
+    const x = c.getContext('2d'); x.scale(2, 2); drawUnit(x, rk, K.melee, COLORS[i % COLORS.length], 24, 42, 44, { t: 0, face: 1 });
     const t = document.createElement('span');
     const b = document.createElement('b'); b.textContent = R.name.toUpperCase();
     t.append(b, `${R.passive} Units: ${R.names.worker}, ${R.names.melee}, ${R.names.ranged}, the ${R.names.special}, the flying ${R.names.flyer}, the ${R.names.siege} and their ultimate, the ${R.names.ultimate}.`);
@@ -4517,7 +4613,7 @@ function hostOnData(conn, m) {
   let p = net.players.find(q => q.id === conn.peer);
   if (m.t === 'hello') {
     if (p) return;
-    if (net.players.length >= 8) { send(conn, { t: 'full' }); setTimeout(() => conn.close(), 300); return; }
+    if (net.players.length >= 12) { send(conn, { t: 'full' }); setTimeout(() => conn.close(), 300); return; }
     p = { id: conn.peer, name: cleanName(m.name) || 'Player', race: cleanRace(m.race), conn, slot: -1, sentFrame: -1 };
     net.players.push(p);
     sfx('join');
@@ -4626,7 +4722,7 @@ async function startClient(m) {
   if (!c || !Array.isArray(c.players)) return;
   await fontsReady;
   audio();
-  const players = c.players.slice(0, MAX_P).map((p, i) => ({ name: cleanName(p.name) || `Player ${i + 1}`, race: RACES[p.race] ? p.race : 'humans', team: clamp(p.team | 0, 1, 4), kind: 'remote' }));
+  const players = c.players.slice(0, MAX_P).map((p, i) => ({ name: cleanName(p.name) || `Player ${i + 1}`, race: RACES[p.race] ? p.race : 'humans', team: clamp(p.team | 0, 1, MAX_P), kind: 'remote' }));
   const cfg = { seed: c.seed | 0, size: SIZES.some(s => s[0] === c.size) ? c.size : 64, theme: clamp(c.theme | 0, 0, THEMES.length - 1), res: [0, 0], players, you: clamp(c.you | 0, -1, players.length - 1) };
   G = makeWorld(cfg, true);
   for (const i of m.removed || []) { const n = i | 0; if (n >= 0 && n < G.N && G.ter[n] === T_TREE) { G.ter[n] = T_STUMP; G.wood[n] = 0; } }
@@ -4690,7 +4786,7 @@ function hostSteps(n) {
     step(G);
     const ev = G.ev; G.ev = [];
     runEvents(G, ev);
-    if (net.role === 'host' && !G.demo) { netEv.push(...ev); if (netEv.length > 400) netEv.splice(0, netEv.length - 400); if (G.frame % SNAP_EVERY === 0) sendSnapshots(G); }
+    if (net.role === 'host' && !G.demo) { netEv.push(...ev); if (netEv.length > 400) netEv.splice(0, netEv.length - 400); if (G.frame % snapEvery(G) === 0) sendSnapshots(G); }
     if (!G) return;
   }
 }

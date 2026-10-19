@@ -136,6 +136,11 @@ sections in this order:
   simulation checks by name. Balance changes go in `BASE`/`RACES`, not in the simulation code. `AI_DIFF`
   tunes the CPU levels.
 - **Map generation**: `genMap(seed, size, players)`, seeded and deterministic (see above).
+  Up to 4 players use the corners; the HUGE map (112 tiles, `HUGE` in `SIZES`) adds a start on
+  every side for up to 8 players, plus the Moat (a water ring with four bridges round a rich mine)
+  and a road from every expansion to the ring road. Which player gets which spot is shuffled from
+  the seed. When touching it, check every start and mine is reachable over many seeds, and run
+  8-CPU free-for-alls: the CPU's rally point and target choice decide who gets ganged up on.
 - **The world**: `makeWorld(cfg, replica)` → `G`. Entities live in `G.ents` / `G.byId`;
   buildings and mines mark tiles in `G.occ`. `findPath()` is grid A* with a goal callback.
 - **Orders**: every player action is a command object run through `applyCmd(world, slot, cmd)`

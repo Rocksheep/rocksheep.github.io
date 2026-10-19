@@ -132,6 +132,7 @@ summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);
       <summary>HOW TO PLAY</summary>
       <p>Tilt the stage to roll your sheep to the <b style="color:var(--yellow);font-weight:400">GOAL</b> as fast as you can. Every coin is worth bonus points. Fall off and you're put back at the last flag.</p>
       <p><b style="color:var(--cyan);font-weight:400">World 2</b>, the Woolly Wonderworks, is a toy factory full of springs and trampolines, conveyor belts, sweeping bars, pistons, lifts, rocking planks, fans that blow you upward, tiles that blink away and loop-the-loops. Hit a loop fast!</p>
+      <p><b style="color:var(--pink);font-weight:400">World 3</b>, the Cosmic Carnival, floats in outer space: moon gravity for huge floaty bounces, cannons that fire you between islands, portals (not every one goes forward!), swinging wrecking balls, half-pipes and spinning drums. A ring on the ground shows where you'll land.</p>
       <p>Finished? Your camera follows whoever is still rolling; steer left or right to switch sheep. Friends who join in the middle of a race watch it and join from the next stage.</p>
       <p>Racers never bump into each other. You see everyone else roll, and anyone close to you turns see-through so you always know which ball is yours.</p>
       <p><b style="color:var(--cyan);font-weight:400">Online:</b> pick HOST ONLINE and open a room. Friends pick JOIN ONLINE and type the room code, or open the invite link.</p>
@@ -239,10 +240,15 @@ const THEMES = [
   { top: 0x8fd8ff, alt: 0xffd23f, side: 0xd94a4a, rail: 0xffffff, sky: ['#ff8fb8', '#fff3c4'], fog: 0xffe6c8, cloud: 0xffffff, gears: 0x5ab4ff },
   { top: 0xf0b46a, alt: 0x6ae0c8, side: 0x5b3424, rail: 0xffe08a, sky: ['#5a2a7a', '#ff9a5a'], fog: 0xe68a6a, cloud: 0xffc0a0, gears: 0xc98a3a },
   { top: 0x46527e, alt: 0xff4fa3, side: 0x141a33, rail: 0x3ff0ff, sky: ['#05020c', '#2a1a5e'], fog: 0x1d1648, cloud: 0x3a3170, gears: 0x7f6ab8 },
+  // World 3: the Cosmic Carnival, a funfair floating in outer space
+  { top: 0xa98bff, alt: 0x3ff0ff, side: 0x2a1a5e, rail: 0xffd23f, sky: ['#04010c', '#3a1670'], fog: 0x150a30, cloud: 0x6a5a9a, space: true },
+  { top: 0xff8fd6, alt: 0x7dff6a, side: 0x3e1060, rail: 0x3ff0ff, sky: ['#01030f', '#0e3a6e'], fog: 0x08142e, cloud: 0x5a6aa0, space: true },
+  { top: 0x7dffcf, alt: 0xff4fa3, side: 0x123a4a, rail: 0xffffff, sky: ['#08000f', '#6a1050'], fog: 0x22061e, cloud: 0x8a4a7a, space: true },
 ];
 const WORLDS = [
   { name: 'Sheep Meadows' },
   { name: 'Woolly Wonderworks' },
+  { name: 'Cosmic Carnival' },
 ];
 const worldOf = i => STAGES[i].world || 0;
 const stageNo = i => `${worldOf(i) + 1}-${STAGES.slice(0, i + 1).filter(s => (s.world || 0) === worldOf(i)).length}`;
@@ -545,12 +551,206 @@ const STAGES = [
     b.cp(0, 3, -136);
     b.route([0, 0, 0], [0, 0, -28], [0, 3, -40], [0, 3, -110], [0, -3, -120], [0, -3, -129], [0, 3, -134], [0, 3, -144], [0, -3, -166], [0, -3, -172], [7, -3, -172], [7, -3, -190]);
   } },
+  // ---------------- World 3: Cosmic Carnival ----------------
+  { name: 'Moon Bounce', world: 2, limit: 80, theme: 10, build(b) {
+    b.pad(0, 0, 0, 8, 8);
+    b.path([[0, 0, -4], [0, 0, -12]], 5, { rails: 'both' });
+    b.moon(0, -30, -86, 70, 80, 148, 0.4);
+    b.pad(0, 0, -16, 8, 8);
+    b.spring(0, 0, -18, 1.3, 14);
+    // giant floaty bounces from trampoline to trampoline
+    const tr = [[0, 0, -34], [-5, 1, -48], [2, 2, -62], [-2, 3, -76]];
+    for (const [x, y, z] of tr) b.tramp(x, y, z, 3.2, 14);
+    b.pad(0, 4, -92, 10, 12);
+    b.path([[0, 4, -98], [0, 4, -102]], 5);
+    b.seg([0, 4, -102], [0, 6, -110], 5);
+    b.pad(0, 0, -134, 14, 36);
+    b.goal(0, 0, -146);
+    b.coins([0, 0, -6], [0, 0, -10], 2);
+    let prev = [0, 0, -18];
+    for (const t of [...tr, [0, 4, -90]]) { b.arc(prev, t, 8, 4); prev = t; }
+    b.arc([0, 6, -112], [0, 0, -128], 3.5, 4);
+    b.cp(0, 4, -90);
+    b.route([0, 0, 0], [0, 0, -18], ...tr, [0, 4, -92], [0, 4, -102], [0, 6, -110], [0, 0, -146]);
+  } },
+  { name: 'Sheep Cannonball', world: 2, limit: 60, theme: 11, build(b) {
+    b.pad(0, 0, 0, 8, 8);
+    b.path([[0, 0, -4], [0, 0, -14]], 4, { rails: 'both' });
+    b.pad(0, 0, -18, 8, 8);
+    b.cannon(0, 0, -20, [0, 6, -50], 1.5);
+    // island A: land, bump the wall, roll into the next cannon
+    b.pad(0, 6, -52, 12, 12); b.wall(0, 6, -58.3, 12, 0.6);
+    b.cannon(5, 6, -52, [20, 3, -78], 1.4);
+    // island B
+    b.pad(20, 3, -80, 12, 12); b.wall(20, 3, -86.3, 12, 0.6); b.wall(26.3, 3, -80, 0.6, 12);
+    b.bumper(20, 3, -80);
+    b.cannon(15, 3, -84, [0, 12, -105], 1.6);
+    // island C, then the big one: straight up into space and down onto the goal
+    b.pad(0, 12, -108, 12, 12); b.wall(0, 12, -114.3, 12, 0.6); b.wall(-6.3, 12, -108, 0.6, 12);
+    b.cannon(4, 12, -111, [0, 0, -146], 3, 8);
+    b.pad(0, 0, -152, 14, 20);
+    b.goal(0, 0, -154);
+    b.coins([0, 0, -6], [0, 0, -12], 2);
+    for (const [x, y, z] of [[-4, 6, -48], [4, 6, -48], [24, 3, -76], [16, 3, -76], [-4, 12, -104], [-4, 12, -112]]) b.coin(x, y, z);
+    b.cp(0, 6, -50);
+    b.cp(20, 3, -78);
+    b.cp(0, 12, -106);
+    b.route([0, 0, 0], [0, 0, -20], [0, 6, -50], [5, 6, -52], [20, 3, -78], [15, 3, -84], [0, 12, -105], [4, 12, -111], [0, 0, -146], [0, 0, -154]);
+  } },
+  { name: 'Wrecking Crew', world: 2, limit: 75, theme: 12, build(b) {
+    b.pad(0, 0, 0, 8, 8);
+    b.path([[0, 0, -4], [0, 0, -10]], 4, { rails: 'both' });
+    // a long narrow bridge with three wrecking balls swinging across it (rails here; none later)
+    b.path([[0, 0, -10], [0, 0, -46]], 4.5, { rails: 'both' });
+    for (const [k, z] of [-18, -28, -38].entries()) b.wreck(0, 0, z, { T: 3.2, ph: k / 3 });
+    b.pad(0, 0, -50, 10, 8);
+    // a spinning disc with a ball swinging straight at you
+    b.disc(0, 0, -62, 7, { spin: { w: 0.6 } });
+    b.wreck(0, 0, -62, { along: true, a: 0.8, T: 2.8 });
+    b.path([[0, 0, -69], [0, 0, -75]], 4);
+    b.pad(0, 0, -79, 10, 8);
+    // zig-zag with a ball guarding every corner
+    const zz = [[0, 0, -83], [6, 0, -93], [-6, 0, -105], [6, 0, -117], [0, 0, -125]];
+    b.path(zz, 4.5, { joint: 'disc' });
+    for (const [k, [x, y, z]] of zz.slice(1, -1).entries()) b.wreck(x, y, z, { a: 0.85, T: 3.2, ph: k * 0.4 });
+    b.pad(0, 0, -131, 10, 12);
+    b.goal(0, 0, -133);
+    b.coins([0, 0, -5], [0, 0, -9], 2);
+    b.coins([0, 0, -13], [0, 0, -44], 7);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + 0.5; b.coin(Math.sin(a) * 5, 0, -62 + Math.cos(a) * 5); }
+    b.coins([3, 0, -88], [-3, 0, -99], 3);
+    b.coins([-3, 0, -110], [3, 0, -111], 3);
+    b.coins([3, 0, -121], [0, 0, -124], 2);
+    b.cp(0, 0, -49);
+    b.cp(0, 0, -78);
+    b.route([0, 0, 0], [0, 0, -50], [0, 0, -62], [0, 0, -83], ...zz.slice(1), [0, 0, -133]);
+  } },
+  { name: 'Tumble Dryer', world: 2, limit: 75, theme: 10, build(b) {
+    b.pad(0, 0, 0, 8, 8);
+    b.path([[0, 0, -4], [0, 0, -10]], 4, { rails: 'both' });
+    // a half-pipe: ride the walls for the coins
+    b.tube(0, 0, -10, -40, 5, { lim: 1.35 });
+    for (let k = 0; k < 6; k++) { const a = (k % 2 ? 1 : -1) * 0.95, z = -14 - k * 4.5; b.coin(Math.sin(a) * 4.5, 5 - Math.cos(a) * 4.5 - 0.75, z); }
+    b.pad(0, 0, -44, 8, 8);
+    // two drums spinning opposite ways
+    b.tube(0, 0, -48, -60, 4, { spin: 1.1 });
+    b.path([[0, 0, -60], [0, 0, -64]], 4);
+    b.tube(0, 0, -64, -76, 4, { spin: -1.5 });
+    b.pad(0, 0, -80, 8, 8);
+    // a wide half-pipe with bumpers in the bottom
+    b.tube(0, 0, -84, -110, 6, { lim: 1.4 });
+    b.bumper(1.8, 0, -91); b.bumper(-1.8, 0, -99); b.bumper(1.8, 0, -106);
+    b.pad(0, 0, -116, 10, 12);
+    b.goal(0, 0, -118);
+    b.coins([0, 0, -5], [0, 0, -9], 2);
+    b.coin(0, 0, -44);
+    for (let k = 0; k < 4; k++) { const a = k * 1.4, z = -50 - k * 2.7; b.coin(Math.sin(a) * 3.5, 4 - Math.cos(a) * 3.5 - 0.75, z); }
+    for (let k = 0; k < 4; k++) { const a = -k * 1.4, z = -66 - k * 2.7; b.coin(Math.sin(a) * 3.5, 4 - Math.cos(a) * 3.5 - 0.75, z); }
+    for (const [a, z] of [[-0.9, -91], [0.9, -99], [-0.9, -106]]) b.coin(Math.sin(a) * 5.5, 6 - Math.cos(a) * 5.5 - 0.75, z);
+    b.cp(0, 0, -43);
+    b.cp(0, 0, -79);
+    b.route([0, 0, 0], [0, 0, -118]);
+  } },
+  { name: 'Portal Panic', world: 2, limit: 75, theme: 11, build(b) {
+    b.pad(0, 0, 0, 8, 8);
+    b.path([[0, 0, -4], [0, 0, -12]], 4, { rails: 'both' });
+    // three portals: only the pink one takes you onward
+    b.pad(0, 0, -18, 15, 12);
+    b.portal([0, 0, -23], [30, 4, -40], 0, 0, 0xff4fa3);
+    b.portal([-5, 0, -23], [-30, 8, -25], 0, 0, 0x3ff0ff);
+    b.portal([5, 0, -23], [3.2, 0, 2], 0, 0, 0xffd23f);
+    // the cyan one: a bonus room full of coins, with a way back
+    b.disc(-30, 8, -30, 6);
+    b.portal([-30, 8, -35], [-6.6, 0, -15], 0, -Math.PI / 2, 0x3ff0ff);
+    for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; b.coin(-30 + Math.sin(a) * 3.8, 8, -30 + Math.cos(a) * 3.8); }
+    // island B: sliding platforms
+    b.pad(30, 4, -46, 10, 14);
+    b.pad(30, 4, -56.5, 6, 6, { move: { d: [4, 0, 0], T: 4 } });
+    b.pad(30, 4, -63, 6, 7, { move: { d: [-4, 0, 0], T: 4 } });
+    b.pad(30, 4, -73, 10, 10);
+    // this portal turns you sideways onto island D
+    b.portal([30, 4, -77], [-24, 10, -100], 0, -Math.PI / 2, 0x7dff6a);
+    b.pad(-21, 10, -100, 6, 8);
+    b.path([[-18, 10, -100], [4, 10, -100]], 4);
+    b.wreck(-8, 10, -100, { along: true, a: 0.85, T: 2.8 });
+    b.pad(7, 10, -100, 6, 8);
+    // and the last one drops you over the goal
+    b.portal([9, 10, -100], [0, 8, -118], -Math.PI / 2, 0, 0xb07bff);
+    b.pad(0, 0, -130, 14, 18);
+    b.goal(0, 0, -132);
+    b.coins([0, 0, -5], [0, 0, -10], 2);
+    b.coin(5, 0, -19);
+    b.coins([28, 4, -42], [32, 4, -50], 3);
+    b.coin(30, 4, -56.5); b.coin(30, 4, -63);
+    b.coins([-20, 10, -100], [2, 10, -100], 6);
+    b.cp(0, 0, -16);
+    b.cp(30, 4, -42);
+    b.cp(-20, 10, -100);
+    b.route([0, 0, 0], [0, 0, -22], [30, 4, -42], [30, 4, -76], [-22, 10, -100], [8, 10, -100], [0, 8, -122], [0, 0, -132]);
+  } },
+  { name: 'Cosmic Finale', world: 2, limit: 110, theme: 12, build(b) {
+    b.pad(0, 0, 0, 8, 8);
+    b.path([[0, 0, -4], [0, 0, -10]], 4, { rails: 'both' });
+    b.pad(0, 0, -14, 8, 8);
+    b.cannon(0, 0, -16, [0, 8, -51], 1.6);
+    b.pad(0, 8, -54, 12, 14); b.wall(0, 8, -61.3, 12, 0.6);
+    b.path([[6, 8, -54], [14, 8, -54], [14, 8, -64]], 4, { joint: 'disc' });
+    b.wall(17.3, 8, -54, 0.6, 6); b.wall(14, 8, -50.7, 6.6, 0.6);
+    // moon bounces
+    b.moon(14, -10, -88, 30, 50, 48, 0.4);
+    b.pad(14, 8, -68, 8, 8);
+    b.spring(14, 8, -70, 1.3, 13);
+    b.tramp(14, 7, -84, 3.2, 13);
+    b.tramp(14, 6, -98, 3.2, 13);
+    b.pad(14, 5, -112, 10, 10);
+    // wrecking bridge
+    b.path([[14, 5, -117], [14, 5, -145]], 4.5);
+    b.wreck(14, 5, -125, { T: 3 }); b.wreck(14, 5, -136, { T: 3, ph: 0.5 });
+    b.pad(14, 5, -149, 10, 8);
+    b.tube(14, 5, -153, -165, 4, { spin: 1.3 });
+    b.pad(14, 5, -169, 8, 8);
+    // through the portal, down the ramp, round the loop
+    b.portal([14, 5, -172], [0, 10, -183], 0, 0, 0xff4fa3);
+    b.pad(0, 10, -182, 6, 6);
+    b.path([[0, 10, -185], [0, 4.6, -198], [0, 1.3, -206], [0, 0, -210]], 5, { rails: 'both' });
+    b.path([[0, 0, -210], [0, 0, -216]], 5, { rails: 'both' });
+    b.boost([0, 0.04, -210.2], [0, 0.04, -215.8], 2.6);
+    b.loop(0, 0, -216, 4.5, 5);
+    b.path([[7, 0, -216], [7, 0, -226]], 5, { rails: 'both' });
+    b.pad(7, 0, -232, 10, 12);
+    b.goal(7, 0, -234);
+    b.coins([0, 0, -5], [0, 0, -9], 2);
+    b.arc([14, 8, -70], [14, 7, -84], 7, 3); b.arc([14, 7, -84], [14, 6, -98], 7, 3); b.arc([14, 6, -98], [14, 5, -110], 7, 3);
+    b.coins([14, 5, -120], [14, 5, -142], 4);
+    b.coins([0, 8.5, -190], [0, 1.5, -203], 3);
+    b.coin(3.5, 7.75, -216);
+    b.cp(0, 8, -52);
+    b.cp(14, 5, -110);
+    b.cp(14, 5, -148);
+    b.route([0, 0, 0], [0, 0, -16], [0, 8, -51], [6, 8, -54], [14, 8, -54], [14, 8, -70], [14, 7, -84], [14, 6, -98], [14, 5, -112], [14, 5, -171],
+      [0, 10, -184], [0, 4.6, -198], [0, 0, -210], [0, 0, -216], [7, 0, -216], [7, 0, -234]);
+  } },
 ];
 
+// where a cannon shot is after t seconds (same steps as the real physics, moon gravity included)
+function flyTo(p0, v0, t, zones) {
+  const p = p0.clone(), w = v0.clone();
+  for (let s = 0; s < t - 1e-9; s += SUB) {
+    let gy = 1;
+    for (const z of zones) if (p.x > z.min.x && p.x < z.max.x && p.y > z.min.y && p.y < z.max.y && p.z > z.min.z && p.z < z.max.z) { gy = z.g; break; }
+    w.y -= GRAV * gy * SUB; w.multiplyScalar(1 - AIR_DRAG * SUB); p.addScaledVector(w, SUB);
+  }
+  return p;
+}
+function aimShot(from, to, T, zones) {
+  const v = to.clone().sub(from).divideScalar(T); v.y += 0.5 * GRAV * T;
+  for (let it = 0; it < 10; it++) v.addScaledVector(to.clone().sub(flyTo(from, v, T, zones)), 1 / T);
+  return v;
+}
 function buildStage(i) {
-  const st = { pieces: [], coins: [], cps: [], route: [], goal: null, fans: [], loops: [] };
+  const st = { pieces: [], coins: [], cps: [], route: [], goal: null, fans: [], loops: [], zones: [], cannons: [], portals: [], tubes: [] };
   const v = a => new V3(a[0], a[1], a[2]);
-  const piece = (o, k, p, q, extra) => { st.pieces.push(Object.assign({ k, p, q, m: o.m || 'floor', move: o.move, spin: o.spin, swing: o.swing, blink: o.blink, belt: o.belt, pow: o.pow }, extra)); };
+  const piece = (o, k, p, q, extra) => { st.pieces.push(Object.assign({ k, p, q, m: o.m || 'floor', move: o.move, spin: o.spin, swing: o.swing, blink: o.blink, belt: o.belt, pow: o.pow, pend: o.pend }, extra)); };
   const b = {
     pad(x, y, z, w, d, o = {}) { const t = o.t || 1; piece(o, 'box', new V3(x, y - t / 2, z), new Q(), { s: new V3(w, t, d) }); },
     disc(x, y, z, rad, o = {}) { const t = o.t || 1; piece(o, 'cyl', new V3(x, y - t / 2, z), new Q(), { rad, h: t }); },
@@ -575,6 +775,29 @@ function buildStage(i) {
     piston(x, y, z, sx, sz, d, T, ph = 0) { piece({ m: 'sweep', move: { d, T, ph } }, 'box', new V3(x, y + 0.7, z), new Q(), { s: new V3(sx, 1.4, sz) }); },
     // a loop-the-loop starting at (x, y, z) heading -z; the track comes out `shift` to the side
     loop(x, y, z, r, w, left) { st.loops.push({ x0: x, y0: y, z0: z, r, w, shift: (left ? -1 : 1) * (w + 2) }); },
+    // a low wall that stops you (the back of a cannon island)
+    wall(x, y, z, w, d, h = 1.2) { piece({ m: 'stop' }, 'box', new V3(x, y + h / 2, z), new Q(), { s: new V3(w, h, d) }); },
+    // moon gravity: inside this box (standing on y, h tall) you fall `g` times as fast
+    moon(x, y, z, w, h, d, g = 0.4) { st.zones.push({ min: new V3(x - w / 2, y, z - d / 2), max: new V3(x + w / 2, y + h, z + d / 2), g }); },
+    // a cannon on the floor at (x, y, z): roll in and it fires you to land on `to` after T seconds
+    cannon(x, y, z, to, T, coins = 5) {
+      const at = new V3(x, y + R + 0.05, z), tgt = v(to).add(new V3(0, R, 0)), vel = aimShot(at, tgt, T, st.zones);
+      st.cannons.push({ at, vel });
+      // coins strung along the flight
+      for (let k = 1; k <= coins; k++) { const p = flyTo(at, vel, T * k / (coins + 1), st.zones); b.coin(p.x, p.y - 0.75, p.z); }
+    },
+    // a portal ring at a facing yaw `ya` that sends you out of b facing yaw `yb`
+    portal(a, c, ya, yb, color = 0xff4fa3) {
+      const fb = new V3(-Math.sin(yb), 0, -Math.cos(yb));
+      st.portals.push({ base: v(a), at: v(a).add(new V3(0, R, 0)), ya, yb, color, outBase: v(c), out: v(c).add(new V3(0, R + 0.05, 0)).addScaledVector(fb, 1.6), fb });
+    },
+    // a wrecking ball swinging across the track (or along it) from a beam high above
+    wreck(x, y, z, o = {}) {
+      const L = o.L || 8, rad = o.rad || 1.4;
+      piece({ m: 'wreck', pend: { piv: new V3(x, y + rad - 0.2 + L, z), L, a: o.a || 0.9, T: o.T || 3, ph: o.ph || 0, along: !!o.along } }, 'sph', new V3(x, y + rad, z), new Q(), { rad });
+    },
+    // a half-pipe (lim < PI) or a whole spinning drum, floor at y, running from z0 to z1
+    tube(x, y, z0, z1, r, o = {}) { st.tubes.push({ x, y, cy: y + r, z0, z1, r, lim: o.lim || Math.PI, spin: o.spin || 0, grip: o.grip || 3 }); },
     seg(a, c, w, o = {}) {
       const A = v(a), B = v(c), d = B.clone().sub(A), L = d.length(), dir = d.clone().normalize();
       const q = new Q().setFromEuler(new THREE.Euler(-Math.asin(d.y / L), Math.atan2(d.x, d.z), 0, 'YXZ'));
@@ -684,6 +907,17 @@ const fanTex = canvasTex(128, 128, (g, w) => {
   for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; g.beginPath(); g.moveTo(64, 64); g.lineTo(64 + Math.cos(a) * 64, 64 + Math.sin(a) * 64); g.stroke(); }
   g.fillStyle = '#3ff0ff'; g.beginPath(); g.arc(64, 64, 9, 0, 7); g.fill();
 }, false);
+const swirlTex = canvasTex(128, 128, (g, w) => {
+  const gr = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.35, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,.15)');
+  g.fillStyle = gr; g.beginPath(); g.arc(64, 64, 64, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(40,0,60,.45)'; g.lineWidth = 6;
+  for (let k = 0; k < 4; k++) { g.beginPath(); for (let t = 0; t < 1; t += 0.02) { const a = k * Math.PI / 2 + t * 5, r = t * 62; g.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r); } g.stroke(); }
+}, false);
+const wreckTex = canvasTex(128, 64, (g, w, h) => {
+  for (let k = 0; k < 8; k++) { g.fillStyle = k % 2 ? '#ff4fa3' : '#ffd23f'; g.fillRect(k * 16, 0, 16, h); }
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, h / 2 - 3, w, 6);
+});
 const windTex = canvasTex(32, 128, (g, w, h) => {
   g.clearRect(0, 0, w, h);
   g.fillStyle = 'rgba(255,255,255,.75)';
@@ -778,6 +1012,7 @@ function loadStage(i) {
   const root = new THREE.Group(); scene.add(root);
   const mats = [];
   const M = o => { const m = new THREE.MeshStandardMaterial(o); mats.push(m); return m; };
+  const M2 = m => { mats.push(m); return m; };
   const topM = M({ color: T.top, map: checkerTex, roughness: 0.75 });
   const altM = M({ color: T.alt, map: checkerTex, roughness: 0.6 });
   const sideM = M({ color: T.side, roughness: 0.9 });
@@ -801,9 +1036,9 @@ function loadStage(i) {
   let minY = Infinity;
   const box = new THREE.Box3();
   for (const p of def.pieces) {
-    const dyn = !!(p.move || p.spin || p.swing);
+    const dyn = !!(p.move || p.spin || p.swing || p.pend);
     let mesh, c, top = dyn ? altM : topM, side = sideM;
-    if (p.m === 'rail') top = side = railM;
+    if (p.m === 'rail' || p.m === 'stop') top = side = railM;
     if (p.m === 'boost') top = side = boostM;
     if (p.m === 'sweep') top = side = sweepM;
     if (p.m === 'belt') {
@@ -815,7 +1050,10 @@ function loadStage(i) {
       top = M({ color: T.alt, map: checkerTex, roughness: 0.5, emissive: T.alt, emissiveIntensity: 0.3, transparent: true });
       side = M({ color: T.side, roughness: 0.9, transparent: true });
     }
-    if (p.k === 'box') {
+    if (p.k === 'sph') {
+      mesh = new THREE.Mesh(new THREE.SphereGeometry(p.rad, 28, 18), M({ map: wreckTex, roughness: 0.3, metalness: 0.2 }));
+      c = { k: 'sph', rad: p.rad };
+    } else if (p.k === 'box') {
       const geo = boxGeo(p.s.x, p.s.y, p.s.z, p.m === 'boost' || p.m === 'belt');
       mesh = new THREE.Mesh(geo, [side, side, top, side, side, side]);
       c = { k: 'box', half: p.s.clone().multiplyScalar(0.5) };
@@ -832,8 +1070,19 @@ function loadStage(i) {
       pos: p.p.clone(), quat: p.q.clone(), inv: p.q.clone().invert(), vel: new V3(), ang: new V3(),
       axis: UP.clone().applyQuaternion(p.q), dir: p.dir ? p.dir.clone() : null,
       belt: p.belt ? p.dir.clone().multiplyScalar(p.belt) : null, pow: p.pow, on: true, left: 0, bm: p.blink ? [top, side] : null,
-      reach: (p.k === 'box' ? p.s.length() / 2 : Math.hypot(p.rad, p.h / 2)) + (p.move ? new V3(...p.move.d).length() : 0) + R + 0.1 });
+      pend: p.pend, reach: (p.k === 'box' ? p.s.length() / 2 : p.k === 'sph' ? p.rad : Math.hypot(p.rad, p.h / 2)) + (p.move ? new V3(...p.move.d).length() : 0) + R + 0.1 });
     if (p.swing) { c.sax = new V3(...p.swing.ax).normalize(); c.swax = c.sax.clone().applyQuaternion(p.q); }
+    if (p.pend) {      // the chain, and a beam on two tall posts to hang it from
+      const pv = p.pend.piv, steel = metalM;
+      c.chain = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1, 6), steel); root.add(c.chain);
+      const span = 16, beam = new THREE.Mesh(new THREE.BoxGeometry(p.pend.along ? 0.5 : span, 0.5, p.pend.along ? span : 0.5), steel);
+      beam.position.copy(pv); root.add(beam);
+      for (const sd of [-1, 1]) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.4, pv.y - (pv.y - p.pend.L - 6), 0.4), steel);
+        post.position.set(pv.x + (p.pend.along ? 0 : sd * span / 2), pv.y - (p.pend.L + 6) / 2, pv.z + (p.pend.along ? sd * span / 2 : 0));
+        root.add(post);
+      }
+    }
     cols.push(c);
     box.setFromObject(mesh); minY = Math.min(minY, box.max.y);
   }
@@ -857,6 +1106,58 @@ function loadStage(i) {
     M({ color: T.side, roughness: 0.9, side: THREE.DoubleSide }),
   ];
   for (const L of def.loops) { const m = new THREE.Mesh(loopGeo(L), loopMats); m.castShadow = m.receiveShadow = true; root.add(m); }
+  // half-pipes and spinning drums (they don't cast shadows, or the inside of a drum goes dark)
+  const tubeM = M({ color: T.top, map: checkerTex, roughness: 0.75, side: THREE.DoubleSide });
+  const drumM = M({ color: T.alt, map: checkerTex, roughness: 0.6, side: THREE.DoubleSide });
+  for (const tb of def.tubes) {
+    const len = tb.z0 - tb.z1, full = tb.lim >= Math.PI - 1e-3;
+    const geo = new THREE.CylinderGeometry(tb.r, tb.r, len, 48, 1, true, full ? 0 : -tb.lim, full ? TAU : tb.lim * 2).rotateX(Math.PI / 2);
+    const uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * (full ? 2 * Math.PI : tb.lim * 2) * tb.r / 2, uv.getY(k) * len / 2);
+    const m = new THREE.Mesh(geo, tb.spin ? drumM : tubeM); m.receiveShadow = true;
+    const grp = new THREE.Group(); grp.position.set(tb.x, tb.cy, (tb.z0 + tb.z1) / 2); grp.add(m); root.add(grp);
+    if (tb.spin) anims.push(dt => { grp.rotation.z += tb.spin * dt; });
+    for (const z of [tb.z0, tb.z1]) {        // a glowing rim at each end
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(tb.r + 0.05, 0.16, 8, 48, full ? TAU : tb.lim * 2), railM);
+      rim.rotation.z = full ? 0 : -Math.PI / 2 - tb.lim; rim.position.set(tb.x, tb.cy, z); root.add(rim);
+    }
+  }
+  // moon-gravity zones: a faint glass box with drifting sparkles
+  const zoneM = M({ color: 0xc8a8ff, transparent: true, opacity: 0.05, depthWrite: false, side: THREE.DoubleSide });
+  for (const z of def.zones) {
+    const size = z.max.clone().sub(z.min), mid = z.max.clone().add(z.min).multiplyScalar(0.5);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), zoneM); box.position.copy(mid); root.add(box);
+    const n = 160, pos = new Float32Array(n * 3);
+    for (let k = 0; k < n; k++) { pos[k * 3] = z.min.x + Math.random() * size.x; pos[k * 3 + 1] = z.min.y + Math.random() * size.y; pos[k * 3 + 2] = z.min.z + Math.random() * size.z; }
+    const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const sparks = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xe0ccff, size: 0.22, transparent: true, opacity: 0.8 }));
+    mats.push(sparks.material); root.add(sparks);
+    anims.push(dt => { for (let k = 0; k < n; k++) { let y = pos[k * 3 + 1] + dt * 0.8; if (y > z.max.y) y = z.min.y; pos[k * 3 + 1] = y; } pg.attributes.position.needsUpdate = true; });
+  }
+  // cannons: a barrel pointing the way it fires, and a glowing ring to roll into
+  const barrelM = M({ color: 0x2a2440, metalness: 0.6, roughness: 0.35, side: THREE.DoubleSide });
+  const brassM = M({ color: 0xffc23f, metalness: 0.7, roughness: 0.3, emissive: 0x3a2400 });
+  const ringM = M({ color: 0xffd23f, emissive: 0xffa000, emissiveIntensity: 0.6, side: THREE.DoubleSide });
+  for (const cn of def.cannons) {
+    const dir = cn.vel.clone().normalize();
+    const g = new THREE.Group(); g.position.copy(cn.at).addScaledVector(dir, 1.7); g.quaternion.setFromUnitVectors(UP, dir);
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.15, 3.4, 24, 1, true), barrelM); barrel.castShadow = true; g.add(barrel);
+    for (const y of [-1.4, 1.5]) { const band = new THREE.Mesh(new THREE.TorusGeometry(y > 0 ? 0.98 : 1.17, 0.12, 8, 24), brassM); band.rotation.x = Math.PI / 2; band.position.y = y; g.add(band); }
+    root.add(g);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.45, 32), ringM); ring.rotation.x = -Math.PI / 2; ring.position.copy(cn.at).y -= R - 0.04; root.add(ring);
+  }
+  // portals: a spinning swirl in a ring, the same colour where you come out
+  for (const pt of def.portals) {
+    const pm = M({ color: pt.color, emissive: pt.color, emissiveIntensity: 0.7, metalness: 0.3, roughness: 0.3 });
+    const sm = M({ map: swirlTex, color: pt.color, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
+    for (const [at, yaw, swirl] of [[pt.base, pt.ya, true], [pt.outBase, pt.yb, false]]) {
+      const g = new THREE.Group(); g.position.copy(at).add(new V3(0, 1.55, 0)); g.rotation.y = yaw;
+      g.add(new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.2, 10, 40), pm));
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(1.45, 40), sm); g.add(disc);
+      if (!swirl) disc.scale.setScalar(0.6);
+      root.add(g);
+      anims.push(dt => { disc.rotation.z += dt * (swirl ? 3 : -2); });
+    }
+  }
 
   // goal gate: two posts, a banner and a chequered line
   const g = def.goal, rt = def.route, last = rt[rt.length - 1].clone().sub(rt[rt.length - 2]);
@@ -883,11 +1184,42 @@ function loadStage(i) {
   const cloudM = M({ color: T.cloud, roughness: 1, transparent: true, opacity: 0.9 });
   const rb = new THREE.Box3().setFromPoints(rt); const ctr = rb.getCenter(new V3());
   let seed = i * 977 + 13; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  for (let k = 0; k < 26; k++) {
+  for (let k = 0; k < (T.space ? 0 : 26); k++) {
     const cl = new THREE.Group();
     const cx = ctr.x + (rnd() - 0.5) * 220, cz = ctr.z + (rnd() - 0.5) * 220, cy = minY - 28 - rnd() * 30;
     for (let j = 0; j < 5; j++) { const s = new THREE.Mesh(PUFF, cloudM); s.userData.shared = true; s.position.set((j - 2) * 3.2 + rnd() * 2, rnd() * 1.5, rnd() * 3); s.scale.set(4 + rnd() * 3, 2.2 + rnd(), 3.5 + rnd() * 2); cl.add(s); }
     cl.position.set(cx, cy, cz); root.add(cl);
+  }
+  // outer space: stars all round, a few planets far away and tumbling asteroids below
+  if (T.space) {
+    const n = 900, pos = new Float32Array(n * 3);
+    for (let k = 0; k < n; k++) {
+      const u = rnd() * 2 - 1, a = rnd() * TAU, r = 420, q = Math.sqrt(1 - u * u);
+      pos[k * 3] = ctr.x + Math.cos(a) * q * r; pos[k * 3 + 1] = ctr.y + u * r; pos[k * 3 + 2] = ctr.z + Math.sin(a) * q * r;
+    }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const stars = new THREE.Points(sg, M2(new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, fog: false })));
+    root.add(stars);
+    const planetCols = [0xff7a6b, 0x3ff0ff, 0xffd23f, 0x7dff6a, 0xb07bff];
+    for (let k = 0; k < 4; k++) {
+      const rad = 14 + rnd() * 30, a = k / 4 * TAU + rnd(), dist = 190 + rnd() * 70;
+      const pm = M({ color: planetCols[(i + k) % planetCols.length], roughness: 0.9, fog: false, emissive: planetCols[(i + k) % planetCols.length], emissiveIntensity: 0.15 });
+      const pl = new THREE.Mesh(new THREE.SphereGeometry(rad, 32, 20), pm);
+      pl.position.set(ctr.x + Math.sin(a) * dist, ctr.y + 20 + rnd() * 70, ctr.z + Math.cos(a) * dist);
+      if (k % 2 === 0) {
+        const ring = new THREE.Mesh(new THREE.RingGeometry(rad * 1.35, rad * 2, 48), M({ color: 0xffe6b0, transparent: true, opacity: 0.55, side: THREE.DoubleSide, fog: false }));
+        ring.rotation.set(1.2 + rnd() * 0.4, rnd(), 0); pl.add(ring);
+      }
+      root.add(pl);
+    }
+    const rockM = M({ color: T.cloud, roughness: 0.95, flatShading: true });
+    for (let k = 0; k < 22; k++) {
+      const m = new THREE.Mesh(new THREE.DodecahedronGeometry(1 + rnd() * 4, 0), rockM);
+      m.position.set(ctr.x + (rnd() - 0.5) * 220, minY - 20 - rnd() * 40, ctr.z + (rnd() - 0.5) * 220);
+      m.rotation.set(rnd() * 3, rnd() * 3, 0); root.add(m);
+      const wx = (rnd() - 0.5) * 0.6, wy = (rnd() - 0.5) * 0.6;
+      anims.push(dt => { m.rotation.x += wx * dt; m.rotation.y += wy * dt; });
+    }
   }
   // giant gears turning around the factory worlds
   if (T.gears) {
@@ -909,6 +1241,7 @@ function loadStage(i) {
   for (let k = 0; k < rt.length - 1; k++) { const a = rt[k], d = rt[k + 1].clone().sub(a), L = d.length(); segs.push({ a, d, L, at: total }); total += L; }
   const startYaw = yawOf(segs[0].d);
   S = { i, def, root, mats, cols, dynCols: cols.filter(c => c.dyn), blinks: cols.filter(c => c.blink), fans: def.fans, loops: def.loops, anims,
+    zones: def.zones, cannons: def.cannons, portals: def.portals, tubes: def.tubes,
     coinMeshes, coins: def.coins, cps: def.cps,
     goal: g, gFwd, gRight, gYaw, segs, total, startYaw, start: rt[0].clone(), killY: minY - 14,
     limit: STAGES[i].limit, name: STAGES[i].name, overview: { ctr, size: rb.getSize(new V3()) } };
@@ -929,6 +1262,12 @@ function updateColliders(t) {
       c.inv.copy(c.quat).invert();
       c.ang.copy(c.axis).multiplyScalar(c.spin.w);
     }
+    if (c.pend) {       // a wrecking ball on its chain
+      const pd = c.pend, w = TAU / pd.T, ph = pd.ph * TAU, th = pd.a * Math.sin(w * t + ph), dth = pd.a * w * Math.cos(w * t + ph);
+      const sx = Math.sin(th) * pd.L, sy = -Math.cos(th) * pd.L, vx = Math.cos(th) * pd.L * dth, vy = Math.sin(th) * pd.L * dth;
+      if (pd.along) { c.pos.set(pd.piv.x, pd.piv.y + sy, pd.piv.z + sx); c.vel.set(0, vy, vx); }
+      else { c.pos.set(pd.piv.x + sx, pd.piv.y + sy, pd.piv.z); c.vel.set(vx, vy, 0); }
+    }
     if (c.swing) {      // rocks back and forth around its own axis
       const sw = c.swing, w = TAU / sw.T, ph = (sw.ph || 0) * TAU;
       c.quat.copy(c.bq).multiply(_sq.setFromAxisAngle(c.sax, sw.a * Math.sin(w * t + ph)));
@@ -942,7 +1281,14 @@ function updateColliders(t) {
   }
 }
 function syncStageMeshes() {
-  for (const c of S.dynCols) { c.mesh.position.copy(c.pos); c.mesh.quaternion.copy(c.quat); }
+  for (const c of S.dynCols) {
+    c.mesh.position.copy(c.pos); c.mesh.quaternion.copy(c.quat);
+    if (c.chain) {
+      _t.copy(c.pend.piv).sub(c.pos); const len = _t.length();
+      c.chain.position.copy(c.pos).addScaledVector(_t, 0.5); c.chain.scale.set(1, len, 1);
+      c.chain.quaternion.setFromUnitVectors(UP, _t.divideScalar(len));
+    }
+  }
   // blinking tiles flicker just before they vanish, and leave a faint ghost while they're gone
   for (const c of S.blinks) {
     const a = !c.on ? 0.14 : c.left < 0.75 && Math.sin(c.left * 42) > 0 ? 0.4 : 1;
@@ -1016,7 +1362,11 @@ function collide(b, c) {
   if (!c.on || b.p.distanceToSquared(c.pos) > c.reach * c.reach) return;
   _l.copy(b.p).sub(c.pos).applyQuaternion(c.inv);
   let nx, ny, nz, pen, dx, dy, dz;
-  if (c.k === 'box') {
+  if (c.k === 'sph') {
+    const d = _l.length();
+    if (d > c.rad + R || d < 1e-6) return;
+    nx = _l.x / d; ny = _l.y / d; nz = _l.z / d; pen = c.rad + R - d;
+  } else if (c.k === 'box') {
     const h = c.half;
     const qx = clamp(_l.x, -h.x, h.x), qy = clamp(_l.y, -h.y, h.y), qz = clamp(_l.z, -h.z, h.z);
     dx = _l.x - qx; dy = _l.y - qy; dz = _l.z - qz;
@@ -1056,13 +1406,17 @@ function collide(b, c) {
     if (along < BUMP) { b.v.addScaledVector(_t, BUMP - along); b.bumped = 1; }
     return;
   }
+  if (c.m === 'wreck') {         // a wrecking ball sends you flying
+    if (vn < 11) { b.v.addScaledVector(_n, 11 - vn); b.bumped = 1; }
+    return;
+  }
   if (c.m === 'spring' && _n.y > 0.6) {     // straight up, even when you roll onto the rim
     const up = b.v.dot(c.axis);
     if (up < c.pow) { b.v.addScaledVector(c.axis, c.pow - up); b.sprung = 1; }
     return;
   }
   if (vn < 0) {
-    const bounce = c.m === 'rail' ? 0.35 : c.m === 'sweep' ? 0.6 : -vn > 5 ? 0.25 : 0;
+    const bounce = c.m === 'rail' ? 0.35 : c.m === 'sweep' ? 0.6 : c.m === 'stop' ? 0 : -vn > 5 ? 0.25 : 0;
     b.v.addScaledVector(_n, -vn * (1 + bounce));
     if (-vn > b.hit) b.hit = -vn;
   }
@@ -1120,8 +1474,31 @@ function collideLoop(b, L) {
     if (Math.abs(off) > lim) b.p.x = xc + Math.sign(off) * lim;
   }
 }
+// the inside of a half-pipe or a drum (a tube running along -z); drums drag you round as they spin
+function collideTube(b, T) {
+  if (b.p.z > T.z0 || b.p.z < T.z1) return;
+  const dx = b.p.x - T.x, dy = b.p.y - T.cy, d = Math.hypot(dx, dy);
+  if (d < T.r - 1.5 || d > T.r + 0.6 || d <= T.r - R || Math.abs(Math.atan2(dx, -dy)) > T.lim) return;
+  const nx = -dx / d, ny = -dy / d, pen = d - (T.r - R);
+  b.p.x += nx * pen; b.p.y += ny * pen;
+  const vn = b.v.x * nx + b.v.y * ny;
+  if (vn < 0) {
+    const sp = b.v.length(), graze = -vn < sp * 0.3;
+    b.v.x -= vn * nx; b.v.y -= vn * ny;
+    if (graze) b.v.setLength(sp); else if (-vn > b.hit) b.hit = -vn;
+  }
+  if (ny > 0.6) { b.ground = true; b.gN.set(nx, ny, 0); b.gVel.set(0, 0, 0); b.gCol = T; }
+  if (T.spin) {
+    const tx = -ny, ty = nx, sv = -T.spin * T.r;       // the wall's speed along the tangent (-ny, nx)
+    const rel = b.v.x * tx + b.v.y * ty - sv, k = Math.min(1, T.grip * SUB / 2);
+    b.v.x -= tx * rel * k; b.v.y -= ty * rel * k;
+  }
+}
 function stepBall(b, g, dt) {
-  b.v.addScaledVector(g, dt);
+  // moon gravity: you still steer as hard, but you fall slowly
+  let gy = 1;
+  for (const z of S.zones) if (b.p.x > z.min.x && b.p.x < z.max.x && b.p.y > z.min.y && b.p.y < z.max.y && b.p.z > z.min.z && b.p.z < z.max.z) { gy = z.g; break; }
+  b.v.x += g.x * dt; b.v.y += g.y * gy * dt; b.v.z += g.z * dt;
   if (b.boost) b.v.addScaledVector(b.boost, BOOST_ACC * dt);
   b.v.multiplyScalar(1 - AIR_DRAG * dt);
   const sp = b.v.length(); if (sp > MAX_SPEED) b.v.multiplyScalar(MAX_SPEED / sp);
@@ -1132,7 +1509,7 @@ function stepBall(b, g, dt) {
   }
   b.p.addScaledVector(b.v, dt);
   b.ground = false; b.gCol = null; b.boost = null; b.belt = null; b.loop = null;
-  for (let it = 0; it < 2; it++) { for (const c of S.cols) collide(b, c); for (const L of S.loops) collideLoop(b, L); }
+  for (let it = 0; it < 2; it++) { for (const c of S.cols) collide(b, c); for (const L of S.loops) collideLoop(b, L); for (const T of S.tubes) collideTube(b, T); }
   if (b.ground) {
     // moving platforms carry you: whatever the floor under you gains in speed, you gain too
     if (b.gCol.dyn) { b.v.add(_t.copy(b.gVel).sub(b.carry)); b.carry.copy(b.gVel); }
@@ -1141,7 +1518,15 @@ function stepBall(b, g, dt) {
     b.v.addScaledVector(_v, -Math.min(1, ROLL_DRAG * dt));
     // conveyor belts drag you along with them
     if (b.belt) { _v.copy(b.v).sub(b.belt); _v.addScaledVector(b.gN, -_v.dot(b.gN)); b.v.addScaledVector(_v, -Math.min(1, BELT_GRIP * dt)); }
+    b.flight = false;
   } else b.gVel.set(0, 0, 0);
+  // cannons fire you along a set arc (no steering until you land); portals move you somewhere else
+  if (!b.flight) for (const cn of S.cannons) if (b.p.distanceToSquared(cn.at) < 1.45 * 1.45) { b.p.copy(cn.at); b.v.copy(cn.vel); b.flight = true; b.fired = cn; break; }
+  for (const pt of S.portals) if (b.p.distanceToSquared(pt.at) < 1.5 * 1.5) {
+    const sp = Math.max(7, Math.hypot(b.v.x, b.v.z));
+    b.p.copy(pt.out); b.v.copy(pt.fb).multiplyScalar(sp); b.flight = false; b.carry.set(0, 0, 0); b.warped = pt;
+    break;
+  }
 }
 const _ax = new V3(), _rq = new Q();
 function rollShell(mesh, b, dt) {
@@ -1245,6 +1630,8 @@ function sfx(n) {
     case 'bumper': tone(300, 0.15, 'square', 0.12, 0, 2.2); break;
     case 'boost': tone(220, 0.3, 'sawtooth', 0.06, 0, 3); break;
     case 'spring': tone(180, 0.32, 'square', 0.1, 0, 4.5); tone(360, 0.2, 'triangle', 0.08, 0.05, 2.5); break;
+    case 'boom': tone(120, 0.5, 'sawtooth', 0.22, 0, 0.25); tone(70, 0.6, 'square', 0.18, 0.02, 0.4); tone(900, 0.25, 'triangle', 0.06, 0.05, 2); break;
+    case 'warp': tone(260, 0.45, 'sine', 0.16, 0, 4); tone(520, 0.4, 'triangle', 0.08, 0.08, 3); break;
     case 'flag': tone(660, 0.1, 'triangle', 0.15); tone(990, 0.2, 'triangle', 0.15, 0.08); break;
     case 'time': tone(220, 0.6, 'sawtooth', 0.12, 0, 0.5); break;
     case 'join': tone(523, 0.08, 'square', 0.1); tone(784, 0.12, 'square', 0.1, 0.08); break;
@@ -1276,6 +1663,9 @@ function newGame(si, racers, opts = {}) {
       const P = { rc, ctrl: r.local.ctrl, ball: newBall(start), cam: new THREE.PerspectiveCamera(60, 1, 0.1, 600), yaw: S.startYaw, tilt: { x: 0, y: 0 },
         got: new Set(), state: 'ready', runT: 0, deadline: S.limit, respawn: { p: start.clone(), yaw: S.startYaw }, cpIdx: -1, fallT: 0,
         msg: null, rec: [], recT: 0, snap: true, sheepYaw: S.startYaw, view: null };
+      // a ring on the ground under you while you fly, so you can see where you'll land
+      P.marker = new THREE.Mesh(MARK_GEO, new THREE.MeshBasicMaterial({ color: r.color, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }));
+      P.marker.visible = false; P.marker.renderOrder = 3; scene.add(P.marker);
       rc.local = P; rc.p = P.ball.p;
       game.locals.push(P);
     }
@@ -1300,7 +1690,7 @@ function newGame(si, racers, opts = {}) {
   show(null);
 }
 function teardown() {
-  for (const r of game.racers) scene.remove(r.mesh);
+  for (const r of game.racers) { scene.remove(r.mesh); if (r.local) { scene.remove(r.local.marker); r.local.marker.material.dispose(); } }
   if (game.ghost) scene.remove(game.ghost.mesh);
   for (const c of game.confetti) scene.remove(c.m);
   game = null;
@@ -1360,7 +1750,7 @@ function update(dt) {
 const _g = new V3();
 function gravityFor(P) {
   const m = Math.min(1, Math.hypot(P.tilt.x, P.tilt.y)), th = m * MAX_TILT;
-  if (m < 1e-3 || P.state !== 'run') return _g.set(0, -GRAV, 0);
+  if (m < 1e-3 || P.state !== 'run' || P.ball.flight) return _g.set(0, -GRAV, 0);
   const s = Math.sin(P.yaw), c = Math.cos(P.yaw);
   const hx = (c * P.tilt.x - s * P.tilt.y) / m, hz = (-s * P.tilt.x - c * P.tilt.y) / m;
   return _g.set(hx * Math.sin(th) * GRAV, -Math.cos(th) * GRAV, hz * Math.sin(th) * GRAV);
@@ -1378,6 +1768,8 @@ function updateLocal(P, dt) {
   b.hit = 0;
   if (b.bumped) { sfx('bumper'); b.bumped = 0; }
   if (b.sprung) { sfx('spring'); b.sprung = 0; }
+  if (b.fired) { sfx('boom'); puff(b.fired.at.clone().addScaledVector(b.fired.vel, 3.4 / b.fired.vel.length())); b.fired = null; }
+  if (b.warped) { sfx('warp'); P.yaw = P.sheepYaw = b.warped.yb; P.snap = true; P.loopT = 0; b.warped = null; }
   if (b.boost && !P.boosting) sfx('boost');
   P.boosting = !!b.boost;
   rollShell(rc.mesh, b, dt);
@@ -1417,11 +1809,15 @@ function updateLocal(P, dt) {
     if (P.fallT >= FALL_TIME) {
       if (P.runT >= P.deadline) { P.state = 'timeout'; rc.st = 3; msg(P, 'TIME OVER', '#ff4fa3', 99); sfx('time'); reportResult(rc, null); }
       else {
-        b.p.copy(P.respawn.p).add(new V3(0, R + 0.05, 0)); b.v.set(0, 0, 0); b.spin.set(0, 0, 0); b.carry.set(0, 0, 0);
+        b.p.copy(P.respawn.p).add(new V3(0, R + 0.05, 0)); b.v.set(0, 0, 0); b.spin.set(0, 0, 0); b.carry.set(0, 0, 0); b.flight = false;
         P.yaw = P.respawn.yaw; P.state = 'run'; P.snap = true; P.tilt.x = P.tilt.y = 0; P.loopT = 0;
       }
     }
   }
+  // landing marker
+  const fy = P.state === 'run' && !b.ground ? floorBelow(b.p) : null;
+  P.marker.visible = fy !== null && b.p.y - fy > 1.4;
+  if (P.marker.visible) { P.marker.position.set(b.p.x, fy + 0.06, b.p.z); P.marker.scale.setScalar(1.9 + Math.min(2, (b.p.y - fy) * 0.08)); }
   rc.st = P.state === 'fall' ? 1 : P.state === 'done' ? 2 : P.state === 'timeout' ? 3 : 0;
   if (P.state !== 'done') rc.prog = routeInfo(b.p).prog;
   placeCamera(P, dt);
@@ -1544,6 +1940,19 @@ function updateGhost() {
 
 // ---------- confetti ----------
 const CONF_GEO = new THREE.PlaneGeometry(0.18, 0.12);
+const MARK_GEO = new THREE.RingGeometry(0.38, 0.62, 28).rotateX(-Math.PI / 2);
+// the first floor straight below p, probing down with a ball-sized test sphere
+const _probe = newBall(new V3());
+function floorBelow(p) {
+  for (let k = 0.6; k < 40; k += 0.5) {
+    _probe.p.set(p.x, p.y - k, p.z); const y0 = _probe.p.y;
+    for (const c of S.cols) collide(_probe, c);
+    for (const L of S.loops) collideLoop(_probe, L);
+    for (const T of S.tubes) collideTube(_probe, T);
+    if (Math.abs(_probe.p.y - y0) > 1e-4 || Math.abs(_probe.p.x - p.x) > 1e-4) return _probe.p.y - R;
+  }
+  return null;
+}
 function burst(at, color) {
   const cols = [color, '#ffd23f', '#3ff0ff', '#ff4fa3', '#7dff6a', '#ffffff'];
   for (let i = 0; i < 60; i++) {
@@ -1553,11 +1962,20 @@ function burst(at, color) {
     game.confetti.push({ m, v: new V3((Math.random() - 0.5) * 9, 5 + Math.random() * 7, (Math.random() - 0.5) * 9), life: 2.5 + Math.random(), r: new V3(Math.random() * 9, Math.random() * 9, 0) });
   }
 }
+const PUFF_MAT = new THREE.MeshBasicMaterial({ color: 0xf4eeff, transparent: true, opacity: 0.8, depthWrite: false });
+function puff(at) {
+  for (let i = 0; i < 14; i++) {
+    const m = new THREE.Mesh(PUFF, PUFF_MAT.clone()); m.position.copy(at); m.scale.setScalar(0.4); scene.add(m);
+    game.confetti.push({ m, v: new V3((Math.random() - 0.5) * 6, (Math.random() - 0.3) * 6, (Math.random() - 0.5) * 6), life: 0.8 + Math.random() * 0.4, r: new V3(), grow: 2.4 });
+  }
+}
 function updateConfetti(dt) {
   const list = game.confetti;
   for (let i = list.length - 1; i >= 0; i--) {
     const c = list[i];
-    c.life -= dt; c.v.y -= 9 * dt; c.v.multiplyScalar(1 - dt * 1.4);
+    c.life -= dt;
+    if (c.grow) { c.m.scale.multiplyScalar(1 + c.grow * dt); c.m.material.opacity = Math.max(0, c.life); c.v.multiplyScalar(1 - dt * 3); }
+    else { c.v.y -= 9 * dt; c.v.multiplyScalar(1 - dt * 1.4); }
     c.m.position.addScaledVector(c.v, dt);
     c.m.rotation.x += c.r.x * dt; c.m.rotation.y += c.r.y * dt;
     if (c.life <= 0) { scene.remove(c.m); c.m.material.dispose(); list.splice(i, 1); }

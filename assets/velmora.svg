@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="640" height="400" shape-rendering="crispEdges">
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b0a24"/>
+      <stop offset="1" stop-color="#2b2160"/>
+    </linearGradient>
+  </defs>
+
+  <!-- twilight sky, moon and stars -->
+  <rect width="320" height="200" fill="url(#night)"/>
+  <g fill="#efe6ff">
+    <rect x="22" y="14" width="2" height="2"/><rect x="58" y="34" width="2" height="2"/><rect x="96" y="10" width="2" height="2"/>
+    <rect x="140" y="26" width="2" height="2"/><rect x="186" y="8" width="2" height="2"/><rect x="214" y="36" width="2" height="2"/>
+    <rect x="300" y="52" width="2" height="2"/><rect x="8" y="60" width="2" height="2"/><rect x="118" y="46" width="2" height="2"/>
+  </g>
+  <rect x="246" y="14" width="32" height="32" fill="#fff1c4"/>
+  <rect x="242" y="18" width="40" height="24" fill="#fff1c4"/>
+  <rect x="250" y="10" width="24" height="40" fill="#fff1c4"/>
+  <rect x="256" y="20" width="6" height="6" fill="#e8d79a"/><rect x="266" y="32" width="4" height="4" fill="#e8d79a"/>
+
+  <!-- the dark wood on the hills -->
+  <g fill="#141238">
+    <path d="M0 120 L0 96 L10 96 L10 84 L18 84 L18 72 L26 72 L26 84 L34 84 L34 96 L44 96 L44 88 L52 88 L52 76 L60 76 L60 88 L68 88 L68 100 L80 100 L80 120 Z"/>
+    <path d="M240 120 L240 98 L250 98 L250 86 L258 86 L258 74 L266 74 L266 86 L276 86 L276 92 L286 92 L286 80 L294 80 L294 68 L302 68 L302 80 L310 80 L310 94 L320 94 L320 120 Z"/>
+  </g>
+
+  <!-- castle keep and towers -->
+  <g fill="#3a2f6e">
+    <rect x="128" y="58" width="64" height="70"/>
+    <rect x="108" y="40" width="22" height="88"/>
+    <rect x="190" y="48" width="22" height="80"/>
+  </g>
+  <g fill="#3a2f6e">
+    <rect x="128" y="52" width="8" height="6"/><rect x="142" y="52" width="8" height="6"/><rect x="156" y="52" width="8" height="6"/><rect x="170" y="52" width="8" height="6"/><rect x="184" y="52" width="8" height="6"/>
+  </g>
+  <path d="M104 40 L119 14 L134 40 Z" fill="#ff4fa3"/>
+  <path d="M186 48 L201 24 L216 48 Z" fill="#ff4fa3"/>
+  <rect x="118" y="6" width="2" height="10" fill="#efe6ff"/><rect x="120" y="6" width="8" height="5" fill="#ffd23f"/>
+  <g fill="#ffd23f">
+    <rect x="116" y="56" width="6" height="8"/><rect x="116" y="80" width="6" height="8"/>
+    <rect x="198" y="64" width="6" height="8"/><rect x="142" y="72" width="6" height="8"/><rect x="172" y="72" width="6" height="8"/>
+  </g>
+  <rect x="150" y="98" width="20" height="30" fill="#140d2c"/>
+  <rect x="150" y="94" width="20" height="4" fill="#140d2c"/>
+
+  <!-- timber houses -->
+  <g>
+    <rect x="44" y="96" width="50" height="34" fill="#c9a77a"/>
+    <path d="M38 98 L69 74 L100 98 Z" fill="#6b3a8c"/>
+    <rect x="44" y="110" width="50" height="3" fill="#5a3a22"/><rect x="56" y="96" width="3" height="34" fill="#5a3a22"/><rect x="80" y="96" width="3" height="34" fill="#5a3a22"/>
+    <rect x="62" y="116" width="12" height="14" fill="#5a3a22"/><rect x="46" y="100" width="8" height="8" fill="#ffd23f"/><rect x="85" y="100" width="7" height="8" fill="#ffd23f"/>
+    <rect x="228" y="100" width="46" height="30" fill="#c9a77a"/>
+    <path d="M222 102 L251 80 L280 102 Z" fill="#2f6dd0"/>
+    <rect x="228" y="112" width="46" height="3" fill="#5a3a22"/><rect x="249" y="100" width="3" height="30" fill="#5a3a22"/>
+    <rect x="232" y="104" width="8" height="7" fill="#ffd23f"/><rect x="258" y="118" width="10" height="12" fill="#5a3a22"/>
+  </g>
+
+  <!-- cobbled square -->
+  <rect x="0" y="128" width="320" height="72" fill="#4a4258"/>
+  <g fill="#5d5470">
+    <rect x="6" y="134" width="14" height="6"/><rect x="30" y="140" width="14" height="6"/><rect x="62" y="134" width="14" height="6"/>
+    <rect x="232" y="138" width="14" height="6"/><rect x="262" y="132" width="14" height="6"/><rect x="292" y="142" width="14" height="6"/>
+    <rect x="12" y="172" width="14" height="6"/><rect x="44" y="186" width="14" height="6"/><rect x="268" y="176" width="14" height="6"/><rect x="300" y="188" width="14" height="6"/>
+  </g>
+
+  <!-- the fountain -->
+  <rect x="116" y="146" width="88" height="14" fill="#7a76a8"/>
+  <rect x="122" y="142" width="76" height="6" fill="#3ff0ff" fill-opacity=".7"/>
+  <rect x="152" y="128" width="16" height="16" fill="#9a96c8"/>
+  <rect x="144" y="124" width="32" height="5" fill="#9a96c8"/>
+  <g fill="#3ff0ff"><rect x="158" y="112" width="4" height="12"/><rect x="150" y="116" width="4" height="4"/><rect x="166" y="116" width="4" height="4"/><rect x="146" y="120" width="4" height="4"/><rect x="170" y="120" width="4" height="4"/></g>
+
+  <!-- campfire glow -->
+  <rect x="288" y="150" width="20" height="4" fill="#5a3a22"/>
+  <path d="M290 150 L298 132 L306 150 Z" fill="#ff8a3d"/><path d="M294 150 L298 140 L302 150 Z" fill="#ffd23f"/>
+
+  <!-- warrior with sword and shield -->
+  <g>
+    <rect x="62" y="186" width="20" height="4" fill="#000" fill-opacity=".3"/>
+    <rect x="66" y="176" width="5" height="12" fill="#3a2f4e"/><rect x="74" y="176" width="5" height="12" fill="#3a2f4e"/>
+    <rect x="62" y="156" width="20" height="22" fill="#9aa4b8"/><rect x="62" y="166" width="20" height="3" fill="#6b4a2a"/>
+    <rect x="64" y="140" width="16" height="16" fill="#f2c79a"/><rect x="62" y="136" width="20" height="8" fill="#9aa4b8"/><rect x="70" y="132" width="4" height="4" fill="#ff4fa3"/>
+    <rect x="67" y="146" width="3" height="3" fill="#1a1020"/><rect x="74" y="146" width="3" height="3" fill="#1a1020"/>
+    <rect x="50" y="156" width="12" height="18" fill="#ffd23f"/><rect x="54" y="160" width="4" height="10" fill="#b07a00"/>
+    <rect x="84" y="124" width="4" height="36" fill="#dfe6f2"/><rect x="80" y="158" width="12" height="3" fill="#6b4a2a"/><rect x="84" y="161" width="4" height="6" fill="#6b4a2a"/>
+  </g>
+
+  <!-- mage casting -->
+  <g>
+    <rect x="228" y="188" width="24" height="4" fill="#000" fill-opacity=".3"/>
+    <path d="M226 190 L234 150 L246 150 L254 190 Z" fill="#6b3a8c"/>
+    <rect x="234" y="136" width="14" height="14" fill="#f2c79a"/>
+    <path d="M228 138 L241 106 L254 138 Z" fill="#6b3a8c"/><rect x="226" y="136" width="30" height="4" fill="#6b3a8c"/>
+    <rect x="237" y="142" width="3" height="3" fill="#1a1020"/><rect x="243" y="142" width="3" height="3" fill="#1a1020"/>
+    <rect x="236" y="146" width="12" height="8" fill="#efe6ff"/>
+    <rect x="218" y="132" width="4" height="58" fill="#6b4a2a"/>
+    <rect x="214" y="122" width="12" height="12" fill="#3ff0ff"/><rect x="217" y="125" width="6" height="6" fill="#efe6ff"/>
+    <g fill="#3ff0ff" fill-opacity=".7"><rect x="206" y="114" width="4" height="4"/><rect x="226" y="112" width="4" height="4"/><rect x="200" y="126" width="3" height="3"/></g>
+  </g>
+</svg>

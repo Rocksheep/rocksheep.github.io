@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="640" height="400">
+  <defs>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#ffd23f" stop-opacity=".9"/>
+      <stop offset=".4" stop-color="#ffd23f" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#ffd23f" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="depth" cx=".5" cy=".5" r=".6">
+      <stop offset="0" stop-color="#1b1236"/>
+      <stop offset="1" stop-color="#05030c"/>
+    </radialGradient>
+  </defs>
+
+  <!-- the tunnel, running away from us to a far wall -->
+  <rect width="320" height="200" fill="url(#depth)"/>
+  <g fill="none" stroke="#4b3590" stroke-width="1">
+    <path d="M0 0 L128 80 M320 0 L192 80 M0 200 L128 120 M320 200 L192 120"/>
+    <path d="M64 0 L141 80 M128 0 L154 80 M192 0 L166 80 M256 0 L179 80"/>
+    <path d="M64 200 L141 120 M128 200 L154 120 M192 200 L166 120 M256 200 L179 120"/>
+    <path d="M0 50 L128 90 M0 100 L128 100 M0 150 L128 110"/>
+    <path d="M320 50 L192 90 M320 100 L192 100 M320 150 L192 110"/>
+  </g>
+  <g fill="none" stroke="#7a5cd6">
+    <rect x="16" y="10" width="288" height="180" stroke-opacity=".45" stroke-width="2"/>
+    <rect x="48" y="30" width="224" height="140" stroke-opacity=".55" stroke-width="1.6"/>
+    <rect x="80" y="50" width="160" height="100" stroke-opacity=".65" stroke-width="1.3"/>
+    <rect x="104" y="65" width="112" height="70" stroke-opacity=".75"/>
+  </g>
+  <!-- the depth ring where the ball is: lit up yellow -->
+  <rect x="94" y="59" width="132" height="82" fill="none" stroke="#ffd23f" stroke-width="1.6" stroke-opacity=".8"/>
+  <rect x="128" y="80" width="64" height="40" fill="#120b26" stroke="#3ff0ff" stroke-opacity=".5"/>
+
+  <!-- opponent's paddle at the far wall -->
+  <rect x="146" y="90" width="26" height="18" rx="3" fill="#ff4fa3" fill-opacity=".25" stroke="#ff4fa3" stroke-width="2"/>
+
+  <!-- the ball, curving away down the tunnel -->
+  <path d="M168 168 C205 150 214 120 188 104" fill="none" stroke="#ffd23f" stroke-width="5" stroke-linecap="round" stroke-opacity=".25"/>
+  <path d="M178 150 C204 136 206 118 188 104" fill="none" stroke="#ffd23f" stroke-width="3" stroke-linecap="round" stroke-opacity=".5"/>
+  <circle cx="188" cy="104" r="22" fill="url(#glow)"/>
+  <circle cx="188" cy="104" r="7" fill="#ffd23f"/>
+  <circle cx="186" cy="102" r="2.5" fill="#fff6c8"/>
+
+  <!-- our see-through paddle up front -->
+  <rect x="94" y="96" width="132" height="92" rx="12" fill="#3ff0ff" fill-opacity=".1" stroke="#3ff0ff" stroke-opacity=".35" stroke-width="2"/>
+  <g fill="none" stroke="#3ff0ff" stroke-width="6" stroke-linecap="round">
+    <path d="M96 120 V108 Q96 98 106 98 H118"/>
+    <path d="M202 98 H214 Q224 98 224 108 V120"/>
+    <path d="M96 164 V176 Q96 186 106 186 H118"/>
+    <path d="M202 186 H214 Q224 186 224 176 V164"/>
+  </g>
+  <rect x="152" y="134" width="16" height="16" fill="none" stroke="#3ff0ff" stroke-opacity=".6" stroke-width="1.5"/>
+  <!-- motion lines: the paddle swiped right to put spin on it -->
+  <g stroke="#3ff0ff" stroke-width="2" stroke-linecap="round" stroke-opacity=".55">
+    <path d="M70 120 H86 M62 142 H86 M74 164 H86"/>
+  </g>
+</svg>

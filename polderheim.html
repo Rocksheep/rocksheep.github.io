@@ -2109,7 +2109,8 @@ function render() {
   if (!G) return;
   const z = cam.z, N = G.N;
   ctx.setTransform(DPR * z, 0, 0, DPR * z, DPR * (W / 2 - cam.x * z), DPR * (H / 2 - cam.y * z));
-  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // 'high' smoothing is very slow in Chrome once sprites get scaled up (zoomed in past ~1.6x)
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'medium'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   const wx0 = cam.x - W / 2 / z, wx1 = cam.x + W / 2 / z, wy0 = cam.y - H / 2 / z, wy1 = cam.y + H / 2 / z;
   const cs = [worldToTile(wx0, wy0), worldToTile(wx1, wy0), worldToTile(wx0, wy1 + 160), worldToTile(wx1, wy1 + 160)];
   const tx0 = clamp(Math.min(...cs.map(c => c[0])) - 3, 0, N - 1), tx1 = clamp(Math.max(...cs.map(c => c[0])) + 3, 0, N - 1);

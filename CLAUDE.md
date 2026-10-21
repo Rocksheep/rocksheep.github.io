@@ -200,3 +200,32 @@ every even fight will feel overpowered to a human player even at 50% in CPU game
 
 Commit messages describe the game for players (what it is, what you can do), not the code.
 New-game commits are titled `Add <Game>, a <one-line pitch>`.
+
+## Polderheim (the city builder) in short
+
+`polderheim.html` is a single-player Caesar III / Pharaoh-style city builder on the Frisian coast
+around 690 AD. Its script is split into banner-commented sections:
+
+- **Constants and game data**: `BLD` (every building: size, cost, workers, `des` = [desirability,
+  range], `fire`, `makes`/`uses`/`rate` in units a month), `HOUSES` (the six house levels, capacity
+  and tax), `GODS` (Wodan, Donar, Frija, Nehalennia, Fosite, each with a wrath and a blessing),
+  `GOOD`, `MKT_MAX`. Balance changes go here.
+- **Map generation**: `genMap(seed, N)`, seeded: sea on the low-x edge, a river to the sea, `elev`
+  0-3 from the distance to the sea (0 = salt marsh), fertility, bogs, trees, the old road in from
+  the inland edge (`entry`, where settlers arrive) and a hunebed.
+- **The world / roads / walkers / simulation**: no DOM, so it runs in Node. Everything moves on
+  foot along roads: settlers (`immigrant`), handcarts (`cart`, `fetch`), the market `buyer`, and
+  roaming service walkers (`seller`, `priest`, `watch`, `tax`, `skald`) that serve every building
+  within 2 tiles of where they step (`serve`). `houseBest()` decides what level a house can reach,
+  `houseWants()` says why in words. `newMonth()` does taxes/wages, eating, fires, gods, storms
+  (`floodReach(level)`: water spreads over land lower than the storm, dikes block it) and mood.
+  The simulation talks to the screen only through `G.ev` (`['msg', text, kind, tile]`, `['sfx', name]`).
+- **Drawing**: all art is canvas code (`ART[type]`, `box`, `gable`, `hip`, `roofPlane`, `wallTex`),
+  cached per zoom level in `spr()`. Ground colour is one N×N canvas drawn through the iso transform
+  (`drawTint`) so tiles blend. Objects are drawn per diagonal: a building at its tile
+  (x + size - 1, y), walkers on the bigger x+y of the two tiles they walk between.
+
+To test without a browser, cut the script from "Constants" up to "Drawing:" into Node, call
+`makeWorld({ seed, size: 'medium', diff: 'normal' })`, lay roads/buildings with `build()`, and run
+`step()` (20 steps = 1 second, 200 = 1 month). Watch pop, silver, mood, house levels and whether
+farms say "Nowhere to take the goods".

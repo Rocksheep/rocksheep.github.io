@@ -1,0 +1,2913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Polderheim</title>
+<meta name="description" content="A city builder on the old Frisian coast. Lay roads, raise houses, feed your people, keep five old gods happy and hold back the North Sea.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'><rect width='16' height='16' fill='%232b5a73'/><rect y='11' width='16' height='5' fill='%236f9a3e'/><rect x='4' y='7' width='8' height='5' fill='%23e8dcc0'/><rect x='3' y='5' width='10' height='2' fill='%23c9a54a'/><rect x='5' y='3' width='6' height='2' fill='%23c9a54a'/><rect x='7' y='9' width='2' height='3' fill='%235a3a22'/></svg>">
+<style>
+:root{
+  --bg:#0f0820; --panel:#21143f; --panel-2:#2b1a52; --line:#4b3590;
+  --ink:#efe6ff; --dim:#a898cf; --yellow:#ffd23f; --pink:#ff4fa3; --cyan:#3ff0ff; --green:#7dff6a; --orange:#ff8c3f; --red:#ff5a5a; --shadow:#05020c;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#16232c;color:var(--ink);overflow:hidden;
+  font-family:'VT323',ui-monospace,monospace;font-size:21px;line-height:1.15;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
+#game.pan{cursor:grabbing}
+.pixel{font-family:'Press Start 2P',monospace;font-weight:400}
+button{font:inherit;color:inherit}
+
+/* ---------- overlays ---------- */
+.overlay{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto;background:rgba(15,8,32,.84)}
+.overlay[hidden]{display:none}
+.overlay::before{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(0,0,0,.2) 0 1px,transparent 1px 3px)}
+.panel{position:relative;width:100%;max-width:660px;margin:auto;background:var(--panel);border:4px solid var(--line);box-shadow:8px 8px 0 var(--shadow);padding:22px 20px}
+h1{font-family:'Press Start 2P',monospace;font-weight:400;margin:14px 0 14px;text-align:center;font-size:clamp(22px,6vw,40px);line-height:1.1;
+  color:var(--yellow);text-shadow:3px 3px 0 #2e6b8a,6px 6px 0 var(--shadow)}
+h1 span{display:block;font-size:.4em;color:var(--cyan);text-shadow:2px 2px 0 var(--shadow);margin-top:12px;letter-spacing:.18em}
+.tag{text-align:center;color:var(--dim);margin:0 auto 16px;max-width:54ch}
+.back{position:absolute;top:12px;left:14px;color:var(--cyan);text-decoration:none;font-family:'Press Start 2P',monospace;font-size:9px}
+.back:hover{color:var(--yellow)}
+.btn{font-family:'Press Start 2P',monospace;font-size:10px;line-height:1.3;color:var(--c,var(--ink));background:transparent;border:3px solid var(--c,var(--ink));
+  padding:10px 12px;cursor:pointer;box-shadow:3px 3px 0 var(--shadow);text-decoration:none;text-align:center}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--shadow)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow)}
+.btn:disabled{opacity:.35;cursor:default;transform:none}
+.btn[aria-pressed="true"]{background:var(--c,var(--ink));color:var(--bg)}
+.btn:focus-visible{outline:3px dashed var(--yellow);outline-offset:3px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg.tabs{justify-content:center;margin-bottom:16px}
+.big{--c:var(--yellow);display:block;width:100%;font-size:14px;padding:16px;margin-top:16px}
+.row{display:grid;grid-template-columns:110px 1fr;gap:8px 12px;align-items:center;margin:10px 0}
+.row>label{font-family:'Press Start 2P',monospace;font-size:9px;color:var(--cyan)}
+.note{color:var(--dim);font-size:19px;margin:8px 0 0}
+details{margin-top:16px;border-top:2px dashed var(--line);padding-top:12px}
+summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);cursor:pointer}
+details p{margin:8px 0;color:var(--ink)}
+details b{font-weight:400;color:var(--yellow)}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin-top:10px;font-size:20px}
+.keys b{font-weight:400;color:var(--yellow);white-space:nowrap}
+.stack{display:grid;gap:10px;margin-top:16px}
+.stack .btn{font-size:12px;padding:13px}
+.mtitle{font-family:'Press Start 2P',monospace;text-align:center;font-size:clamp(15px,4vw,22px);color:var(--yellow);text-shadow:3px 3px 0 #2e6b8a;margin:4px 0 14px;line-height:1.4}
+.ostats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin:12px 0}
+.ostats div{background:var(--panel-2);border:2px solid var(--line);padding:8px 4px}
+.ostats b{display:block;font-family:'Press Start 2P',monospace;font-weight:400;font-size:12px;color:var(--yellow);margin-top:4px}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;flex-wrap:wrap;align-items:stretch;gap:4px;padding:calc(4px + env(safe-area-inset-top,0px)) 6px 4px;
+  background:linear-gradient(rgba(15,8,32,.94),rgba(15,8,32,.86));border-bottom:3px solid var(--line)}
+#hud[hidden],#bar[hidden]{display:none}
+.hb{font-family:'Press Start 2P',monospace;font-size:9px;background:var(--panel);border:2px solid var(--line);color:var(--c,var(--ink));padding:6px 8px;cursor:pointer;line-height:1.2}
+.hb:hover{border-color:var(--c,var(--yellow))}
+.hb[aria-pressed="true"]{background:var(--c,var(--yellow));color:var(--bg)}
+.st{display:flex;flex-direction:column;justify-content:center;background:var(--panel);border:2px solid var(--line);padding:2px 8px;min-width:76px;cursor:default}
+.st small{font-family:'Press Start 2P',monospace;font-size:7px;color:var(--dim)}
+.st b{font-weight:400;font-size:21px;line-height:1;white-space:nowrap}
+.st.warn b{color:var(--orange)} .st.bad b{color:var(--red)}
+.grp{display:flex;gap:3px;align-items:stretch}
+.grp .hb{padding:6px 7px}
+.spacer{flex:1}
+#hTax{min-width:40px;text-align:center}
+
+/* ---------- build bar ---------- */
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:10;padding:4px 6px calc(6px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(rgba(15,8,32,.86),rgba(15,8,32,.95));border-top:3px solid var(--line)}
+#items{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 6px;scrollbar-width:thin;min-height:0}
+#items:empty{display:none}
+.item{flex:0 0 auto;display:grid;grid-template-rows:auto auto auto;justify-items:center;gap:2px;width:96px;background:var(--panel);border:2px solid var(--line);padding:4px 4px 5px;cursor:pointer}
+.item:hover{border-color:var(--cyan)}
+.item[aria-pressed="true"]{border-color:var(--yellow);background:#3a2470}
+.item canvas{width:72px;height:54px}
+.item b{font-weight:400;font-size:17px;line-height:1;text-align:center}
+.item small{font-family:'Press Start 2P',monospace;font-size:7px;color:var(--yellow)}
+.item.locked{opacity:.45}
+#cats{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}
+#cats .hb{flex:0 0 auto}
+
+/* ---------- side panels ---------- */
+.side{position:fixed;right:8px;top:64px;z-index:12;width:min(340px,calc(100vw - 16px));max-height:calc(100vh - 210px);overflow:auto;
+  background:rgba(33,20,63,.96);border:3px solid var(--line);box-shadow:5px 5px 0 var(--shadow);padding:12px 14px}
+.side[hidden]{display:none}
+.side h3{font-family:'Press Start 2P',monospace;font-weight:400;font-size:11px;color:var(--yellow);margin:0 22px 8px 0;line-height:1.4}
+.side .x{position:absolute;top:6px;right:8px;background:none;border:0;color:var(--dim);font-family:'Press Start 2P',monospace;font-size:11px;cursor:pointer}
+.side .x:hover{color:var(--yellow)}
+.side p{margin:4px 0;color:var(--dim)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:1px 10px;margin:6px 0}
+.kv span{color:var(--dim)} .kv b{font-weight:400;text-align:right}
+.ok{color:var(--green)} .no{color:var(--red)} .meh{color:var(--orange)}
+.need{margin-top:8px;padding:6px 8px;border:2px dashed var(--line);color:var(--ink)}
+.need b{font-weight:400;color:var(--yellow)}
+.bar{height:8px;background:#120a24;border:1px solid var(--line);margin:3px 0 6px}
+.bar i{display:block;height:100%}
+.god{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;padding:8px 0;border-bottom:2px dashed var(--line)}
+.god:last-child{border-bottom:0}
+.god h4{margin:0;font-family:'Press Start 2P',monospace;font-weight:400;font-size:10px}
+.god .role{grid-column:1/-1;color:var(--dim);font-size:18px}
+.god .bar{grid-column:1/-1}
+.god .btn{font-size:7px;padding:6px}
+.goal{display:flex;gap:8px;align-items:baseline;margin:4px 0}
+.goal i{font-style:normal;font-family:'Press Start 2P',monospace;font-size:9px}
+
+#toasts{position:fixed;left:50%;transform:translateX(-50%);top:64px;z-index:11;display:grid;gap:6px;width:min(560px,calc(100vw - 20px));pointer-events:none}
+.toast{pointer-events:auto;background:rgba(33,20,63,.95);border:3px solid var(--c,var(--line));box-shadow:4px 4px 0 var(--shadow);padding:6px 10px;font-size:20px;cursor:pointer;animation:tin .25s}
+.toast.fade{opacity:0;transition:opacity .6s}
+@keyframes tin{from{transform:translateY(-8px);opacity:0}}
+#tip{position:fixed;z-index:13;pointer-events:none;background:rgba(15,8,32,.92);border:2px solid var(--line);padding:3px 8px;font-size:19px;white-space:nowrap;transform:translate(14px,14px)}
+#tip[hidden]{display:none}
+@media (max-width:700px){
+  body{font-size:19px}
+  .st{min-width:0;padding:2px 5px}
+  .st b{font-size:18px}
+  .side{top:auto;bottom:170px;max-height:40vh}
+  .item{width:84px}
+}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" hidden>
+  <button class="hb" id="menuBtn" title="Pause and menu (Esc)">II</button>
+  <div class="st" id="sMoney" title="Silver in the treasury (sceattas)"><small>SILVER</small><b id="hMoney">0</b></div>
+  <div class="st" id="sPop" title="People living in town"><small>PEOPLE</small><b id="hPop">0</b></div>
+  <div class="st" id="sWork" title="Workers / jobs"><small>WORKERS</small><b id="hWork">0</b></div>
+  <div class="st" id="sMood" title="How happy people are to live here. Low taxes, food, jobs and happy gods help."><small>MOOD</small><b id="hMood">0</b></div>
+  <div class="st" title="Date"><small>DATE</small><b id="hDate"></b></div>
+  <div class="grp" id="speed"></div>
+  <div class="grp" title="Tax rate. Higher taxes make people less happy.">
+    <button class="hb" id="taxDown">-</button><div class="st"><small>TAX</small><b id="hTax">8%</b></div><button class="hb" id="taxUp">+</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="hb" id="godsBtn" style="--c:var(--yellow)">GODS</button>
+  <button class="hb" id="goalsBtn" style="--c:var(--green)">GOALS</button>
+  <button class="hb" id="viewBtn" style="--c:var(--cyan)" title="Overlay (V)">VIEW: TOWN</button>
+</div>
+
+<div id="bar" hidden>
+  <div id="items"></div>
+  <div id="cats"></div>
+</div>
+
+<div class="side" id="info" hidden><button class="x" data-close="info">X</button><div id="infoBody"></div></div>
+<div class="side" id="godsPanel" hidden><button class="x" data-close="godsPanel">X</button><h3>THE FIVE GODS</h3><div id="godsBody"></div></div>
+<div class="side" id="goalsPanel" hidden><button class="x" data-close="goalsPanel">X</button><h3>GOALS</h3><div id="goalsBody"></div></div>
+<div id="toasts"></div>
+<div id="tip" hidden></div>
+
+<div class="overlay" id="setup">
+  <div class="panel">
+    <a class="back" href="index.html">&#9664; ARCADE</a>
+    <h1>POLDERHEIM<span>A FRISIAN CITY BUILDER</span></h1>
+    <p class="tag">The year is 690. Found a town on the wild Frisian coast, raise sod huts into gabled townhouses, keep five old gods happy and hold back the North Sea.</p>
+    <div class="seg tabs" id="optTab"></div>
+    <div id="newOpts">
+      <div class="row"><label>LAND</label><div class="seg" id="optSize"></div></div>
+      <div class="row"><label>CHALLENGE</label><div class="seg" id="optDiff"></div></div>
+      <div class="row"><label>COAST</label><div class="seg"><button class="btn" id="reroll" type="button" style="--c:var(--cyan)">NEW COASTLINE</button><span class="note" id="seedName"></span></div></div>
+    </div>
+    <div id="contOpts" hidden><p class="note" id="contInfo"></p></div>
+    <button class="btn big" id="startBtn" type="button">FOUND THE TOWN</button>
+    <details>
+      <summary>HOW TO PLAY</summary>
+      <p>Settlers walk in along the <b>old road</b> at the edge of the map. Lay <b>roads</b> from it and put <b>house plots</b> next to them; families will move in and build sod huts.</p>
+      <p>Everything in Polderheim is delivered on foot. <b>Walkers</b> leave their building and wander the roads: the market woman brings food, priests bring the gods, the fire watch puts out fires and the reeve collects taxes. A house only gets what walks past it.</p>
+      <p>Houses grow when they get more: <b>water</b> from a well, then <b>food</b> and a <b>temple</b>, then <b>pottery</b>, then two kinds of food, a <b>mead hall</b>, two gods and a nice neighbourhood, and finally <b>cloth</b> and three gods. Click a house to see what it wants next.</p>
+      <p>Food and goods go round on handcarts: farms and crafts send them to a <b>storehouse</b>, and the market fetches them from there.</p>
+      <p>The five gods, <b>Wodan, Donar, Frija, Nehalennia and Fosite</b>, each want temples as your town grows, and get jealous of each other. Happy gods send blessings, angry gods send disaster. A festival cheers one up quickly.</p>
+      <p>In autumn and winter, <b>storm floods</b> come off the sea. Low land floods first (VIEW: FLOODS shows it). Build <b>dikes</b> to keep the water out.</p>
+      <div class="keys">
+        <b>Drag / arrows / WASD</b><span>move around</span>
+        <b>Wheel / pinch</b><span>zoom</span>
+        <b>Right click / Esc</b><span>stop building</span>
+        <b>R, H, C</b><span>road, house, clear land</span>
+        <b>V</b><span>change the view</span>
+        <b>Space, 1-3</b><span>pause, game speed</span>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="overlay" id="pause" hidden>
+  <div class="panel">
+    <div class="mtitle">PAUSED</div>
+    <div class="ostats" id="pauseStats"></div>
+    <div class="stack">
+      <button class="btn" id="resumeBtn" style="--c:var(--yellow)">RESUME</button>
+      <button class="btn" id="saveBtn" style="--c:var(--green)">SAVE TOWN</button>
+      <button class="btn" id="soundBtn" style="--c:var(--cyan)">SOUND: ON</button>
+      <button class="btn" id="quitBtn" style="--c:var(--pink)">LEAVE TOWN</button>
+      <a class="btn" href="index.html" style="--c:var(--dim)">&#9664; ARCADE</a>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="over" hidden>
+  <div class="panel">
+    <div class="mtitle" id="overTitle">KING OF THE LOWLANDS</div>
+    <p class="tag" id="overText"></p>
+    <div class="ostats" id="overStats"></div>
+    <div class="stack">
+      <button class="btn" id="keepBtn" style="--c:var(--yellow)">KEEP BUILDING</button>
+      <button class="btn" id="overNewBtn" style="--c:var(--pink)">NEW TOWN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ====================================================================
+// Constants and game data
+// ====================================================================
+const TW = 64, TH = 32, HW = TW / 2, HH = TH / 2;
+const MONTH = 10;             // seconds of game time in a month at normal speed
+const STEP = 0.05;            // one simulation step, in seconds of game time
+const START_YEAR = 690;
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const T_GRASS = 0, T_SEA = 1, T_RIVER = 2, T_SAND = 3, T_MARSH = 4;
+const isWater = t => t === T_SEA || t === T_RIVER;
+const WAGE = .16;             // silver per worker per month
+const WORK_SHARE = .36;       // share of the people who go out to work
+const ROAM = 28;              // tiles a service walker wanders before heading home
+const SVC_MONTHS = 6;         // how long a priest's or skald's visit counts
+const TAX_MONTHS = 12;        // how long a reeve's visit counts
+const TREE_COST = 3, BRIDGE_COST = 20;
+const LOAD = 8, HOLD = 16;    // a handcart's load; what a farm or workshop keeps before it stops
+const DIFF = {
+  easy: { name: 'EASY', money: 4500, pop: 600 },
+  normal: { name: 'NORMAL', money: 3000, pop: 1000 },
+  hard: { name: 'HARD', money: 2000, pop: 1500 },
+};
+const SIZES = { small: { name: 'SMALL', n: 64 }, medium: { name: 'MEDIUM', n: 80 }, large: { name: 'LARGE', n: 96 } };
+
+const GOODS = ['rye', 'cheese', 'fish', 'clay', 'pottery', 'wool', 'cloth'];
+const FOODS = ['rye', 'cheese', 'fish'];
+const GOOD = {
+  rye: { name: 'Rye', col: '#d8b04a' }, cheese: { name: 'Cheese', col: '#f2c94c' }, fish: { name: 'Fish', col: '#a9c2cf' },
+  clay: { name: 'Clay', col: '#a65a36' }, pottery: { name: 'Pottery', col: '#c9784a' },
+  wool: { name: 'Wool', col: '#efe9da' }, cloth: { name: 'Cloth', col: '#4f6fa8' },
+};
+const MKT_MAX = { rye: 40, cheese: 40, fish: 40, pottery: 12, cloth: 12 };
+
+// The old gods of the Frisian coast. Each one wants temples as the town grows.
+const GODS = [
+  { id: 'wodan', name: 'Wodan', role: 'All-father, lord of wisdom and the Wild Hunt.', col: '#5b80c9',
+    wrath: 'The Wild Hunt rides through town! Families flee into the night.',
+    bless: 'Wodan shares his wisdom: a chest of silver appears at the hall.' },
+  { id: 'donar', name: 'Donar', role: 'The Thunderer, friend of farmers.', col: '#d0503f',
+    wrath: 'Donar hurls his hammer: lightning sets the town ablaze!',
+    bless: 'Donar sends gentle rain: every farm brings in an early harvest.' },
+  { id: 'frija', name: 'Frija', role: 'Lady of hearth, home and children.', col: '#e6ac3c',
+    wrath: 'Frija turns away: hearths go cold and the food spoils.',
+    bless: 'Frija blesses your hearths: newcomers flock to the town.' },
+  { id: 'nehalennia', name: 'Nehalennia', role: 'Goddess of the North Sea and safe passage.', col: '#34a89f',
+    wrath: 'Nehalennia raises the sea against you!',
+    bless: 'Nehalennia guides a trading ship to your shore, full of goods.' },
+  { id: 'fosite', name: 'Fosite', role: 'Keeper of law and the holy spring.', col: '#c3c8de',
+    wrath: 'Fosite abandons you: thieves and liars empty the treasury.',
+    bless: 'Fosite brings honest dealings: this month the taxes come in twice.' },
+];
+const GOD = Object.fromEntries(GODS.map(g => [g.id, g]));
+
+const HOUSES = [
+  { name: 'Empty plot', cap: 0, tax: 0 },
+  { name: 'Sod hut', cap: 5, tax: .15 },
+  { name: 'Wattle hut', cap: 8, tax: .22 },
+  { name: 'Thatched cottage', cap: 12, tax: .35 },
+  { name: 'Longhouse', cap: 16, tax: .5 },
+  { name: 'Brick farmhouse', cap: 22, tax: .75 },
+  { name: 'Gabled townhouse', cap: 28, tax: 1.1 },
+];
+
+// Every building. size = tiles per side, workers = jobs, des = [desirability, range],
+// fire = fire risk added per month, makes/uses/rate (units a month at full staff).
+const BLD = {
+  road: { name: 'Road', cat: 'roads', size: 1, cost: 2, desc: 'Packed earth. Every walker needs roads. Across a river it becomes a wooden bridge.' },
+  dike: { name: 'Dike', cat: 'roads', size: 1, cost: 6, desc: 'An earthen sea wall. Storm floods cannot get past it, so close every gap.' },
+  clear: { name: 'Clear land', cat: 'roads', size: 1, cost: 1, desc: 'Remove trees, rubble, roads and buildings. Drag to clear an area.' },
+  house: { name: 'House plot', cat: 'homes', size: 1, cost: 8, desc: 'Settlers move in and build a home. Give it water, food, gods and more to make it grow.' },
+  farm: { name: 'Rye farm', cat: 'food', size: 3, cost: 50, workers: 8, makes: 'rye', rate: 9, fert: 1, des: [-2, 2], fire: 1,
+    desc: 'Grows rye. Rich, dark green land gives bigger harvests. Not on salt marsh.' },
+  dairy: { name: 'Dairy farm', cat: 'food', size: 3, cost: 60, workers: 8, makes: 'cheese', rate: 8, fert: .4, des: [-2, 2], fire: 1,
+    desc: 'Black-and-white cows and a cheese shed. Cows happily graze the salt marsh.' },
+  fisher: { name: "Fisher's hut", cat: 'food', size: 2, cost: 40, workers: 6, makes: 'fish', rate: 8, water: true, des: [-2, 2], fire: 1,
+    desc: 'Must be built on the shore of the sea or a river.' },
+  sheep: { name: 'Sheepfold', cat: 'industry', size: 3, cost: 45, workers: 6, makes: 'wool', rate: 7, des: [-2, 2], fire: 1,
+    desc: 'Sheep for wool. The weaver turns it into Frisian cloth.' },
+  claypit: { name: 'Clay pit', cat: 'industry', size: 2, cost: 40, workers: 6, makes: 'clay', rate: 8, wet: 3, des: [-4, 3], fire: 0,
+    desc: 'Digs river clay. Must be close to water or a bog.' },
+  potter: { name: 'Potter', cat: 'industry', size: 2, cost: 55, workers: 8, uses: 'clay', makes: 'pottery', rate: 6, des: [-3, 2], fire: 5,
+    desc: 'Fires clay into pots. Longhouses want pottery.' },
+  weaver: { name: 'Weaver', cat: 'industry', size: 2, cost: 60, workers: 8, uses: 'wool', makes: 'cloth', rate: 5, des: [-2, 2], fire: 3,
+    desc: 'Weaves wool into the famous Frisian cloth. The finest houses want it.' },
+  store: { name: 'Storehouse', cat: 'trade', size: 3, cost: 70, workers: 6, cap: 24, des: [-3, 2], fire: 3,
+    desc: 'Holds up to 24 of every good. Farms and crafts send their goods here; markets and workshops fetch from it.' },
+  market: { name: 'Market', cat: 'trade', size: 2, cost: 45, workers: 5, walker: 'seller', des: [1, 2], fire: 2,
+    desc: 'A buyer fetches food and goods from the storehouse; the market woman carries them past the houses.' },
+  well: { name: 'Well', cat: 'services', size: 1, cost: 12, radius: 2, des: [1, 1],
+    desc: 'Gives water to every house within 2 tiles. No workers needed.' },
+  watch: { name: 'Fire watch', cat: 'services', size: 1, cost: 25, workers: 4, walker: 'watch', fire: 0,
+    desc: 'A watchman walks the streets with a bucket, lowering the fire risk and putting out fires.' },
+  reeve: { name: "Reeve's hall", cat: 'services', size: 2, cost: 60, workers: 5, walker: 'tax', des: [1, 2], fire: 2,
+    desc: 'The reeve collects taxes. Only houses he visits pay anything.' },
+  mead: { name: 'Mead hall', cat: 'services', size: 2, cost: 70, workers: 6, walker: 'skald', des: [2, 2], fire: 4,
+    desc: 'Mead and songs. A skald walks out to entertain the houses.' },
+  garden: { name: 'Flower garden', cat: 'beauty', size: 1, cost: 10, des: [3, 2], desc: 'Makes the neighbourhood nicer. Better houses need nice surroundings.' },
+  rune: { name: 'Rune stone', cat: 'beauty', size: 1, cost: 40, des: [6, 3], desc: 'A carved standing stone that tells of great deeds. Very nice to live near.' },
+  hunebed: { name: 'Hunebed', size: 2, des: [5, 3], fixed: true, desc: 'A tomb of giant stones, older than anyone remembers.' },
+};
+for (const g of GODS) BLD['t_' + g.id] = {
+  name: 'Temple of ' + g.name, cat: 'gods', size: 2, cost: 90, workers: 3, walker: 'priest', god: g.id, des: [4, 3], fire: 1,
+  desc: g.role + ' A priest walks out to bless the houses.',
+};
+const CATS = [['roads', 'ROADS'], ['homes', 'HOMES'], ['food', 'FOOD'], ['industry', 'CRAFTS'], ['trade', 'STORAGE'], ['gods', 'GODS'], ['services', 'SERVICES'], ['beauty', 'BEAUTY']];
+const WALKER_FOR = { seller: 'seller', priest: 'priest', watch: 'watch', tax: 'tax', skald: 'skald' };
+
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const rnd = n => Math.floor(Math.random() * n);
+const pick = a => a[rnd(a.length)];
+
+// ====================================================================
+// Map generation (seeded, so a town can be rebuilt from its seed)
+// ====================================================================
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hash2(x, y, s) {
+  let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(s | 0, 1442695041) | 0;
+  h = Math.imul(h ^ h >>> 13, 1274126177);
+  return ((h ^ h >>> 16) >>> 0) / 4294967296;
+}
+function vnoise(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi, s), b = hash2(xi + 1, yi, s), c = hash2(xi, yi + 1, s), d = hash2(xi + 1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, y, s, oct = 4) {
+  let t = 0, amp = .5, f = 1, n = 0;
+  for (let k = 0; k < oct; k++) { t += amp * vnoise(x * f, y * f, s + k * 17); n += amp; amp *= .5; f *= 2; }
+  return t / n;
+}
+
+function genMap(seed, N) {
+  const R = mulberry32(seed), S = seed % 99991;
+  const NN = N * N, I = (x, y) => y * N + x;
+  const terr = new Uint8Array(NN), elev = new Uint8Array(NN), fert = new Float32Array(NN), tree = new Uint8Array(NN);
+  const road = new Uint8Array(NN), shade = new Uint8Array(NN), depth = new Uint8Array(NN);
+  const inb = (x, y) => x >= 0 && y >= 0 && x < N && y < N;
+
+  // the North Sea along the low-x edge (top left of the screen)
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const line = N * .17 + (fbm(y * .045, 3.3, S) - .5) * N * .26 + (fbm(x * .09, y * .09, S + 5) - .5) * 9;
+    terr[I(x, y)] = x < line ? T_SEA : T_GRASS;
+  }
+  // a river from the inland edge to the sea
+  const riverTop = R() < .5;
+  let ry = Math.floor(N * (riverTop ? .22 + R() * .14 : .64 + R() * .14)), x = N - 1, drift = 0;
+  const river = [];
+  const carve = (cx, cy) => { if (inb(cx, cy) && terr[I(cx, cy)] !== T_SEA) { terr[I(cx, cy)] = T_RIVER; river.push(I(cx, cy)); } };
+  while (x >= 0 && terr[I(x, ry)] !== T_SEA) {
+    carve(x, ry);
+    if (x < N * .45 && R() < .5) carve(x, ry + 1);          // wider near the mouth
+    drift = clamp(drift + (R() - .5) * .5, -1, 1);
+    if (R() < .4) {
+      const dy = (drift + (R() - .5) * .6) > 0 ? 1 : -1, ny = clamp(ry + dy, 4, N - 6);
+      if (ny !== ry) { ry = ny; carve(x, ry); }
+    }
+    x--;
+  }
+  // distance to the sea, for elevation; distance to land, for sea depth
+  const dsea = new Int16Array(NN).fill(-1), q = [];
+  for (let i = 0; i < NN; i++) if (terr[i] === T_SEA) { dsea[i] = 0; q.push(i); }
+  for (let h = 0; h < q.length; h++) {
+    const i = q[h], cx = i % N, cy = (i - cx) / N;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy; if (!inb(nx, ny)) continue;
+      const j = I(nx, ny); if (dsea[j] < 0) { dsea[j] = dsea[i] + 1; q.push(j); }
+    }
+  }
+  const driv = new Int16Array(NN).fill(-1), q2 = [];
+  for (const i of river) if (driv[i] < 0) { driv[i] = 0; q2.push(i); }
+  for (let h = 0; h < q2.length; h++) {
+    const i = q2[h], cx = i % N, cy = (i - cx) / N; if (driv[i] >= 6) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy; if (!inb(nx, ny)) continue;
+      const j = I(nx, ny); if (driv[j] < 0) { driv[j] = driv[i] + 1; q2.push(j); }
+    }
+  }
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const i = I(x, y);
+    shade[i] = Math.min(2, Math.floor(fbm(x * .13, y * .13, S + 77, 3) * 3.2));
+    if (isWater(terr[i])) continue;
+    const d = dsea[i], n = fbm(x * .1, y * .1, S + 9);
+    let e = d <= 2 ? 0 : d <= 6 ? 1 : d <= 12 ? 2 : 3;
+    if (n > .64 && e < 3 && d > 2) e++;
+    if (n < .34 && e > 1 && d > 4) e--;
+    if (driv[i] >= 0 && driv[i] <= 1) e = Math.min(e, d < 26 ? 1 : 2);
+    elev[i] = e;
+    if (d === 1) terr[i] = T_SAND;
+    else if (d > 6 && driv[i] !== 1 && fbm(x * .09, y * .09, S + 21) > .66) terr[i] = T_MARSH;
+    let f = fbm(x * .07, y * .07, S + 33);
+    if (driv[i] >= 0 && driv[i] <= 4) f += .22;
+    if (e === 0) f *= .5;
+    fert[i] = clamp(f, 0, 1);
+  }
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const i = I(x, y), t = terr[i];
+    if (t === T_GRASS && elev[i] > 0) {
+      const fn = fbm(x * .08, y * .08, S + 44);
+      if ((fn > .6 && R() < .8) || R() < .025) tree[i] = 1 + Math.floor(R() * 3);
+    } else if (t === T_MARSH && R() < .12) tree[i] = 1;
+  }
+  // the old road in from the inland edge, away from the river
+  const ey = Math.floor(N * (riverTop ? .62 + R() * .14 : .24 + R() * .14));
+  const endX = Math.floor(N * (.5 + R() * .08)), jogX = Math.floor((N - 1 + endX) / 2);
+  const jogY = clamp(ey + (R() < .5 ? -1 : 1) * (2 + Math.floor(R() * 3)), 4, N - 6);
+  const roadTiles = [];
+  for (let rx = N - 1; rx >= jogX; rx--) roadTiles.push(I(rx, ey));
+  for (let yy = ey; yy !== jogY; yy += Math.sign(jogY - ey)) roadTiles.push(I(jogX, yy));
+  for (let rx = jogX; rx >= endX; rx--) roadTiles.push(I(rx, jogY));
+  for (const i of roadTiles) road[i] = 1;
+  const endI = I(endX, jogY);
+  // clear a pleasant spot to start: no bog or forest right along the road
+  for (const i of roadTiles) {
+    const cx = i % N, cy = (i - cx) / N, r = cx < endX + 8 ? 6 : 2;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (!inb(cx + dx, cy + dy)) continue;
+      const j = I(cx + dx, cy + dy);
+      if (terr[j] === T_MARSH) terr[j] = T_GRASS;
+      if (Math.abs(dx) + Math.abs(dy) <= r - 1 && R() < .85) tree[j] = 0;
+      if (road[j]) tree[j] = 0;
+    }
+  }
+  // a hunebed on high ground near the start
+  let hune = null;
+  for (let tries = 0; tries < 400 && !hune; tries++) {
+    const hx = endX - 12 + Math.floor(R() * 24), hy = jogY - 12 + Math.floor(R() * 24);
+    if (!inb(hx, hy) || !inb(hx + 1, hy + 1)) continue;
+    if (Math.abs(hx - endX) + Math.abs(hy - jogY) < 7) continue;
+    let ok = true;
+    for (let dy = -1; dy <= 2 && ok; dy++) for (let dx = -1; dx <= 2 && ok; dx++) {
+      if (!inb(hx + dx, hy + dy)) { ok = false; break; }
+      const j = I(hx + dx, hy + dy);
+      if (terr[j] !== T_GRASS || road[j] || elev[j] < 2) ok = false;
+    }
+    if (ok) hune = [hx, hy];
+  }
+  // sea depth: distance from land
+  const dl = new Int16Array(NN).fill(-1), q3 = [];
+  for (let i = 0; i < NN; i++) if (terr[i] !== T_SEA) { dl[i] = 0; q3.push(i); }
+  for (let h = 0; h < q3.length; h++) {
+    const i = q3[h], cx = i % N, cy = (i - cx) / N;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy; if (!inb(nx, ny)) continue;
+      const j = I(nx, ny); if (dl[j] < 0) { dl[j] = dl[i] + 1; q3.push(j); }
+    }
+  }
+  for (let i = 0; i < NN; i++) depth[i] = terr[i] === T_SEA ? Math.min(3, Math.max(0, dl[i] - 1)) : 0;
+  return { terr, elev, fert, tree, road, shade, depth, entry: I(N - 1, ey), start: endI, hune };
+}
+
+// ====================================================================
+// The world
+// ====================================================================
+let G = null;
+
+function makeWorld(cfg) {
+  const N = SIZES[cfg.size].n, m = genMap(cfg.seed, N), NN = N * N;
+  G = {
+    cfg, N, ...m,
+    bld: new Int32Array(NN), rubble: new Uint8Array(NN), flood: new Float32Array(NN),
+    des: new Float32Array(NN), water: new Uint8Array(NN), comp: new Uint8Array(NN),
+    ents: new Map(), nextId: 1, walkers: [], wid: 1,
+    money: DIFF[cfg.diff].money, taxRate: 8, t: 0, monthT: 0, month: 0, year: START_YEAR,
+    pop: 0, workforce: 0, jobs: 0, employed: 0, staffR: 0, sentiment: 65, boost: 0,
+    gods: Object.fromEntries(GODS.map(g => [g.id, { mood: 60, fest: 0, wrathCd: 8, blessCd: 12, festCd: 0 }])),
+    roadV: 1, compV: 0, desDirty: true, waterDirty: true, riskV: -1, risk: null,
+    ev: [], storm: null, won: false, tips: {}, ledger: { tax: 0, wages: 0 },
+    immT: 2, laborT: 0, evoT: 0, desT: 0, stats: { built: 0, floods: 0, fires: 0 },
+  };
+  if (m.hune) addBuilding('hunebed', m.hune[0], m.hune[1]);
+  return G;
+}
+const now = () => (G.year - START_YEAR) * 12 + G.month + G.monthT / MONTH;
+const say = (text, kind = 'info', at = -1) => G.ev.push(['msg', text, kind, at]);
+const snd = name => G.ev.push(['sfx', name]);
+const tileXY = i => [i % G.N, (i - i % G.N) / G.N];
+const inMap = (x, y) => x >= 0 && y >= 0 && x < G.N && y < G.N;
+const isDike = i => { const id = G.bld[i]; return id && G.ents.get(id).type === 'dike'; };
+
+function addBuilding(type, x, y) {
+  const d = BLD[type], s = d.size || 1, id = G.nextId++;
+  const b = { id, type, x, y, s, staff: 0, conn: false, out: 0, inp: 0, prog: 0, walker: 0, walker2: 0, cd: 1 + Math.random() * 3, cd2: 0,
+    fire: 0, burn: 0, acc: null, accV: -1, status: '' };
+  if (type === 'house') Object.assign(b, { lvl: 0, res: 0, inc: 0, food: { rye: 0, cheese: 0, fish: 0 }, pottery: 0, cloth: 0, rel: {}, ent: -99, tax: -99, down: 0, var: hash2(x, y, 7) * 4 | 0 });
+  if (type === 'store') b.stock = Object.fromEntries(GOODS.map(g => [g, 0]));
+  if (type === 'market') b.stock = { rye: 0, cheese: 0, fish: 0, pottery: 0, cloth: 0 };
+  for (let dy = 0; dy < s; dy++) for (let dx = 0; dx < s; dx++) {
+    const i = (y + dy) * G.N + x + dx;
+    G.bld[i] = id; G.tree[i] = 0; G.rubble[i] = 0;
+  }
+  G.ents.set(id, b);
+  G.roadV++; G.desDirty = true;
+  if (type === 'well') G.waterDirty = true;
+  return b;
+}
+
+function removeBuilding(b, ruin = false) {
+  for (let dy = 0; dy < b.s; dy++) for (let dx = 0; dx < b.s; dx++) {
+    const i = (b.y + dy) * G.N + b.x + dx;
+    G.bld[i] = 0; if (ruin) G.rubble[i] = 1 + rnd(3);
+  }
+  G.ents.delete(b.id);
+  for (const w of G.walkers) if (w.home === b.id || (w.kind === 'immigrant' && w.target === b.id)) kill(w);
+  if (b.type === 'house' && b.res) G.pop -= b.res;
+  G.roadV++; G.desDirty = true;
+  if (b.type === 'well') G.waterDirty = true;
+}
+
+// Why can't `type` go at x,y? '' when it can.
+function placeProblem(type, x, y) {
+  const d = BLD[type], s = d.size || 1;
+  let wet = false, shore = false, salt = false;
+  for (let dy = 0; dy < s; dy++) for (let dx = 0; dx < s; dx++) {
+    const tx = x + dx, ty = y + dy;
+    if (!inMap(tx, ty)) return 'Off the map';
+    const i = ty * G.N + tx, t = G.terr[i];
+    if (G.flood[i] > 0) return 'Still flooded';
+    if (G.bld[i]) return 'Something is built here';
+    if (type === 'road') { if (t === T_SEA) return 'Cannot build in the sea'; if (G.road[i]) return 'Already a road'; continue; }
+    if (G.road[i]) return 'A road is in the way';
+    if (isWater(t)) return 'Cannot build on water';
+    if (t === T_MARSH && type !== 'dike' && type !== 'claypit') return 'Too boggy';
+    if (G.elev[i] === 0) salt = true;
+  }
+  if (type === 'farm' && salt) return 'Rye will not grow on salt marsh';
+  if (d.water) {
+    for (let k = -1; k <= s && !shore; k++) for (const [tx, ty] of [[x + k, y - 1], [x + k, y + s], [x - 1, y + k], [x + s, y + k]])
+      if (inMap(tx, ty) && isWater(G.terr[ty * G.N + tx])) shore = true;
+    if (!shore) return 'Must be on the shore';
+  }
+  if (d.wet) {
+    for (let ty = y - d.wet; ty < y + s + d.wet && !wet; ty++) for (let tx = x - d.wet; tx < x + s + d.wet; tx++)
+      if (inMap(tx, ty) && (isWater(G.terr[ty * G.N + tx]) || G.terr[ty * G.N + tx] === T_MARSH)) { wet = true; break; }
+    if (!wet) return 'Must be near water or a bog';
+  }
+  return '';
+}
+function placeCost(type, x, y) {
+  const d = BLD[type], s = d.size || 1;
+  let c = d.cost;
+  for (let dy = 0; dy < s; dy++) for (let dx = 0; dx < s; dx++) {
+    const tx = x + dx, ty = y + dy; if (!inMap(tx, ty)) continue;
+    const i = ty * G.N + tx;
+    if (G.tree[i]) c += TREE_COST;
+    if (type === 'road' && G.terr[i] === T_RIVER) c += BRIDGE_COST;
+  }
+  return c;
+}
+function build(type, x, y) {
+  if (placeProblem(type, x, y)) return false;
+  const c = placeCost(type, x, y);
+  if (G.money < c) return false;
+  G.money -= c; G.stats.built++;
+  if (type === 'road') { const i = y * G.N + x; G.road[i] = 1; G.tree[i] = 0; G.rubble[i] = 0; G.roadV++; }
+  else addBuilding(type, x, y);
+  return true;
+}
+// Clear one tile. Returns the cost, or -1 when there's nothing (clearable) here.
+function clearTile(x, y, dry = false) {
+  if (!inMap(x, y)) return -1;
+  const i = y * G.N + x, id = G.bld[i];
+  if (id) {
+    const b = G.ents.get(id);
+    if (BLD[b.type].fixed) return -1;
+    if (!dry) removeBuilding(b);
+    return 1;
+  }
+  if (G.road[i]) {
+    if (i === G.entry) return -1;
+    if (!dry) { G.road[i] = 0; G.roadV++; }
+    return 1;
+  }
+  if (G.tree[i] || G.rubble[i]) { if (!dry) { G.tree[i] = 0; G.rubble[i] = 0; } return 1; }
+  return -1;
+}
+
+// ====================================================================
+// Roads and paths
+// ====================================================================
+const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+// road tiles touching a building, cached until the roads change
+function access(b) {
+  if (b.accV === G.roadV) return b.acc;
+  const out = [], N = G.N;
+  for (let k = 0; k < b.s; k++) for (const [tx, ty] of [[b.x + k, b.y - 1], [b.x + k, b.y + b.s], [b.x - 1, b.y + k], [b.x + b.s, b.y + k]])
+    if (inMap(tx, ty) && G.road[ty * N + tx]) out.push(ty * N + tx);
+  b.acc = out; b.accV = G.roadV;
+  return out;
+}
+// which roads are joined up with the old road (where settlers come in)
+function updateConn() {
+  if (G.compV === G.roadV) return;
+  G.compV = G.roadV;
+  const N = G.N, comp = G.comp.fill(0), q = [];
+  if (G.road[G.entry]) { comp[G.entry] = 1; q.push(G.entry); }
+  for (let h = 0; h < q.length; h++) {
+    const i = q[h], x = i % N, y = (i - x) / N;
+    for (const [dx, dy] of D4) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const j = ny * N + nx; if (G.road[j] && !comp[j]) { comp[j] = 1; q.push(j); }
+    }
+  }
+  for (const b of G.ents.values()) b.conn = access(b).some(i => comp[i]);
+}
+
+// Breadth-first search over the roads. goal(i) returns something truthy at the destination.
+let bfsMark = null, bfsPrev = null, bfsQ = null, bfsGen = 0;
+function bfs(starts, goal, limit = 1e9) {
+  const N = G.N, NN = N * N;
+  if (!bfsMark || bfsMark.length !== NN) { bfsMark = new Int32Array(NN); bfsPrev = new Int32Array(NN); bfsQ = new Int32Array(NN); bfsGen = 0; }
+  const gen = ++bfsGen;
+  let h = 0, t = 0;
+  for (const s of starts) if (G.road[s] && bfsMark[s] !== gen) { bfsMark[s] = gen; bfsPrev[s] = -1; bfsQ[t++] = s; }
+  while (h < t) {
+    const i = bfsQ[h++], r = goal(i);
+    if (r) {
+      const path = [];
+      for (let k = i; k >= 0; k = bfsPrev[k]) path.push(k);
+      return { path: path.reverse(), target: r };
+    }
+    if (h > limit) break;
+    const x = i % N, y = (i - x) / N;
+    for (const [dx, dy] of D4) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const j = ny * N + nx;
+      if (G.road[j] && bfsMark[j] !== gen) { bfsMark[j] = gen; bfsPrev[j] = i; bfsQ[t++] = j; }
+    }
+  }
+  return null;
+}
+// goal: a road tile next to a building that passes test(b)
+function nextTo(test, not = 0) {
+  return i => {
+    const N = G.N, x = i % N, y = (i - x) / N;
+    for (const [dx, dy] of D4) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const id = G.bld[ny * N + nx];
+      if (id && id !== not) { const b = G.ents.get(id); if (b && test(b)) return id; }
+    }
+    return 0;
+  };
+}
+function roadNbrs(i) {
+  const N = G.N, x = i % N, y = (i - x) / N, out = [];
+  for (const [dx, dy] of D4) {
+    const nx = x + dx, ny = y + dy;
+    if (nx >= 0 && ny >= 0 && nx < N && ny < N && G.road[ny * N + nx]) out.push(ny * N + nx);
+  }
+  return out;
+}
+
+// ====================================================================
+// Walkers
+// ====================================================================
+// kinds: immigrant, cart (carries goods out), fetch (goes to get goods), buyer (market),
+// and the roaming service walkers: seller, priest, watch, tax, skald
+const SPEED = { immigrant: 2.4, cart: 1.5, fetch: 1.6, buyer: 1.5, seller: 1.25, priest: 1.25, watch: 1.4, tax: 1.25, skald: 1.25 };
+
+function newWalker(kind, home, at) {
+  const w = { id: G.wid++, kind, home: home ? home.id : 0, cur: at, nxt: -1, prev: -1, t: 0, path: null, pi: 1,
+    speed: SPEED[kind] * (.92 + Math.random() * .16), roam: false, dist: 0, max: ROAM, visits: null, back: false, target: 0, good: null, n: 0, load: null, dead: false, ph: Math.random() * 6 };
+  G.walkers.push(w);
+  return w;
+}
+function kill(w) {
+  if (w.dead) return;
+  w.dead = true;
+  const h = G.ents.get(w.home);
+  if (h) { if (h.walker === w.id) h.walker = 0; if (h.walker2 === w.id) h.walker2 = 0; }
+  if (w.kind === 'immigrant') { const t = G.ents.get(w.target); if (t) t.inc = Math.max(0, t.inc - w.n); }
+}
+function setPath(w, r) { w.path = r.path; w.pi = 1; w.nxt = -1; }
+function goHome(w) {
+  const h = G.ents.get(w.home);
+  if (!h) return kill(w);
+  const r = bfs([w.cur], nextTo(b => b.id === h.id));
+  if (!r) return kill(w);
+  w.roam = false; w.back = true; setPath(w, r);
+}
+function walkerStep(w, dt) {
+  if (w.nxt < 0) { pickNext(w); if (w.dead || w.nxt < 0) return; }
+  w.t += w.speed * dt;
+  while (w.t >= 1) {
+    w.t -= 1; w.prev = w.cur; w.cur = w.nxt; w.nxt = -1;
+    arrive(w);
+    if (w.dead) return;
+    pickNext(w);
+    if (w.dead) return;
+    if (w.nxt < 0) { w.t = 0; return; }
+  }
+}
+function pickNext(w) {
+  if (!G.road[w.cur] && w.kind !== 'immigrant') return kill(w);
+  if (w.path) {
+    if (w.pi >= w.path.length) return done(w);
+    const n = w.path[w.pi];
+    if (!G.road[n]) return repath(w);
+    w.nxt = n; w.pi++;
+    return;
+  }
+  if (w.roam) {
+    let opts = roadNbrs(w.cur);
+    if (opts.length > 1) opts = opts.filter(n => n !== w.prev);
+    if (!opts.length) return goHome(w);
+    let best = 1e9, pickd = [];
+    for (const n of opts) {
+      const v = w.visits.get(n) || 0;
+      if (v < best) { best = v; pickd = [n]; } else if (v === best) pickd.push(n);
+    }
+    w.nxt = pick(pickd);
+  }
+}
+function repath(w) {
+  if (w.back || w.roam) return goHome(w);
+  const t = G.ents.get(w.target);
+  if (!t) return w.kind === 'immigrant' ? kill(w) : goHome(w);
+  const r = bfs([w.cur], nextTo(b => b.id === t.id));
+  if (!r) return w.kind === 'immigrant' ? kill(w) : goHome(w);
+  setPath(w, r);
+}
+function arrive(w) {
+  if (w.roam) {
+    w.dist++;
+    w.visits.set(w.cur, (w.visits.get(w.cur) || 0) + 1);
+    serve(w, w.cur);
+    if (w.dist >= w.max) goHome(w);
+  } else if (w.back && w.kind in WALKER_FOR) serve(w, w.cur);
+}
+function done(w) {
+  const h = G.ents.get(w.home);
+  if (w.kind === 'immigrant') {
+    const t = G.ents.get(w.target);
+    if (t && t.type === 'house') {
+      const cap = HOUSES[Math.max(1, t.lvl)].cap, k = Math.min(w.n, cap - t.res);
+      if (k > 0) { t.res += k; G.pop += k; if (!t.lvl) { t.lvl = 1; G.desDirty = true; } }
+    }
+    return kill(w);
+  }
+  if (w.back || w.roam) {               // home again
+    if (h) {
+      if (w.kind === 'cart' && w.n) h.out = Math.min(HOLD, h.out + w.n);
+      if (w.kind === 'fetch' && w.n) h.inp = Math.min(HOLD, h.inp + w.n);
+      if (w.kind === 'buyer' && w.load) for (const g in w.load) h.stock[g] += w.load[g];
+      if (w.kind in WALKER_FOR) h.cd = MONTH * .3 / Math.max(.25, h.staff);
+      if (w.kind === 'buyer') h.cd2 = 1;
+    }
+    return kill(w);
+  }
+  const t = G.ents.get(w.target);
+  if (t) {
+    if (w.kind === 'cart') w.n -= receive(t, w.good, w.n);
+    else if (w.kind === 'fetch' && t.type === 'store') { const k = Math.min(w.n, Math.floor(t.stock[w.good])); t.stock[w.good] -= k; w.n = k; }
+    else if (w.kind === 'buyer' && t.type === 'store' && h) {
+      w.load = {};
+      for (const g in MKT_MAX) {
+        const k = Math.min(MKT_MAX[g] - h.stock[g], Math.floor(t.stock[g]), 16);
+        if (k > 0) { t.stock[g] -= k; w.load[g] = k; }
+      }
+    }
+  }
+  goHome(w);
+}
+const storeRoom = (s, g) => Math.max(0, BLD.store.cap - s.stock[g]);
+function receive(t, g, n) {
+  if (t.type === 'store') { const k = Math.min(n, storeRoom(t, g)); t.stock[g] += k; return k; }
+  if (BLD[t.type].uses === g) { const k = Math.min(n, HOLD - t.inp); t.inp += k; return k; }
+  return 0;
+}
+
+// A service walker passes tile i: everything within 2 tiles gets the service.
+function serve(w, i) {
+  const N = G.N, x = i % N, y = (i - x) / N, mc = now(), h = G.ents.get(w.home);
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+    const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+    const id = G.bld[ny * N + nx]; if (!id) continue;
+    const b = G.ents.get(id);
+    if (w.kind === 'watch') { b.fire = 0; if (b.burn) { b.burn = 0; say('The fire watch put out a fire.', 'good', b.y * N + b.x); } continue; }
+    if (b.type !== 'house' || !b.res) continue;
+    if (w.kind === 'priest') b.rel[w.god] = mc;
+    else if (w.kind === 'tax') b.tax = mc;
+    else if (w.kind === 'skald') b.ent = mc;
+    else if (w.kind === 'seller' && h) {
+      const want = Math.ceil(b.res * .15);
+      for (const f of FOODS) {
+        const k = Math.min(want - b.food[f], h.stock[f]);
+        if (k > 0) { b.food[f] += k; h.stock[f] -= k; }
+      }
+      if (b.lvl >= 3 && b.pottery < 2 && h.stock.pottery >= 1) { b.pottery++; h.stock.pottery--; }
+      if (b.lvl >= 5 && b.cloth < 2 && h.stock.cloth >= 1) { b.cloth++; h.stock.cloth--; }
+    }
+  }
+}
+
+// ====================================================================
+// Simulation
+// ====================================================================
+function step() {
+  const dt = STEP;
+  G.t += dt; G.monthT += dt;
+  updateConn();
+  if ((G.laborT -= dt) <= 0) { G.laborT = 1; labor(); }
+  if (G.desDirty && (G.desT -= dt) <= 0) { G.desT = .5; calcDes(); }
+  if (G.waterDirty) calcWater();
+  for (const b of G.ents.values()) tickBuilding(b, dt);
+  let dead = false;
+  for (const w of G.walkers) { if (!w.dead) walkerStep(w, dt); if (w.dead) dead = true; }
+  if (dead) G.walkers = G.walkers.filter(w => !w.dead);
+  if ((G.immT -= dt) <= 0) { G.immT = .7 + Math.random() * .5; immigrate(); }
+  if ((G.evoT -= dt) <= 0) { G.evoT = MONTH / 2; evolveHouses(); }
+  if (G.monthT >= MONTH) { G.monthT -= MONTH; newMonth(); }
+}
+
+function labor() {
+  let pop = 0, jobs = 0;
+  for (const b of G.ents.values()) {
+    if (b.type === 'house') pop += b.res;
+    else if (BLD[b.type].workers && b.conn && !b.burn) jobs += BLD[b.type].workers;
+  }
+  G.pop = pop; G.workforce = Math.floor(pop * WORK_SHARE); G.jobs = jobs;
+  G.staffR = jobs ? Math.min(1, G.workforce / jobs) : 0;
+  G.employed = Math.min(G.workforce, jobs);
+  for (const b of G.ents.values()) if (BLD[b.type].workers) b.staff = b.conn && !b.burn ? G.staffR : 0;
+}
+
+function desOf(b) {
+  if (b.type === 'house') return b.lvl >= 6 ? [3, 2] : b.lvl >= 5 ? [2, 2] : b.lvl === 4 ? [1, 1] : b.lvl >= 1 && b.lvl <= 2 ? [-1, 1] : null;
+  return BLD[b.type].des;
+}
+function calcDes() {
+  G.desDirty = false;
+  const N = G.N, des = G.des.fill(0);
+  for (const b of G.ents.values()) {
+    const d = desOf(b); if (!d || !d[0]) continue;
+    const [v, r] = d;
+    for (let y = b.y - r; y < b.y + b.s + r; y++) for (let x = b.x - r; x < b.x + b.s + r; x++) {
+      if (x < 0 || y < 0 || x >= N || y >= N) continue;
+      const dist = Math.max(b.x - x, x - (b.x + b.s - 1), b.y - y, y - (b.y + b.s - 1), 0);
+      des[y * N + x] += v * (1 - dist / (r + 1));
+    }
+  }
+}
+function calcWater() {
+  G.waterDirty = false;
+  const N = G.N, wt = G.water.fill(0);
+  for (const b of G.ents.values()) if (b.type === 'well') {
+    for (let y = b.y - 2; y <= b.y + 2; y++) for (let x = b.x - 2; x <= b.x + 2; x++) if (x >= 0 && y >= 0 && x < N && y < N) wt[y * N + x] = 1;
+  }
+}
+
+function tickBuilding(b, dt) {
+  const d = BLD[b.type];
+  if (b.burn) {
+    b.burn += dt;
+    if (b.burn > MONTH * 1.5) { say((b.type === 'house' ? HOUSES[b.lvl].name : d.name) + ' burned down.', 'bad', b.y * G.N + b.x); removeBuilding(b, true); }
+    return;
+  }
+  if (b.cd > 0) b.cd -= dt;
+  if (b.cd2 > 0) b.cd2 -= dt;
+  if (d.makes) {
+    const rate = d.rate * b.staff * (d.fert ? fertOf(b, d.fert) : 1) / MONTH;
+    if (d.uses) {
+      if (b.inp >= 1 && b.out < HOLD) { b.prog += rate * dt; if (b.prog >= 1) { b.prog -= 1; b.inp -= 1; b.out += 1; } }
+    } else if (b.out < HOLD) { b.prog += rate * dt; if (b.prog >= 1) { b.prog -= 1; b.out += 1; } }
+    if (!b.walker && b.cd <= 0 && b.conn) {
+      if (b.out >= LOAD) sendCart(b);
+      else if (d.uses && b.inp <= HOLD - LOAD) fetchInput(b);
+    }
+    b.status = !b.conn ? 'No road to the town' : !b.staff ? 'No workers' : d.uses && b.inp < 1 && b.out < HOLD ? 'Waiting for ' + GOOD[d.uses].name.toLowerCase() : b.out >= HOLD ? 'Nowhere to take the goods' : '';
+  } else if (d.walker) {
+    if (b.staff > 0 && !b.walker && b.cd <= 0) spawnRoamer(b);
+    if (b.type === 'market' && !b.walker2 && b.cd2 <= 0 && b.staff > 0) sendBuyer(b);
+    b.status = !b.conn ? 'No road to the town' : !b.staff ? 'No workers' : '';
+  } else if (b.type === 'store') {
+    b.status = !b.conn ? 'No road to the town' : !b.staff ? 'No workers' : '';
+  }
+}
+function fertOf(b, k) {
+  if (b.fertC === undefined) {
+    let f = 0;
+    for (let dy = 0; dy < b.s; dy++) for (let dx = 0; dx < b.s; dx++) f += G.fert[(b.y + dy) * G.N + b.x + dx];
+    b.fertC = f / (b.s * b.s);
+  }
+  return 1 - k + k * (.45 + b.fertC * 1.1);
+}
+// storehouses only take goods when they are staffed
+const storeOk = t => t.type === 'store' && t.staff > 0;
+
+function sendCart(b) {
+  const g = BLD[b.type].makes, acc = access(b).filter(i => G.comp[i]);
+  let r = bfs(acc, nextTo(t => BLD[t.type].uses === g && t.inp < HOLD - LOAD && t.staff > 0, b.id), 900);
+  if (!r) r = bfs(acc, nextTo(t => storeOk(t) && storeRoom(t, g) >= 1, b.id));
+  if (!r) { b.cd = 3; return; }
+  const n = Math.min(LOAD, Math.floor(b.out)); b.out -= n;
+  const w = newWalker('cart', b, r.path[0]);
+  setPath(w, r); w.target = r.target; w.good = g; w.n = n; b.walker = w.id;
+}
+function fetchInput(b) {
+  const g = BLD[b.type].uses;
+  const r = bfs(access(b).filter(i => G.comp[i]), nextTo(t => t.type === 'store' && t.stock[g] >= 1, b.id));
+  if (!r) { b.cd = 3; return; }
+  const w = newWalker('fetch', b, r.path[0]);
+  setPath(w, r); w.target = r.target; w.good = g; w.n = Math.min(LOAD, HOLD - b.inp); b.walker = w.id;
+}
+function sendBuyer(b) {
+  const want = Object.keys(MKT_MAX).filter(g => b.stock[g] < MKT_MAX[g] * .75);
+  if (!want.length) { b.cd2 = 2; return; }
+  const r = bfs(access(b).filter(i => G.comp[i]), nextTo(t => t.type === 'store' && want.some(g => t.stock[g] >= 1), b.id));
+  if (!r) { b.cd2 = 3; return; }
+  const w = newWalker('buyer', b, r.path[0]);
+  setPath(w, r); w.target = r.target; b.walker2 = w.id;
+}
+function spawnRoamer(b) {
+  const acc = access(b).filter(i => G.comp[i]);
+  if (!acc.length) { b.cd = 3; return; }
+  const w = newWalker(WALKER_FOR[BLD[b.type].walker], b, pick(acc));
+  w.roam = true; w.visits = new Map([[w.cur, 1]]); w.god = BLD[b.type].god;
+  b.walker = w.id;
+  serve(w, w.cur);
+}
+
+// Settlers walk in along the old road to a house with room.
+function immigrate() {
+  if (!G.road[G.entry]) return;
+  const s = G.sentiment + (G.boost > 0 ? 25 : 0);
+  if (s < 25 || Math.random() * 100 > s) return;
+  let inTransit = 0;
+  for (const w of G.walkers) if (w.kind === 'immigrant') inTransit++;
+  if (inTransit >= 24) return;
+  const cands = [];
+  for (const b of G.ents.values()) if (b.type === 'house' && b.conn && !b.burn) {
+    const room = HOUSES[Math.max(1, b.lvl)].cap - b.res - b.inc;
+    if (room > 0) cands.push(b);
+  }
+  if (!cands.length) return;
+  const h = pick(cands), room = HOUSES[Math.max(1, h.lvl)].cap - h.res - h.inc;
+  const r = bfs([G.entry], nextTo(t => t.id === h.id));
+  if (!r) return;
+  const w = newWalker('immigrant', null, G.entry);
+  setPath(w, r); w.target = h.id; w.n = Math.min(room, 2 + rnd(4)); h.inc += w.n;
+}
+
+// What level could this house be? (each level needs everything below it too)
+function houseBest(b) {
+  if (!b.conn || b.res <= 0) return b.res > 0 && b.conn ? 1 : 0;
+  const mc = now(), i = b.y * G.N + b.x;
+  if (!G.water[i]) return 1;
+  const ft = FOODS.filter(f => b.food[f] > .05).length;
+  const rel = GODS.filter(g => mc - (b.rel[g.id] ?? -99) < SVC_MONTHS).length;
+  const des = G.des[i];
+  if (!ft || rel < 1) return 2;
+  if (b.pottery <= 0 || des < 0) return 3;
+  if (ft < 2 || rel < 2 || mc - b.ent >= SVC_MONTHS || des < 8) return 4;
+  if (b.cloth <= 0 || rel < 3 || des < 15) return 5;
+  return 6;
+}
+// What the house still needs to grow, in words
+function houseWants(b) {
+  if (!b.conn) return 'a road to the town';
+  if (b.res <= 0) return 'settlers (they are on their way)';
+  const mc = now(), i = b.y * G.N + b.x, lvl = houseBest(b);
+  const ft = FOODS.filter(f => b.food[f] > .05).length;
+  const rel = GODS.filter(g => mc - (b.rel[g.id] ?? -99) < SVC_MONTHS).length;
+  const des = G.des[i], miss = [];
+  if (lvl <= 1) miss.push('water from a well');
+  else if (lvl === 2) { if (!ft) miss.push('food from a market'); if (rel < 1) miss.push('a visit from a priest'); }
+  else if (lvl === 3) { if (b.pottery <= 0) miss.push('pottery from a market'); if (des < 0) miss.push('nicer surroundings'); }
+  else if (lvl === 4) {
+    if (ft < 2) miss.push('a second kind of food'); if (rel < 2) miss.push('priests of two gods');
+    if (mc - b.ent >= SVC_MONTHS) miss.push('a skald from a mead hall'); if (des < 8) miss.push('much nicer surroundings');
+  } else if (lvl === 5) { if (b.cloth <= 0) miss.push('cloth from a market'); if (rel < 3) miss.push('priests of three gods'); if (des < 15) miss.push('beautiful surroundings (gardens, rune stones)'); }
+  else return '';
+  return miss.join(', ');
+}
+function evolveHouses() {
+  for (const b of G.ents.values()) {
+    if (b.type !== 'house' || b.burn) continue;
+    const best = houseBest(b);
+    if (best > b.lvl && b.lvl > 0) { b.lvl++; b.down = 0; G.desDirty = true; if (b.lvl >= 4) snd('evolve'); }
+    else if (best < b.lvl) {
+      if (++b.down >= 2) {
+        b.lvl = Math.max(best, b.lvl - 1); b.down = 0; G.desDirty = true;
+        const cap = b.lvl ? HOUSES[b.lvl].cap : 0;
+        if (b.res > cap) { G.pop -= b.res - cap; b.res = cap; }
+      }
+    } else b.down = 0;
+  }
+}
+
+function newMonth() {
+  if (++G.month >= 12) { G.month = 0; G.year++; G.ev.push(['autosave']); }
+  const mc = now();
+  labor();
+  // silver: taxes in, wages out
+  let tax = 0;
+  for (const b of G.ents.values()) if (b.type === 'house' && b.res && mc - b.tax < TAX_MONTHS) tax += b.res * HOUSES[b.lvl].tax * G.taxRate / 8;
+  tax = Math.round(tax);
+  const wages = Math.round(G.employed * WAGE);
+  G.money += tax - wages;
+  G.ledger = { tax, wages };
+  // households eat and use up their goods
+  for (const b of G.ents.values()) {
+    if (b.type !== 'house' || !b.res) continue;
+    let need = b.res / 14;
+    for (let pass = 0; pass < 2 && need > 1e-6; pass++) {
+      const have = FOODS.filter(f => b.food[f] > 0);
+      if (!have.length) break;
+      for (const f of have) { const k = Math.min(b.food[f], need / have.length); b.food[f] -= k; need -= k; if (b.food[f] < .01) b.food[f] = 0; }
+    }
+    if (b.lvl >= 4) b.pottery = Math.max(0, b.pottery - .25);
+    if (b.lvl >= 6) b.cloth = Math.max(0, b.cloth - .2);
+  }
+  fires();
+  gods();
+  storms();
+  for (let i = 0; i < G.flood.length; i++) if (G.flood[i] > 0) G.flood[i] = Math.max(0, G.flood[i] - 1);
+  if (G.boost > 0) G.boost--;
+  mood();
+  if (G.sentiment < 25) {
+    let left = 0;
+    for (const b of G.ents.values()) if (b.type === 'house' && b.res > 1 && Math.random() < .4) { const k = Math.ceil(b.res * .15); b.res -= k; left += k; }
+    if (left) { G.pop -= left; say(left + ' people left town. They are unhappy here.', 'bad'); }
+  }
+  advisor();
+  checkGoals();
+}
+
+function fires() {
+  for (const b of [...G.ents.values()]) {
+    const d = BLD[b.type];
+    if (b.burn) {
+      if (b.burn > MONTH * .5) for (const n of neighbours(b)) if (!n.burn && Math.random() < .08) ignite(n);
+      continue;
+    }
+    const add = b.type === 'house' ? (b.lvl ? 1 + b.lvl * .35 : 0) : (d.fire || 0) * 1.2;
+    b.fire += add;
+    if (b.fire > 60 && Math.random() < (b.fire - 60) / 250) ignite(b);
+  }
+}
+function neighbours(b) {
+  const out = new Set();
+  for (let y = b.y - 1; y <= b.y + b.s; y++) for (let x = b.x - 1; x <= b.x + b.s; x++) {
+    if (!inMap(x, y)) continue;
+    const id = G.bld[y * G.N + x]; if (id && id !== b.id) out.add(G.ents.get(id));
+  }
+  return out;
+}
+function ignite(b) {
+  if (b.burn || BLD[b.type].fixed || b.type === 'dike' || b.type === 'well' || b.type === 'garden' || b.type === 'rune' || (b.type === 'house' && !b.lvl)) return;
+  b.burn = .01; G.stats.fires++;
+  say('Fire! A ' + (b.type === 'house' ? HOUSES[b.lvl].name.toLowerCase() : BLD[b.type].name.toLowerCase()) + ' is burning.', 'bad', b.y * G.N + b.x);
+  snd('fire');
+}
+
+const moodWord = m => m < 20 ? 'Furious' : m < 35 ? 'Angry' : m < 50 ? 'Displeased' : m < 70 ? 'Content' : m < 85 ? 'Pleased' : 'Delighted';
+const templeCount = id => { let n = 0; for (const b of G.ents.values()) if (b.type === 't_' + id) n++; return n; };
+function godTarget(id) {
+  // a temple keeps about 500 people's worth of a god happy; small villages are forgiven
+  let eff = 0;
+  for (const b of G.ents.values()) if (b.type === 't_' + id) eff += b.staff > 0 ? 1 : .4;
+  const pop = G.pop, ratio = pop < 120 ? 1 : Math.min(1.5, (eff * 500 + 120) / pop);
+  let t = 10 + 70 * Math.min(1, ratio) + Math.max(0, ratio - 1) * 30;
+  const others = GODS.filter(g => g.id !== id).map(g => templeCount(g.id));
+  if (pop >= 120 && templeCount(id) < others.reduce((a, b) => a + b, 0) / others.length - .5) t -= 12;   // jealous
+  return t + G.gods[id].fest;
+}
+function gods() {
+  for (const g of GODS) {
+    const s = G.gods[g.id], t = godTarget(g.id);
+    s.mood = clamp(s.mood + clamp(t - s.mood, -4, 5), 0, 100);
+    s.fest *= .8; if (s.fest < .5) s.fest = 0;
+    if (s.wrathCd > 0) s.wrathCd--;
+    if (s.blessCd > 0) s.blessCd--;
+    if (s.festCd > 0) s.festCd--;
+    if (s.mood < 20 && !s.wrathCd) { wrath(g); s.mood = 38; s.wrathCd = 12; }
+    else if (s.mood >= 85 && !s.blessCd && G.pop >= 150) { bless(g); s.blessCd = 24; }
+  }
+}
+function festivalCost() { return Math.round(80 + G.pop * .25); }
+function festival(id) {
+  const s = G.gods[id], c = festivalCost();
+  if (s.festCd > 0 || G.money < c) return false;
+  G.money -= c; s.fest = Math.min(45, s.fest + 35); s.mood = Math.min(100, s.mood + 12); s.festCd = 4;
+  say('A great festival for ' + GOD[id].name + '! Mead flows and the drums beat all night.', 'good'); snd('bless');
+  return true;
+}
+function houses() { return [...G.ents.values()].filter(b => b.type === 'house'); }
+function wrath(g) {
+  say(g.wrath, 'bad'); snd(g.id === 'donar' ? 'thunder' : 'wrath');
+  const hs = houses().filter(b => b.res > 0);
+  if (g.id === 'wodan') {
+    for (let k = 0; k < 4 && hs.length; k++) { const b = hs.splice(rnd(hs.length), 1)[0]; G.pop -= b.res; b.res = 0; b.lvl = 0; }
+    G.desDirty = true;
+  } else if (g.id === 'donar') {
+    const all = [...G.ents.values()].filter(b => !BLD[b.type].fixed && b.type !== 'dike' && b.type !== 'well');
+    for (let k = 0; k < 2 && all.length; k++) ignite(all.splice(rnd(all.length), 1)[0]);
+  } else if (g.id === 'frija') {
+    for (const b of hs) for (const f of FOODS) b.food[f] = 0;
+    for (const b of G.ents.values()) if (b.stock) for (const f of FOODS) b.stock[f] = Math.floor(b.stock[f] / 2);
+  } else if (g.id === 'nehalennia') {
+    flood(2, true);
+  } else if (g.id === 'fosite') {
+    if (G.money > 0) G.money = Math.floor(G.money * .7);
+  }
+}
+function bless(g) {
+  say(g.bless, 'good'); snd('bless');
+  if (g.id === 'wodan') G.money += 300 + Math.round(G.pop * .5);
+  else if (g.id === 'donar') { for (const b of G.ents.values()) if (BLD[b.type].makes && !BLD[b.type].uses) b.out = Math.max(b.out, LOAD); }
+  else if (g.id === 'frija') G.boost = 3;
+  else if (g.id === 'nehalennia') {
+    const s = [...G.ents.values()].find(b => b.type === 'store');
+    if (s) for (const k of ['pottery', 'fish', 'cloth']) s.stock[k] += Math.min(10, storeRoom(s, k));
+    else G.money += 250;
+  } else if (g.id === 'fosite') G.money += G.ledger.tax;
+}
+
+// Storm floods: water spreads from the sea and rivers over land lower than the storm,
+// and nothing gets past a dike.
+function floodReach(lvl) {
+  const N = G.N, NN = N * N, out = new Uint8Array(NN), q = [];
+  for (let i = 0; i < NN; i++) if (isWater(G.terr[i])) { out[i] = 2; q.push(i); }
+  for (let h = 0; h < q.length; h++) {
+    const i = q[h], x = i % N, y = (i - x) / N;
+    for (const [dx, dy] of D4) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const j = ny * N + nx;
+      if (!out[j] && G.elev[j] < lvl && !isDike(j)) { out[j] = 1; q.push(j); }
+    }
+  }
+  return out;
+}
+// flood risk per tile (0 safe, 3 floods in any storm), for the FLOODS view
+function floodRisk() {
+  if (G.riskV === G.roadV) return G.risk;
+  const r = new Uint8Array(G.N * G.N);
+  for (let lvl = 3; lvl >= 1; lvl--) { const f = floodReach(lvl); for (let i = 0; i < r.length; i++) if (f[i] === 1) r[i] = 4 - lvl; }
+  G.risk = r; G.riskV = G.roadV;
+  return r;
+}
+function flood(lvl, wrathful = false) {
+  const f = floodReach(lvl), N = G.N;
+  let lost = 0, people = 0, tiles = 0;
+  for (let i = 0; i < f.length; i++) {
+    if (f[i] !== 1) continue;
+    tiles++; G.flood[i] = 3;
+    const id = G.bld[i];
+    if (id) { const b = G.ents.get(id); if (b && b.type !== 'dike' && !BLD[b.type].fixed) { people += b.res || 0; lost++; removeBuilding(b, true); } }
+  }
+  for (const w of G.walkers) if (f[w.cur] === 1) kill(w);
+  G.stats.floods++;
+  snd('flood');
+  if (!tiles) say(wrathful ? 'The sea rose, but your dikes held!' : 'A storm flood beat against the coast, but your dikes held!', 'good');
+  else say((wrathful ? 'A great flood' : lvl >= 3 ? 'A terrible storm flood' : 'A storm flood') + ' swept over the low land.' +
+    (lost ? ' ' + lost + ' buildings lost' + (people ? ', ' + people + ' people drowned or fled' : '') + '.' : ''), lost ? 'bad' : 'info');
+  G.roadV++;
+}
+function storms() {
+  if (G.storm) {
+    if (now() >= G.storm.at) { const l = G.storm.lvl; G.storm = null; flood(l); }
+    return;
+  }
+  const season = G.month >= 9 || G.month <= 1;
+  if (!season || G.year < START_YEAR + 2) return;
+  const angry = G.gods.nehalennia.mood < 40;
+  if (Math.random() < (angry ? .14 : .06)) {
+    const r = Math.random(), lvl = r < .65 ? 1 : r < .92 ? 2 : 3;
+    G.storm = { at: now() + .9, lvl };
+    say(['Storm clouds gather over the North Sea. Low land will flood!', 'A heavy storm is coming! The sea will reach far inland.', 'A terrible storm is coming! Only high ground and dikes will hold.'][lvl - 1], 'bad');
+    snd('wrath');
+  }
+}
+
+function mood() {
+  let s = 62 - (G.taxRate - 8) * 3.5;
+  const un = G.workforce ? (G.workforce - G.employed) / G.workforce : 0;
+  // idle hands only matter once the village has grown a bit
+  if (un > .08) s -= Math.min(30, (un - .08) * 80) * clamp((G.pop - 60) / 200, 0, 1);
+  if (G.pop > 60) {
+    let fed = 0, all = 0;
+    for (const b of G.ents.values()) if (b.type === 'house' && b.res) { all += b.res; if (FOODS.some(f => b.food[f] > .05)) fed += b.res; }
+    s += (fed / Math.max(1, all) - .5) * 24;
+  }
+  const avg = GODS.reduce((a, g) => a + G.gods[g.id].mood, 0) / GODS.length;
+  s += (avg - 50) / 4;
+  if (G.money < 0) s -= 20;
+  G.sentiment = clamp(Math.round(s), 0, 100);
+  G.unemployed = un;
+}
+
+// gentle hints for new mayors, each shown once
+function advisor() {
+  const tip = (id, cond, text) => { if (!G.tips[id] && cond) { G.tips[id] = 1; say(text, 'tip'); } };
+  const hs = houses(), has = t => [...G.ents.values()].some(b => b.type === t);
+  tip('water', hs.some(b => b.lvl === 1 && b.res >= 4), 'Sod huts want water. Build a well among the houses so they can grow.');
+  tip('food', G.pop >= 50 && !has('market'), 'Time to feed people: a rye farm, a storehouse and a market. The market woman carries food to the houses.');
+  tip('gods', G.pop >= 70 && !GODS.some(g => templeCount(g.id)), 'The gods are watching. Thatched cottages need a priest to visit, so build a temple.');
+  tip('tax', G.pop >= 90 && !has('reeve'), 'A reeve\'s hall sends out a tax collector. Without one, nobody pays taxes.');
+  tip('fire', G.pop >= 120 && !has('watch'), 'Thatch burns! A fire watch keeps houses from catching fire.');
+  tip('pots', hs.some(b => b.lvl === 3) && !has('potter'), 'Cottages want pottery to become longhouses: dig a clay pit near water and build a potter.');
+  tip('dike', G.year >= START_YEAR + 1 && G.month === 8, 'Autumn brings storm floods. Check VIEW: FLOODS and build dikes in front of low land.');
+  tip('jealous', G.pop >= 300, 'The gods are jealous of each other. Give each of the five a temple.');
+}
+
+function goalList() {
+  const hs = houses(), target = DIFF[G.cfg.diff].pop;
+  return [
+    ['Grow to ' + target + ' people', G.pop >= target, G.pop + ' / ' + target],
+    ['8 brick farmhouses or better', hs.filter(b => b.lvl >= 5).length >= 8, hs.filter(b => b.lvl >= 5).length + ' / 8'],
+    ['A gabled townhouse', hs.some(b => b.lvl >= 6), ''],
+    ['A temple for each of the five gods', GODS.every(g => templeCount(g.id) > 0), GODS.filter(g => templeCount(g.id) > 0).length + ' / 5'],
+    ['Every god at least content', GODS.every(g => G.gods[g.id].mood >= 50), GODS.filter(g => G.gods[g.id].mood >= 50).length + ' / 5'],
+  ];
+}
+function checkGoals() {
+  if (G.won) return;
+  if (goalList().every(g => g[1])) { G.won = true; G.ev.push(['win']); }
+}
+
+// ====================================================================
+// Drawing: shapes, textures and sprites
+// ====================================================================
+const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+const cam = { x: 0, y: 0, z: 1 };
+const SPR = new Map();
+let sprScale = 0;
+const SCALES = [.5, .75, 1, 1.25, 1.5, 2, 2.5, 3];
+function setSprScale() {
+  const want = cam.z * DPR, s = SCALES.find(v => v >= want * .97) || 3;
+  if (s !== sprScale) { sprScale = s; SPR.clear(); }
+}
+function strHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+// A cached sprite. l, r, t, b: how far it reaches left/right/up/down from its origin, in world px.
+function spr(key, l, r, t, b, draw) {
+  let s = SPR.get(key);
+  if (s) return s;
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil((l + r) * sprScale)); c.height = Math.max(1, Math.ceil((t + b) * sprScale));
+  const x = c.getContext('2d');
+  x.scale(sprScale, sprScale); x.translate(l, t); x.lineJoin = 'round'; x.lineCap = 'round';
+  draw(x, mulberry32(strHash(key)));
+  s = { c, l, t, w: l + r, h: t + b };
+  SPR.set(key, s);
+  return s;
+}
+const blit = (s, x, y) => ctx.drawImage(s.c, x - s.l, y - s.t, s.w, s.h);
+
+function rgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+// darken (f < 1) or lighten (f > 1) a #rrggbb colour
+function shade(h, f, a = 1) {
+  const k = v => clamp(Math.round(f >= 1 ? v + (255 - v) * (f - 1) : v * f), 0, 255), [r, g, b] = rgb(h);
+  return a < 1 ? `rgba(${k(r)},${k(g)},${k(b)},${a})` : `rgb(${k(r)},${k(g)},${k(b)})`;
+}
+const P = (u, v, z = 0) => [(u - v) * HW, (u + v) * HH - z];
+const lerp2 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+function poly(c, pts) { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < pts.length; k++) c.lineTo(pts[k][0], pts[k][1]); c.closePath(); }
+function fillPoly(c, pts, f, line) { poly(c, pts); c.fillStyle = f; c.fill(); if (line) { c.strokeStyle = line; c.lineWidth = .5; c.stroke(); } }
+function line(c, a, b, col, w = 1) { c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.strokeStyle = col; c.lineWidth = w; c.stroke(); }
+function blob(c, x, y, rx, ry, col) { c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.fillStyle = col; c.fill(); }
+const diamond = (u, v, du, dv, z = 0) => [P(u, v, z), P(u + du, v, z), P(u + du, v + dv, z), P(u, v + dv, z)];
+
+// soft shadow of a box, thrown to the right (the sun is low in the west)
+function shadow(c, u, v, du, dv, h, a = .24) {
+  const sx = h * .75, T = P(u, v), R = P(u + du, v), B = P(u + du, v + dv), L = P(u, v + dv);
+  c.fillStyle = `rgba(16,26,10,${a})`;
+  poly(c, [L, T, [T[0] + sx, T[1]], [R[0] + sx, R[1]], [B[0] + sx, B[1]], B]); c.fill();
+}
+function groundPatch(c, u, v, du, dv, col, a = .7) {
+  c.globalAlpha = a; fillPoly(c, diamond(u, v, du, dv), col); c.globalAlpha = 1;
+}
+
+// point on a wall face at t (0..1 across) and height zz
+function faceAt(f, t, zz) {
+  return f.side === 'L' ? P(f.u + t * f.du, f.v + f.dv, zz) : P(f.u + f.du, f.v + f.dv - t * f.dv, zz);
+}
+function wallTex(c, f, kind, col, R) {
+  const { z, h } = f, len = f.side === 'L' ? f.du : f.dv;
+  const ln = (t0, z0, t1, z1, s, w = .6) => line(c, faceAt(f, t0, z0), faceAt(f, t1, z1), s, w);
+  if (kind === 'plank') {
+    for (let zz = z + 2.5; zz < z + h; zz += 2.6) ln(0, zz, 1, zz, 'rgba(0,0,0,.22)', .5);
+    for (let k = 0; k < 6; k++) { const zz = z + R() * h; ln(R() * .5, zz, .5 + R() * .5, zz, 'rgba(255,240,210,.12)', 1); }
+  } else if (kind === 'vplank') {
+    const n = Math.max(3, Math.round(len * 9));
+    for (let k = 1; k < n; k++) ln(k / n, z, k / n, z + h, 'rgba(0,0,0,.25)', .5);
+    for (let k = 0; k < n; k++) if (R() < .4) ln((k + .5) / n, z + .5, (k + .5) / n, z + h - .5, 'rgba(255,240,210,.1)', 1.2);
+  } else if (kind === 'wattle') {
+    for (let zz = z + 1.4; zz < z + h; zz += 1.8) {
+      const n = Math.round(len * 14);
+      for (let k = 0; k < n; k++) ln(k / n, zz + (k % 2 ? .4 : -.4), (k + 1) / n, zz + (k % 2 ? -.4 : .4), k % 2 ? 'rgba(60,40,20,.45)' : 'rgba(230,200,150,.35)', .8);
+    }
+    for (let k = 0; k <= 4; k++) ln(k / 4, z, k / 4, z + h, 'rgba(50,32,16,.6)', .9);
+  } else if (kind === 'daub') {
+    for (let k = 0; k < 14; k++) { const p = faceAt(f, R(), z + R() * h); blob(c, p[0], p[1], 1.6, .8, 'rgba(120,100,70,.08)'); }
+    const beam = 'rgba(70,46,26,.95)', n = len > .7 ? 3 : 2;
+    for (let k = 0; k <= n; k++) ln(k / n, z, k / n, z + h, beam, 1.3);
+    ln(0, z + h * .55, 1, z + h * .55, beam, 1.1);
+    ln(0, z + h - .4, 1, z + h - .4, beam, 1.3);
+    ln(0, z + .3, 1, z + .3, beam, 1.3);
+    ln(0, z + .3, 1 / n, z + h * .55, beam, 1);
+    ln(1, z + .3, 1 - 1 / n, z + h * .55, beam, 1);
+  } else if (kind === 'brick') {
+    let row = 0;
+    for (let zz = z + 1.6; zz < z + h; zz += 1.8, row++) {
+      ln(0, zz, 1, zz, 'rgba(230,210,190,.32)', .4);
+      const n = Math.round(len * 16);
+      for (let k = 0; k < n; k++) ln((k + (row % 2) * .5) / n, zz - 1.8, (k + (row % 2) * .5) / n, zz, 'rgba(230,210,190,.25)', .35);
+    }
+    for (let k = 0; k < 10; k++) { const p = faceAt(f, R(), z + R() * h); blob(c, p[0], p[1], 1.2, .7, R() < .5 ? 'rgba(0,0,0,.12)' : 'rgba(255,220,180,.12)'); }
+  } else if (kind === 'sod') {
+    for (let zz = z + 1; zz < z + h; zz += 1.5) ln(0, zz + (R() - .5) * .6, 1, zz + (R() - .5) * .6, R() < .5 ? 'rgba(40,30,15,.4)' : 'rgba(110,130,60,.4)', .9);
+  } else if (kind === 'stone') {
+    for (let zz = z + 1.5; zz < z + h; zz += 2.2) {
+      ln(0, zz, 1, zz, 'rgba(40,40,40,.35)', .4);
+      for (let t = R() * .2; t < 1; t += .12 + R() * .1) ln(t, zz - 2.2, t, zz, 'rgba(40,40,40,.3)', .4);
+    }
+  }
+}
+// a box (walls + flat top). tex: wall texture, top: colour of the top (or null if a roof goes on)
+function box(c, u, v, du, dv, z, h, col, tex, R, top) {
+  const L = [P(u, v + dv, z), P(u + du, v + dv, z), P(u + du, v + dv, z + h), P(u, v + dv, z + h)];
+  const Rt = [P(u + du, v + dv, z), P(u + du, v, z), P(u + du, v, z + h), P(u + du, v + dv, z + h)];
+  for (const [pts, side, f] of [[L, 'L', 1], [Rt, 'R', .68]]) {
+    const g = c.createLinearGradient(0, pts[2][1], 0, pts[0][1] + 2);
+    g.addColorStop(0, shade(col, f * 1.04)); g.addColorStop(1, shade(col, f * .82));
+    fillPoly(c, pts, g);
+    if (tex) { c.save(); poly(c, pts); c.clip(); wallTex(c, { side, u, v, du, dv, z, h }, tex, col, R); c.restore(); }
+    if (side === 'R') { c.save(); poly(c, pts); c.clip(); fillPoly(c, pts, 'rgba(10,20,40,.12)'); c.restore(); }
+  }
+  if (top !== null) fillPoly(c, diamond(u, v, du, dv, z + h), top || shade(col, 1.12));
+  line(c, P(u + du, v + dv, z), P(u + du, v + dv, z + h), 'rgba(0,0,0,.18)', .5);
+}
+function opening(c, side, u, v, du, dv, t0, t1, z0, z1, col, frame) {
+  const f = { side, u, v, du, dv };
+  const pts = [faceAt(f, t0, z0), faceAt(f, t1, z0), faceAt(f, t1, z1), faceAt(f, t0, z1)];
+  if (frame) { c.lineWidth = 1.2; poly(c, pts); c.strokeStyle = frame; c.stroke(); }
+  fillPoly(c, pts, col);
+}
+// a roof plane from the eave (e0, e1) up to the ridge (r1, r0)
+function roofPlane(c, e0, e1, r1, r0, col, tex, R) {
+  const pts = [e0, e1, r1, r0];
+  fillPoly(c, pts, col);
+  c.save(); poly(c, pts); c.clip();
+  const em = lerp2(e0, e1, .5), rm = lerp2(r0, r1, .5);
+  const g = c.createLinearGradient(rm[0], rm[1], em[0], em[1]);
+  g.addColorStop(0, 'rgba(255,250,230,.10)'); g.addColorStop(1, 'rgba(20,10,0,.16)');
+  c.fillStyle = g; c.fill();
+  const at = (t, s) => lerp2(lerp2(e0, e1, t), lerp2(r0, r1, t), s);
+  const elen = Math.hypot(e1[0] - e0[0], e1[1] - e0[1]);
+  if (tex === 'thatch' || tex === 'reed') {
+    const n = Math.round(elen * 3.2);
+    for (let k = 0; k < n; k++) {
+      const t = R(), s0 = R() * .95, s1 = Math.min(1, s0 + .12 + R() * .3);
+      line(c, at(t, s0), at(t, s1), R() < .5 ? 'rgba(60,40,10,.30)' : 'rgba(255,235,170,.22)', .6);
+    }
+    line(c, at(0, .03), at(1, .03), 'rgba(40,25,5,.45)', 1.6);
+  } else if (tex === 'tiles' || tex === 'shingle') {
+    const rows = Math.max(4, Math.round(Math.hypot(rm[0] - em[0], rm[1] - em[1]) / 2.2));
+    for (let k = 0; k < rows; k++) {
+      const s = k / rows;
+      line(c, at(0, s), at(1, s), tex === 'tiles' ? 'rgba(60,15,5,.45)' : 'rgba(20,12,5,.4)', .6);
+      const n = Math.round(elen / 2.6);
+      for (let j = 0; j < n; j++) {
+        const t = (j + (k % 2) * .5) / n;
+        line(c, at(t, s), at(t, s + 1 / rows), tex === 'tiles' ? 'rgba(60,15,5,.3)' : 'rgba(20,12,5,.3)', .4);
+        if (R() < .25) line(c, at(t + .02, s + .3 / rows), at(t + .5 / n, s + .3 / rows), 'rgba(255,220,180,.18)', .9);
+      }
+    }
+  } else if (tex === 'turf') {
+    for (let k = 0; k < elen * 2; k++) { const p = at(R(), R()); line(c, p, [p[0] + (R() - .5), p[1] - 1.2], R() < .5 ? 'rgba(40,70,20,.5)' : 'rgba(150,180,80,.45)', .7); }
+  }
+  c.restore();
+  line(c, r0, r1, 'rgba(30,20,10,.35)', tex === 'thatch' ? 1.6 : .9);
+}
+// gable roof, ridge along u or v. endCol: colour of the visible gable end
+function gable(c, u, v, du, dv, z, rh, axis, col, tex, R, endCol, ov = .05) {
+  if (axis === 'u') {
+    const vm = v + dv / 2, u0 = u - ov, u1 = u + du + ov;
+    roofPlane(c, P(u0, v - ov, z), P(u1, v - ov, z), P(u1, vm, z + rh), P(u0, vm, z + rh), shade(col, .74), tex, R);
+    fillPoly(c, [P(u + du, v, z), P(u + du, v + dv, z), P(u + du, vm, z + rh)], shade(endCol, .7));
+    roofPlane(c, P(u0, v + dv + ov, z), P(u1, v + dv + ov, z), P(u1, vm, z + rh), P(u0, vm, z + rh), col, tex, R);
+  } else {
+    const um = u + du / 2, v0 = v - ov, v1 = v + dv + ov;
+    roofPlane(c, P(u - ov, v0, z), P(u - ov, v1, z), P(um, v1, z + rh), P(um, v0, z + rh), shade(col, .95), tex, R);
+    fillPoly(c, [P(u, v + dv, z), P(u + du, v + dv, z), P(um, v + dv, z + rh)], endCol);
+    roofPlane(c, P(u + du + ov, v0, z), P(u + du + ov, v1, z), P(um, v1, z + rh), P(um, v0, z + rh), shade(col, .7), tex, R);
+  }
+}
+function hip(c, u, v, du, dv, z, rh, col, tex, R, ov = .05) {
+  const U0 = u - ov, U1 = u + du + ov, V0 = v - ov, V1 = v + dv + ov;
+  if (du >= dv) {
+    const r = (V1 - V0) / 2, vm = v + dv / 2, ra = P(U0 + r, vm, z + rh), rb = P(U1 - r, vm, z + rh);
+    roofPlane(c, P(U0, V0, z), P(U1, V0, z), rb, ra, shade(col, .74), tex, R);
+    roofPlane(c, P(U1, V0, z), P(U1, V1, z), rb, rb, shade(col, .7), tex, R);
+    roofPlane(c, P(U0, V1, z), P(U1, V1, z), rb, ra, col, tex, R);
+  } else {
+    const r = (U1 - U0) / 2, um = u + du / 2, ra = P(um, V0 + r, z + rh), rb = P(um, V1 - r, z + rh);
+    roofPlane(c, P(U0, V0, z), P(U0, V1, z), rb, ra, shade(col, .95), tex, R);
+    roofPlane(c, P(U0, V1, z), P(U1, V1, z), rb, rb, col, tex, R);
+    roofPlane(c, P(U1, V0, z), P(U1, V1, z), rb, ra, shade(col, .7), tex, R);
+  }
+}
+function chimney(c, u, v, z, h, col = '#8a4a34') { box(c, u, v, .1, .1, z, h, col, 'brick', Math.random); }
+function post(c, u, v, h, col = '#4a3420', w = 1) { line(c, P(u, v), P(u, v, h), col, w); }
+function fenceLine(c, u0, v0, u1, v1, n, h = 4, col = '#6b4e30') {
+  for (let k = 0; k <= n; k++) post(c, u0 + (u1 - u0) * k / n, v0 + (v1 - v0) * k / n, h, col, .9);
+  line(c, P(u0, v0, h * .8), P(u1, v1, h * .8), col, .7);
+  line(c, P(u0, v0, h * .4), P(u1, v1, h * .4), col, .7);
+}
+function person(c, x, y, col, s = 1) {
+  blob(c, x + 1, y, 2.4 * s, 1 * s, 'rgba(0,0,0,.25)');
+  line(c, [x - .7 * s, y], [x - .7 * s, y - 3 * s], '#3a2a1a', .9 * s); line(c, [x + .7 * s, y], [x + .7 * s, y - 3 * s], '#3a2a1a', .9 * s);
+  fillPoly(c, [[x - 2 * s, y - 2.6 * s], [x + 2 * s, y - 2.6 * s], [x + 1.4 * s, y - 7 * s], [x - 1.4 * s, y - 7 * s]], col);
+  blob(c, x, y - 8.3 * s, 1.5 * s, 1.5 * s, '#e3bd98');
+}
+function cow(c, x, y, R, flip) {
+  const d = flip ? -1 : 1;
+  blob(c, x + 1.5, y + .5, 5, 1.4, 'rgba(0,0,0,.22)');
+  for (const lx of [-2.6, -1.4, 1.6, 2.6]) line(c, [x + lx * d, y], [x + lx * d, y - 2.6], '#2a2a2a', .9);
+  blob(c, x, y - 3.8, 4.2, 2.3, '#f2f0ea');
+  blob(c, x - 1.2 * d, y - 4.2, 1.6, 1.2, '#1e1e1e'); blob(c, x + 1.8 * d, y - 3.4, 1.3, 1.1, '#1e1e1e');
+  if (R() < .5) blob(c, x + .2 * d, y - 2.9, 1.1, .8, '#1e1e1e');
+  blob(c, x + 4.6 * d, y - 4.6, 1.5, 1.2, '#1e1e1e');
+  blob(c, x + 5.4 * d, y - 4.1, .8, .6, '#d9a3a3');
+}
+function sheepie(c, x, y, R) {
+  blob(c, x + 1.2, y + .4, 3.4, 1.1, 'rgba(0,0,0,.2)');
+  line(c, [x - 1.5, y], [x - 1.5, y - 2], '#2a2a2a', .8); line(c, [x + 1.5, y], [x + 1.5, y - 2], '#2a2a2a', .8);
+  for (let k = 0; k < 5; k++) blob(c, x + (R() - .5) * 3.2, y - 3.2 + (R() - .5) * 1.6, 1.7, 1.4, k < 3 ? '#ece6d6' : '#f8f4ea');
+  blob(c, x + (R() < .5 ? -3 : 3), y - 3.6, 1.1, 1, '#2b2b2b');
+}
+function pot(c, x, y, col, s = 1) {
+  blob(c, x, y - 2 * s, 1.8 * s, 2 * s, col);
+  fillPoly(c, [[x - .9 * s, y - 4 * s], [x + .9 * s, y - 4 * s], [x + .7 * s, y - 5 * s], [x - .7 * s, y - 5 * s]], shade(col, .8));
+  blob(c, x - .6 * s, y - 2.6 * s, .5 * s, .9 * s, 'rgba(255,240,220,.35)');
+}
+function barrel(c, x, y) {
+  fillPoly(c, [[x - 2, y], [x + 2, y], [x + 2.2, y - 5], [x - 2.2, y - 5]], '#6e4a2a');
+  blob(c, x, y - 5, 2.2, 1, '#8a6038'); line(c, [x - 2.1, y - 1.5], [x + 2.1, y - 1.5], '#3a3a3a', .5); line(c, [x - 2.2, y - 3.6], [x + 2.2, y - 3.6], '#3a3a3a', .5);
+}
+function sack(c, x, y, col = '#cdb88a') { blob(c, x, y - 2, 2.2, 2.2, col); blob(c, x - .6, y - 2.6, .8, .8, 'rgba(255,255,255,.2)'); }
+function flag(c, u, v, h, col, R) {
+  post(c, u, v, h, '#3b2a1a', 1);
+  const [x, y] = P(u, v, h);
+  fillPoly(c, [[x, y], [x + 8, y + 1.5], [x + 7, y + 4], [x + 8.5, y + 6.5], [x, y + 6]], col);
+  line(c, [x, y + 2.5], [x + 7, y + 3.2], 'rgba(0,0,0,.15)', .6);
+}
+function stone(c, x, y, rx, ry, R, col = '#8e8f88') {
+  c.beginPath();
+  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2, r = .82 + R() * .3; c.lineTo(x + Math.cos(a) * rx * r, y + Math.sin(a) * ry * r); }
+  c.closePath();
+  const g = c.createLinearGradient(x - rx, y - ry, x + rx, y + ry);
+  g.addColorStop(0, shade(col, 1.2)); g.addColorStop(1, shade(col, .62));
+  c.fillStyle = g; c.fill();
+  c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = .5; c.stroke();
+  if (R() < .6) blob(c, x - rx * .3, y - ry * .2, rx * .25, ry * .2, 'rgba(160,170,90,.35)');
+}
+
+// ---------- terrain ----------
+const GRASS = '#6c963f';
+const PAL = {
+  mead: ['#6f9a3e', '#668f38', '#78a344'], rich: ['#4f7a2a', '#567f2e', '#5d8733'], dry: ['#8fa04f', '#879a4a', '#97a856'],
+  salt: ['#7f9a6c', '#76926a', '#87a073'], low: ['#64904a', '#5d8946', '#6c9850'],
+};
+const TILE_OUT = [[0, -.7], [HW + 1, HH], [0, TH + .7], [-HW - 1, HH]];
+function grassTile(c, R, base, kind) {
+  poly(c, TILE_OUT); c.fillStyle = base; c.fill();
+  c.save(); poly(c, TILE_OUT); c.clip();
+  for (let k = 0; k < 7; k++) { const p = P(R(), R()); blob(c, p[0], p[1], 5 + R() * 6, 2.5 + R() * 3, R() < .5 ? shade(base, .9, .5) : shade(base, 1.08, .5)); }
+  for (let k = 0; k < 46; k++) {
+    const p = P(R(), R()), dx = (R() - .5) * 1.4;
+    line(c, p, [p[0] + dx, p[1] - 1.2 - R() * 1.6], R() < .55 ? shade(base, .72, .7) : shade(base, 1.22, .6), .55);
+  }
+  if (kind === 'mead' || kind === 'low') for (let k = 0; k < 3; k++) if (R() < .45) { const p = P(R(), R()); blob(c, p[0], p[1] - .5, .8, .6, R() < .5 ? '#f4f0dc' : '#f2d04a'); }
+  if (kind === 'salt') for (let k = 0; k < 5; k++) { const p = P(R(), R()); blob(c, p[0], p[1], .9, .6, R() < .6 ? '#a68cc4' : '#c9c9b0'); }
+  if (kind === 'salt' && R() < .35) { const p = P(.3 + R() * .4, .3 + R() * .4); blob(c, p[0], p[1], 4 + R() * 3, 1.6, 'rgba(70,110,120,.55)'); }
+  c.restore();
+}
+function sandTile(c, R) {
+  poly(c, TILE_OUT); c.fillStyle = '#d6c68f'; c.fill();
+  c.save(); poly(c, TILE_OUT); c.clip();
+  for (let k = 0; k < 5; k++) { const p = P(R(), R()); blob(c, p[0], p[1], 6 + R() * 6, 2 + R() * 2, R() < .5 ? 'rgba(180,160,110,.35)' : 'rgba(240,230,190,.4)'); }
+  for (let k = 0; k < 4; k++) { const v = R(); line(c, P(0, v), P(1, v), 'rgba(160,140,90,.25)', .5); }
+  for (let k = 0; k < 7; k++) { const p = P(R(), R()); line(c, p, [p[0] + (R() - .5), p[1] - 2.5], 'rgba(110,130,70,.6)', .6); }
+  c.restore();
+}
+function bogTile(c, R) {
+  poly(c, TILE_OUT); c.fillStyle = '#66703e'; c.fill();
+  c.save(); poly(c, TILE_OUT); c.clip();
+  for (let k = 0; k < 5; k++) { const p = P(R(), R()); blob(c, p[0], p[1], 5 + R() * 6, 2.5 + R() * 3, R() < .5 ? 'rgba(70,80,40,.35)' : 'rgba(140,140,80,.25)'); }
+  if (R() < .6) { const p = P(.3 + R() * .4, .3 + R() * .4); blob(c, p[0], p[1], 3 + R() * 3, 1.3 + R(), 'rgba(50,70,70,.55)'); blob(c, p[0] - 1, p[1] - .4, 1.4, .4, 'rgba(190,210,215,.25)'); }
+  for (let k = 0; k < 34; k++) { const p = P(R(), R()); line(c, p, [p[0] + (R() - .5) * 1.2, p[1] - 1.5 - R() * 2.5], R() < .5 ? 'rgba(120,125,70,.7)' : 'rgba(170,160,95,.6)', .55); }
+  if (R() < .5) { const p = P(.2 + R() * .6, .2 + R() * .6); line(c, p, [p[0], p[1] - 5], '#4a3a22', .7); blob(c, p[0], p[1] - 5, .6, 1.4, '#5a3d22'); }
+  c.restore();
+}
+const WATER = { deep: '#2a5870', mid: '#326a80', shallow: '#3f7f8c', river: '#457f84' };
+function waterTile(c, R, kind, frame) {
+  poly(c, TILE_OUT); c.fillStyle = WATER[kind]; c.fill();
+  c.save(); poly(c, TILE_OUT); c.clip();
+  for (let k = 0; k < 4; k++) { const p = P(R(), R()); blob(c, p[0], p[1], 6 + R() * 8, 2 + R() * 3, R() < .5 ? 'rgba(10,30,50,.18)' : 'rgba(120,170,180,.12)'); }
+  for (let k = 0; k < 7; k++) {
+    const u = (R() + frame / 8) % 1, v = R(), a = P(u - .12, v), b = P(u + .12, v), m = P(u, v, 1.2);
+    c.beginPath(); c.moveTo(a[0], a[1]); c.quadraticCurveTo(m[0], m[1], b[0], b[1]);
+    c.strokeStyle = `rgba(220,240,240,${.1 + .12 * Math.sin((frame / 8 + R()) * Math.PI * 2) ** 2})`; c.lineWidth = .8; c.stroke();
+  }
+  c.restore();
+}
+function waterSpr(kind, i, frame) {
+  const vr = hash2(i, 1, 9) * 3 | 0, f = (frame + (hash2(i, 2, 3) * 8 | 0)) % 8;
+  return spr('w' + kind + vr + f, HW + 2, HW + 2, 2, TH + 2, (c, R) => waterTile(c, R, kind, f));
+}
+function groundSpr(i, frame) {
+  const t = G.terr[i], vr = hash2(i, 1, 9) * 3 | 0;
+  if (t === T_SEA) { const d = G.depth[i]; return waterSpr(d >= 2 ? 'deep' : d === 1 ? 'mid' : 'shallow', i, frame); }
+  if (t === T_RIVER) return waterSpr('river', i, frame);
+  if (t === T_SAND) return spr('s' + vr, HW + 2, HW + 2, 2, TH + 2, sandTile);
+  if (t === T_MARSH) return spr('b' + vr, HW + 2, HW + 2, 4, TH + 2, bogTile);
+  const kind = grassKind(i);
+  return spr('g' + kind + vr, HW + 2, HW + 2, 4, TH + 2, (c, R) => grassTile(c, R, GRASS, kind));
+}
+const grassKind = i => G.elev[i] === 0 ? 'salt' : G.fert[i] > .62 ? 'rich' : G.fert[i] < .3 ? 'dry' : G.elev[i] === 1 ? 'low' : 'mead';
+// The colour of the land is one smooth layer: a canvas with one pixel per tile, drawn through
+// the isometric transform so neighbouring tiles blend into each other.
+let tintCv = null;
+function buildTint() {
+  const N = G.N, c = document.createElement('canvas'); c.width = c.height = N;
+  const x = c.getContext('2d'), img = x.createImageData(N, N);
+  for (let i = 0; i < N * N; i++) {
+    const t = G.terr[i];
+    if (t !== T_GRASS) continue;
+    const [r, g, b] = rgb(PAL[grassKind(i)][1]), cx = i % N, cy = (i - cx) / N;
+    const k = .9 + fbm(cx * .13, cy * .13, G.cfg.seed % 99991 + 77, 3) * .2;
+    img.data.set([r * k, g * k, b * k, 150], i * 4);
+  }
+  x.putImageData(img, 0, 0);
+  tintCv = c;
+}
+function drawTint() {
+  if (!tintCv) buildTint();
+  ctx.save(); ctx.transform(HW, HH, -HW, HH, 0, 0); ctx.drawImage(tintCv, 0, 0); ctx.restore();
+}
+// roads: mask bits 1 = -y, 2 = +x, 4 = +y, 8 = -x
+function roadMask(i) {
+  const N = G.N, x = i % N, y = (i - x) / N; let m = 0;
+  if (y > 0 && G.road[i - N]) m |= 1; if (x < N - 1 && G.road[i + 1]) m |= 2;
+  if (y < N - 1 && G.road[i + N]) m |= 4; if (x > 0 && G.road[i - 1]) m |= 8;
+  if (i === G.entry) m |= 2;
+  return m;
+}
+function roadParts(m, w) {
+  const a = .5 - w, b = .5 + w, parts = [[a, a, b - a, b - a]];
+  if (m & 1) parts.push([a, 0, b - a, a]); if (m & 2) parts.push([b, a, 1 - b, b - a]);
+  if (m & 4) parts.push([a, b, b - a, 1 - b]); if (m & 8) parts.push([0, a, a, b - a]);
+  return parts;
+}
+function roadArt(c, R, m, bridge) {
+  if (bridge) {
+    const parts = roadParts(m, .3);
+    for (const [u, v, du, dv] of parts) {
+      fillPoly(c, diamond(u, v, du, dv, 2), '#7a5a38');
+      const alongU = (m & 10) && !(m & 5);
+      for (let k = 0; k <= 8; k++) {
+        if (alongU) line(c, P(u + du * k / 8, v, 2), P(u + du * k / 8, v + dv, 2), 'rgba(40,25,10,.5)', .5);
+        else line(c, P(u, v + dv * k / 8, 2), P(u + du, v + dv * k / 8, 2), 'rgba(40,25,10,.5)', .5);
+      }
+    }
+    for (const [u, v] of [[.2, .2], [.8, .2], [.2, .8], [.8, .8]]) { line(c, P(u, v, -3), P(u, v, 5), '#4a3420', 1.4); }
+    return;
+  }
+  const parts = roadParts(m, m ? .3 : .34);
+  for (const [u, v, du, dv] of parts) fillPoly(c, diamond(u - .03, v - .03, du + .06, dv + .06), 'rgba(80,70,40,.35)');
+  for (const [u, v, du, dv] of parts) fillPoly(c, diamond(u, v, du, dv), '#a68a5e');
+  c.save();
+  c.beginPath(); for (const [u, v, du, dv] of parts) { const d = diamond(u, v, du, dv); c.moveTo(d[0][0], d[0][1]); for (let k = 1; k < 4; k++) c.lineTo(d[k][0], d[k][1]); c.closePath(); }
+  c.clip();
+  for (let k = 0; k < 26; k++) { const p = P(R(), R()); blob(c, p[0], p[1], .6 + R() * .9, .4 + R() * .5, R() < .5 ? 'rgba(70,50,30,.35)' : 'rgba(230,210,170,.4)'); }
+  const rut = 'rgba(80,58,34,.35)';
+  for (const off of [-.1, .1]) {
+    if (m & 10 || !m) line(c, P(m & 8 ? 0 : .4, .5 + off), P(m & 2 ? 1 : .6, .5 + off), rut, .8);
+    if (m & 5) line(c, P(.5 + off, m & 1 ? 0 : .4), P(.5 + off, m & 4 ? 1 : .6), rut, .8);
+  }
+  c.restore();
+}
+function roadSpr(i) {
+  const m = roadMask(i), br = G.terr[i] === T_RIVER;
+  return spr('r' + m + (br ? 'b' : ''), HW + 2, HW + 2, 10, TH + 8, (c, R) => roadArt(c, R, m, br));
+}
+
+// ---------- trees ----------
+function crown(c, x, y, r, R, dark, mid, light, n = 7) {
+  for (let k = 0; k < n; k++) {
+    const a = R() * Math.PI * 2, d = R() * r * .55, cx = x + Math.cos(a) * d, cy = y + Math.sin(a) * d * .8, rr = r * (.45 + R() * .35);
+    const g = c.createRadialGradient(cx - rr * .35, cy - rr * .45, rr * .1, cx, cy, rr);
+    g.addColorStop(0, light); g.addColorStop(.55, mid); g.addColorStop(1, dark);
+    blob(c, cx, cy, rr, rr * .92, g);
+  }
+}
+function treeArt(c, R, kind, n) {
+  const spots = [];
+  for (let k = 0; k < n; k++) spots.push([.25 + R() * .5, .25 + R() * .5]);
+  spots.sort((a, b) => a[0] + a[1] - b[0] - b[1]);
+  for (const [u, v] of spots) {
+    const [x, y] = P(u, v), s = .8 + R() * .4;
+    blob(c, x + 9 * s, y + 1, 9 * s, 3 * s, 'rgba(16,26,10,.22)');
+    if (kind === 'willow') {
+      fillPoly(c, [[x - 2.2 * s, y], [x + 2.2 * s, y], [x + 1.8 * s, y - 8 * s], [x - 1.8 * s, y - 8 * s]], '#5a4a36');
+      blob(c, x, y - 8.5 * s, 2.8 * s, 1.8 * s, '#6a5a44');
+      for (let k = 0; k < 14; k++) {
+        const a = -Math.PI / 2 + (R() - .5) * 1.8, l = (8 + R() * 8) * s, ex = x + Math.cos(a) * l * .7, ey = y - 8 * s + Math.sin(a) * l;
+        line(c, [x, y - 8.5 * s], [ex, ey], 'rgba(70,60,40,.8)', .5);
+        blob(c, ex, ey + 2, 2.2 * s, 3.2 * s, R() < .5 ? 'rgba(130,160,110,.75)' : 'rgba(95,125,80,.75)');
+      }
+    } else if (kind === 'birch') {
+      fillPoly(c, [[x - 1, y], [x + 1, y], [x + .6, y - 15 * s], [x - .6, y - 15 * s]], '#ece8de');
+      for (let k = 0; k < 4; k++) line(c, [x - 1, y - 2 - k * 3.2 * s], [x + .3, y - 2.5 - k * 3.2 * s], '#2b2b2b', .7);
+      crown(c, x, y - 17 * s, 7 * s, R, '#3f6a28', '#6c9a3c', '#a7c96a', 8);
+    } else if (kind === 'pine') {
+      line(c, [x, y], [x, y - 6 * s], '#4a3422', 1.6);
+      for (let k = 0; k < 4; k++) {
+        const yy = y - (5 + k * 4.5) * s, ww = (7 - k * 1.4) * s;
+        fillPoly(c, [[x - ww, yy], [x + ww, yy], [x, yy - 7 * s]], k % 2 ? '#2e4f2c' : '#355a31');
+        fillPoly(c, [[x - ww, yy], [x, yy], [x, yy - 7 * s]], 'rgba(140,180,110,.18)');
+      }
+    } else {
+      fillPoly(c, [[x - 1.6 * s, y], [x + 1.6 * s, y], [x + 1 * s, y - 11 * s], [x - 1 * s, y - 11 * s]], '#4e3a26');
+      line(c, [x, y - 8 * s], [x + 4 * s, y - 13 * s], '#4e3a26', 1.1);
+      crown(c, x, y - 18 * s, 10 * s, R, '#294a1c', '#4a7a2c', '#86b250', 9);
+    }
+  }
+}
+function treeSpr(i) {
+  const N = G.N, x = i % N, y = (i - x) / N;
+  let wet = G.terr[i] === T_MARSH;
+  for (const [dx, dy] of D4) if (inMap(x + dx, y + dy) && isWater(G.terr[(y + dy) * N + x + dx])) wet = true;
+  const h = hash2(x, y, 5), kind = wet ? 'willow' : h < .55 ? 'oak' : h < .8 ? 'birch' : 'pine';
+  const n = G.tree[i], vr = hash2(x, y, 11) * 3 | 0;
+  return spr('t' + kind + n + vr, 34, 52, 48, 36, (c, R) => treeArt(c, R, kind, n));
+}
+
+// ---------- buildings ----------
+const godCol = id => GOD[id].col;
+const ART = {
+  house(c, R, b) {
+    const L = b.lvl, ax = b.var & 1 ? 'u' : 'v', alt = b.var >> 1;
+    const T = (u, v, du, dv) => ax === 'u' ? [u, v, du, dv] : [v, u, dv, du];
+    if (L === 0) {
+      groundPatch(c, .12, .12, .76, .76, '#8a7a52', .45);
+      for (const [u, v] of [[.15, .15], [.85, .15], [.85, .85], [.15, .85]]) post(c, u, v, 5, '#6b4e30', 1);
+      line(c, P(.15, .85, 4), P(.85, .85, 4), '#d8c8a0', .4); line(c, P(.85, .15, 4), P(.85, .85, 4), '#d8c8a0', .4);
+      post(c, .5, .9, 7, '#5a3e24', 1);
+      fillPoly(c, [P(.4, .9, 9.5), P(.6, .9, 9.5), P(.6, .9, 6), P(.4, .9, 6)], '#c8a874');
+      return;
+    }
+    groundPatch(c, .06, .06, .88, .88, L >= 5 ? '#7c7458' : '#86704a', .5);
+    if (L === 1) {
+      const [u, v, du, dv] = T(.27, .3, .46, .38);
+      shadow(c, u, v, du, dv, 12);
+      box(c, u, v, du, dv, 0, 5, '#6d5a38', 'sod', R, null);
+      gable(c, u, v, du, dv, 5, 8, ax, '#6e7e3c', 'turf', R, '#6d5a38');
+      opening(c, 'L', u, v, du, dv, .4, .6, 0, 3.6, '#2a1d12');
+      if (alt) { const [x, y] = P(.82, .3); for (let k = 0; k < 3; k++) line(c, [x - 3, y - k * 1.3], [x + 3, y - k * 1.3], '#7a5432', 1.2); }
+    } else if (L === 2) {
+      const [u, v, du, dv] = T(.2, .26, .56, .46);
+      shadow(c, u, v, du, dv, 18);
+      box(c, u, v, du, dv, 0, 8, '#97764b', 'wattle', R, null);
+      gable(c, u, v, du, dv, 8, 12, ax, '#b6995a', 'thatch', R, '#97764b');
+      opening(c, 'L', u, v, du, dv, .55, .78, 0, 5.5, '#2a1d12');
+      const [x, y] = P(.85, .7); for (let k = 0; k < 3; k++) line(c, [x - 3, y - k * 1.3], [x + 3, y - k * 1.3], '#7a5432', 1.2);
+    } else if (L === 3) {
+      const [u, v, du, dv] = T(.16, .2, .66, .54);
+      shadow(c, u, v, du, dv, 24);
+      box(c, u, v, du, dv, 0, 10, alt ? '#e4d9bf' : '#ded2b6', 'daub', R, null);
+      gable(c, u, v, du, dv, 10, 15, ax, '#c3a25e', 'thatch', R, '#ded2b6');
+      opening(c, 'L', u, v, du, dv, .14, .3, 0, 6.5, '#3a2616', '#5a3e24');
+      opening(c, 'L', u, v, du, dv, .55, .72, 4, 7.5, '#30404a', '#5a3e24');
+      opening(c, 'R', u, v, du, dv, .4, .6, 4, 7.5, '#283038', '#4a3220');
+      if (alt) { pot(c, ...P(.9, .5), '#b86a3c', .8); }
+    } else if (L === 4) {
+      const [u, v, du, dv] = T(.05, .24, .9, .5);
+      shadow(c, u, v, du, dv, 26);
+      box(c, u, v, du, dv, 0, 8, '#8b6a45', 'vplank', R, null);
+      hip(c, u, v, du, dv, 8, 19, '#b9964f', 'thatch', R, .06);
+      opening(c, 'L', u, v, du, dv, .42, .56, 0, 6, '#2a1d12');
+      opening(c, 'L', u, v, du, dv, .14, .24, 3.5, 6, '#30404a');
+      opening(c, 'L', u, v, du, dv, .74, .84, 3.5, 6, '#30404a');
+      const [x, y] = P(.92, .92); barrel(c, x - 2, y - 1);
+    } else if (L === 5) {
+      const [u, v, du, dv] = T(.1, .14, .76, .62);
+      shadow(c, u, v, du, dv, 32);
+      box(c, u, v, du, dv, 0, 12, alt ? '#a45a3e' : '#9a4f36', 'brick', R, null);
+      for (const t of [.12, .38, .64]) opening(c, 'L', u, v, du, dv, t, t + .16, 4, 8.5, '#2c3c48', '#efe6d8');
+      opening(c, 'R', u, v, du, dv, .35, .55, 4, 8.5, '#232e38', '#d8d0c0');
+      hip(c, u, v, du, dv, 12, 21, '#c09a55', 'thatch', R, .07);
+      const [cu, cv] = ax === 'u' ? [u + du * .7, v + dv / 2] : [u + du / 2, v + dv * .7];
+      chimney(c, cu, cv, 22, 10);
+      fenceLine(c, .02, .95, .95, .95, 6, 3, '#7a6040');
+      for (let k = 0; k < 5; k++) { const p = P(.15 + k * .15, .9); blob(c, p[0], p[1] - 1, 1, .8, k % 2 ? '#e05a4a' : '#f0d04a'); }
+    } else {
+      const u = .17, v = .17, du = .66, dv = .66, h = 26;
+      shadow(c, u, v, du, dv, 50);
+      box(c, u, v, du, dv, 0, h, alt ? '#8e3d2c' : '#9b4a32', 'brick', R, null);
+      for (const zz of [3, 11, 19]) for (const t of [.12, .42, .72]) opening(c, 'L', u, v, du, dv, t, t + .16, zz, zz + 5, '#26323c', '#f2ece0');
+      for (const zz of [11, 19]) opening(c, 'R', u, v, du, dv, .35, .55, zz, zz + 5, '#1f2830', '#ddd4c4');
+      opening(c, 'L', u, v, du, dv, .42, .58, 0, 7, '#3a2414', '#e6dccb');
+      // a tiled roof with a stepped gable to the front
+      const um = u + du / 2, rh = 17;
+      roofPlane(c, P(u - .03, v - .03, h), P(u - .03, v + dv, h), P(um, v + dv, h + rh), P(um, v - .03, h + rh), '#7d3626', 'tiles', R);
+      roofPlane(c, P(u + du + .03, v - .03, h), P(u + du + .03, v + dv, h), P(um, v + dv, h + rh), P(um, v - .03, h + rh), shade('#7d3626', .7), 'tiles', R);
+      const F = (t, zz) => P(u + du * t, v + dv, zz), step = rh * .23, pts = [F(0, h)];
+      for (let k = 0; k < 4; k++) pts.push(F(k * .1, h + (k + 1) * step), F((k + 1) * .1, h + (k + 1) * step));
+      pts.push(F(.4, h + rh + 4), F(.6, h + rh + 4));
+      for (let k = 3; k >= 0; k--) pts.push(F(1 - (k + 1) * .1, h + (k + 1) * step), F(1 - k * .1, h + (k + 1) * step));
+      pts.push(F(1, h));
+      fillPoly(c, pts, alt ? '#93412f' : '#a04e36');
+      c.save(); poly(c, pts); c.clip(); wallTex(c, { side: 'L', u, v, du, dv, z: h, h: rh + 5 }, 'brick', '#a04e36', R); c.restore();
+      opening(c, 'L', u, v, du, dv, .42, .58, h + 3, h + 8, '#26323c', '#f2ece0');
+      for (let k = 0; k < 3; k++) { const p = P(.9 - k * .05, .9 + k * .02); blob(c, p[0], p[1] - 1, 1.2, .8, ['#d84a4a', '#f2d24a', '#e07ad0'][k]); }
+    }
+  },
+  well(c, R) {
+    const [x, y] = P(.5, .5);
+    blob(c, x + 4, y + 1, 10, 4, 'rgba(16,26,10,.22)');
+    groundPatch(c, .18, .18, .64, .64, '#8a8a78', .5);
+    const rx = 8, ry = 4, h = 6;
+    c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI); c.lineTo(x - rx, y - h); c.ellipse(x, y - h, rx, ry, 0, Math.PI, 0, true); c.closePath();
+    const g = c.createLinearGradient(x - rx, 0, x + rx, 0); g.addColorStop(0, '#b4b0a2'); g.addColorStop(1, '#6c6a60'); c.fillStyle = g; c.fill();
+    for (let k = 1; k < 3; k++) { c.beginPath(); c.ellipse(x, y - k * 2, rx, ry, 0, 0, Math.PI); c.strokeStyle = 'rgba(40,40,40,.35)'; c.lineWidth = .5; c.stroke(); }
+    blob(c, x, y - h, rx, ry, '#9a968a'); blob(c, x, y - h, rx - 1.6, ry - 1, '#1f3440'); blob(c, x - 1.5, y - h - .5, 2, .6, 'rgba(160,200,220,.4)');
+    line(c, [x - rx + 1, y - h], [x - rx + 1, y - h - 13], '#5a3e24', 1.4); line(c, [x + rx - 1, y - h], [x + rx - 1, y - h - 13], '#4a3220', 1.4);
+    line(c, [x - rx, y - h - 12], [x + rx, y - h - 12], '#5a3e24', 1.6);
+    line(c, [x + 2, y - h - 12], [x + 2, y - h - 5], '#cbb890', .4);
+    fillPoly(c, [[x + .5, y - h - 5], [x + 3.5, y - h - 5], [x + 3, y - h - 2], [x + 1, y - h - 2]], '#7a5432');
+  },
+  farm(c, R, b) {
+    const st = b.stage ?? 4;
+    fillPoly(c, diamond(.08, .9, 2.86, 2.04), '#7c5c3a');
+    c.save(); poly(c, diamond(.08, .9, 2.86, 2.04)); c.clip();
+    for (let v = 1; v < 2.95; v += .13) line(c, P(.08, v), P(2.94, v), 'rgba(50,32,18,.45)', .9);
+    const cols = ['#7c5c3a', '#6e9a3a', '#7aa23c', '#b5b048', '#d8b04a'], tip = ['#7c5c3a', '#8cba4a', '#9cc050', '#d0c460', '#ecd27a'];
+    if (st > 0) for (let v = 1; v < 2.92; v += .13) for (let u = .14; u < 2.92; u += .075) {
+      const p = P(u + (R() - .5) * .03, v + .02), hh = 1.4 + st * 1.5 + R();
+      line(c, p, [p[0] + (R() - .5) * .8, p[1] - hh], cols[st], .8);
+      if (st >= 3) blob(c, p[0], p[1] - hh, .6, .9, tip[st]);
+    }
+    c.restore();
+    shadow(c, .18, .12, 1.4, .62, 22);
+    box(c, .18, .12, 1.4, .62, 0, 10, '#7d5a3a', 'vplank', R, null);
+    gable(c, .18, .12, 1.4, .62, 10, 13, 'u', '#b8995a', 'thatch', R, '#7d5a3a');
+    opening(c, 'L', .18, .12, 1.4, .62, .4, .62, 0, 8, '#2a1d12');
+    const [hx, hy] = P(2.3, .45); blob(c, hx + 4, hy + 1, 7, 2.5, 'rgba(16,26,10,.2)');
+    c.beginPath(); c.ellipse(hx, hy - 2, 5, 6, 0, Math.PI, 0); c.closePath(); c.fillStyle = '#d6b65a'; c.fill();
+    fenceLine(c, .06, 2.96, 2.96, 2.96, 14, 4); fenceLine(c, 2.96, .9, 2.96, 2.96, 10, 4);
+  },
+  dairy(c, R) {
+    fillPoly(c, diamond(.05, .05, 2.9, 2.9), '#76a046');
+    c.save(); poly(c, diamond(.05, .05, 2.9, 2.9)); c.clip();
+    for (let k = 0; k < 120; k++) { const p = P(R() * 3, R() * 3); line(c, p, [p[0] + (R() - .5), p[1] - 1.5], R() < .5 ? '#5f8a36' : '#98bf5c', .6); }
+    c.restore();
+    fenceLine(c, .05, .05, 2.95, .05, 14, 4); fenceLine(c, .05, .05, .05, 2.95, 14, 4);
+    shadow(c, .2, .2, 1.1, .9, 26);
+    box(c, .2, .2, 1.1, .9, 0, 11, '#a07a50', 'plank', R, null);
+    hip(c, .2, .2, 1.1, .9, 11, 16, '#b39250', 'thatch', R);
+    opening(c, 'L', .2, .2, 1.1, .9, .35, .6, 0, 8, '#2a1d12');
+    for (const [u, v] of [[1.6, 1.0], [2.3, 1.5], [1.2, 2.0], [2.1, 2.4], [1.7, 1.7]]) { const [x, y] = P(u, v); cow(c, x, y, R, R() < .5); }
+    const [mx, my] = P(1.4, .5); for (let k = 0; k < 3; k++) { blob(c, mx + k * 3, my, 1.3, 2.4, '#b8b8b0'); blob(c, mx + k * 3, my - 2.4, 1.3, .6, '#dcdcd4'); }
+    fenceLine(c, .05, 2.95, 2.95, 2.95, 14, 4); fenceLine(c, 2.95, .05, 2.95, 2.95, 14, 4);
+  },
+  sheep(c, R) {
+    fillPoly(c, diamond(.05, .05, 2.9, 2.9), '#86a24e');
+    c.save(); poly(c, diamond(.05, .05, 2.9, 2.9)); c.clip();
+    for (let k = 0; k < 100; k++) { const p = P(R() * 3, R() * 3); line(c, p, [p[0] + (R() - .5), p[1] - 1.3], R() < .5 ? '#6c8a40' : '#a8bf64', .6); }
+    c.restore();
+    const wattle = (u0, v0, u1, v1) => { const n = 20; for (let k = 0; k < n; k++) { const a = P(u0 + (u1 - u0) * k / n, v0 + (v1 - v0) * k / n), b2 = P(u0 + (u1 - u0) * (k + 1) / n, v0 + (v1 - v0) * (k + 1) / n); fillPoly(c, [a, b2, [b2[0], b2[1] - 4], [a[0], a[1] - 4]], k % 2 ? '#8a6a42' : '#7a5c38'); } };
+    wattle(.1, .1, 2.9, .1); wattle(.1, .1, .1, 2.9);
+    shadow(c, .25, .25, .9, .7, 16);
+    box(c, .25, .25, .9, .7, 0, 7, '#8a6a42', 'wattle', R, null);
+    gable(c, .25, .25, .9, .7, 7, 10, 'u', '#a68a50', 'thatch', R, '#8a6a42');
+    for (let k = 0; k < 9; k++) { const [x, y] = P(1 + R() * 1.7, 1 + R() * 1.7); sheepie(c, x, y, R); }
+    wattle(.1, 2.9, 2.9, 2.9); wattle(2.9, .1, 2.9, 2.9);
+  },
+  fisher(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#c9b886');
+    shadow(c, .15, .15, .95, .75, 20);
+    box(c, .15, .15, .95, .75, 0, 9, '#7a5a3e', 'plank', R, null);
+    gable(c, .15, .15, .95, .75, 9, 12, 'u', '#a99a62', 'reed', R, '#7a5a3e');
+    opening(c, 'L', .15, .15, .95, .75, .5, .72, 0, 6.5, '#2a1d12');
+    // drying rack with fish
+    post(c, 1.35, .3, 9); post(c, 1.35, 1.2, 9); line(c, P(1.35, .3, 8.5), P(1.35, 1.2, 8.5), '#4a3420', .9);
+    for (let k = 0; k < 7; k++) { const p = P(1.35, .38 + k * .12, 8.5); fillPoly(c, [p, [p[0] - .8, p[1] + 3], [p[0], p[1] + 4.6], [p[0] + .8, p[1] + 3]], '#9fb2bd'); }
+    // nets on poles
+    post(c, .3, 1.5, 8); post(c, 1.0, 1.75, 8);
+    const a = P(.3, 1.5, 7.5), b2 = P(1.0, 1.75, 7.5), a2 = P(.3, 1.5, 1), b3 = P(1.0, 1.75, 1);
+    fillPoly(c, [a, b2, b3, a2], 'rgba(90,80,60,.25)');
+    for (let k = 0; k <= 6; k++) { line(c, lerp2(a, b2, k / 6), lerp2(a2, b3, k / 6), 'rgba(60,50,40,.55)', .35); line(c, lerp2(a, a2, k / 6), lerp2(b2, b3, k / 6), 'rgba(60,50,40,.55)', .35); }
+    // upturned boat
+    const [x, y] = P(1.45, 1.55);
+    blob(c, x + 3, y + 1, 10, 2.5, 'rgba(16,26,10,.25)');
+    c.beginPath(); c.moveTo(x - 10, y + 1); c.quadraticCurveTo(x, y - 9, x + 10, y - 3); c.quadraticCurveTo(x + 2, y + 3, x - 10, y + 1); c.fillStyle = '#5a3d26'; c.fill();
+    line(c, [x - 8, y], [x + 8, y - 3.5], '#7a5636', .8);
+    for (let k = 0; k < 3; k++) { const p = P(.25 + k * .1, 1.1); barrel(c, p[0], p[1]); }
+  },
+  claypit(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#8a6a44');
+    const pit = diamond(.3, .3, 1.35, 1.25);
+    fillPoly(c, pit, '#5a3a24');
+    c.save(); poly(c, pit); c.clip();
+    fillPoly(c, diamond(.3, .3, 1.35, .3, 0).map(p => [p[0], p[1] + 5]), '#4a2c1a');
+    for (let k = 0; k < 8; k++) { const p = P(.4 + R() * 1.1, .5 + R() * 1); blob(c, p[0], p[1] + 2, 3 + R() * 3, 1.2, 'rgba(160,90,50,.4)'); }
+    const p = P(1.1, 1.15); blob(c, p[0], p[1] + 2, 8, 2.6, '#3e6670'); blob(c, p[0] - 2, p[1] + 1.5, 3, .7, 'rgba(200,220,230,.3)');
+    c.restore();
+    line(c, pit[3], pit[0], '#b08458', 1); line(c, pit[0], pit[1], '#a07448', 1);
+    for (const [u, v] of [[1.75, .5], [1.8, 1.0], [1.6, 1.75]]) { const [x, y] = P(u, v); c.beginPath(); c.ellipse(x, y, 6, 4.5, 0, Math.PI, 0); c.closePath(); const g = c.createLinearGradient(x - 6, y - 4, x + 6, y); g.addColorStop(0, '#c07048'); g.addColorStop(1, '#7a3c22'); c.fillStyle = g; c.fill(); }
+    shadow(c, .1, .1, .5, .4, 12);
+    box(c, .1, .1, .5, .4, 0, 6, '#6a4a2e', 'vplank', R, null);
+    gable(c, .1, .1, .5, .4, 6, 6, 'u', '#9a8a58', 'reed', R, '#6a4a2e');
+    const [wx, wy] = P(.6, 1.7); line(c, [wx - 4, wy - 3], [wx + 4, wy - 1], '#5a3e24', 1); blob(c, wx + 4, wy - 1, 1.4, 1.4, '#3a2a1a'); fillPoly(c, [[wx - 3, wy - 5], [wx + 2, wy - 4], [wx + 1, wy - 2], [wx - 3, wy - 3]], '#9a4e2e');
+  },
+  potter(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#9a8462');
+    shadow(c, .15, .15, 1.0, .8, 22);
+    box(c, .15, .15, 1.0, .8, 0, 10, '#e0d4ba', 'daub', R, null);
+    gable(c, .15, .15, 1.0, .8, 10, 13, 'v', '#bc9c5a', 'thatch', R, '#e0d4ba');
+    opening(c, 'L', .15, .15, 1.0, .8, .3, .5, 0, 7, '#3a2616', '#5a3e24');
+    opening(c, 'R', .15, .15, 1.0, .8, .4, .6, 4, 7, '#283038', '#4a3220');
+    const [kx, ky] = P(1.45, 1.25);
+    blob(c, kx + 7, ky + 1, 10, 3, 'rgba(16,26,10,.25)');
+    c.beginPath(); c.ellipse(kx, ky, 8, 4, 0, 0, Math.PI); c.lineTo(kx - 8, ky - 3); c.ellipse(kx, ky - 3, 8, 9, 0, Math.PI, 0); c.closePath();
+    const g = c.createLinearGradient(kx - 8, ky - 12, kx + 8, ky); g.addColorStop(0, '#b0604a'); g.addColorStop(1, '#6a3020'); c.fillStyle = g; c.fill();
+    for (let k = 0; k < 4; k++) { c.beginPath(); c.ellipse(kx, ky - 3, 8, 9 - k * 2.2, 0, Math.PI * 1.05, Math.PI * 1.95); c.strokeStyle = 'rgba(40,10,0,.3)'; c.lineWidth = .5; c.stroke(); }
+    c.beginPath(); c.ellipse(kx - 3, ky - 1, 2.4, 3, 0, Math.PI, 0); c.closePath(); c.fillStyle = '#ffb040'; c.fill();
+    for (const [u, v, col] of [[.4, 1.4, '#c9784a'], [.55, 1.55, '#b0603a'], [.7, 1.7, '#d48c5a'], [.3, 1.65, '#a8583a'], [1.0, 1.75, '#c9784a']]) pot(c, ...P(u, v), col);
+  },
+  weaver(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#8f8a5e');
+    shadow(c, .15, .15, .95, .8, 24);
+    box(c, .15, .15, .95, .8, 0, 11, '#dccfb2', 'daub', R, null);
+    hip(c, .15, .15, .95, .8, 11, 15, '#b8984f', 'thatch', R);
+    opening(c, 'L', .15, .15, .95, .8, .35, .55, 0, 7, '#3a2616', '#5a3e24');
+    // loom under a lean-to
+    for (const [u, v] of [[1.25, .2], [1.8, .2], [1.25, .9], [1.8, .9]]) post(c, u, v, 9, '#5a3e24', 1);
+    fillPoly(c, diamond(1.2, .15, .65, .8, 9.5), '#a08a50');
+    const a = P(1.4, .45, 7), b2 = P(1.4, .75, 7);
+    fillPoly(c, [a, b2, [b2[0], b2[1] + 5], [a[0], a[1] + 5]], '#4f6fa8');
+    for (let k = 0; k < 5; k++) line(c, lerp2(a, b2, k / 4), [lerp2(a, b2, k / 4)[0], lerp2(a, b2, k / 4)[1] + 5], 'rgba(255,255,255,.3)', .3);
+    // cloth on the line
+    post(c, .3, 1.75, 9); post(c, 1.75, 1.75, 9); line(c, P(.3, 1.75, 8.5), P(1.75, 1.75, 8.5), '#d8c8a0', .5);
+    [['#4f6fa8', .4], ['#b8443a', .75], ['#d8b04a', 1.1], ['#5a8a5a', 1.42]].forEach(([col, u]) => {
+      const p0 = P(u, 1.75, 8.5), p1 = P(u + .25, 1.75, 8.5);
+      fillPoly(c, [p0, p1, [p1[0], p1[1] + 6], [p0[0], p0[1] + 6.5]], col);
+    });
+  },
+  store(c, R) {
+    fillPoly(c, diamond(.05, .05, 2.9, 2.9), '#8e7c58');
+    shadow(c, .3, .25, 2.3, 1.9, 44);
+    box(c, .3, .25, 2.3, 1.9, 0, 17, '#7a5638', 'vplank', R, null);
+    opening(c, 'L', .3, .25, 2.3, 1.9, .38, .62, 0, 13, '#2a1a0e', '#4a3020');
+    line(c, faceAt({ side: 'L', u: .3, v: .25, du: 2.3, dv: 1.9 }, .38, 13), faceAt({ side: 'L', u: .3, v: .25, du: 2.3, dv: 1.9 }, .62, 0), '#5a3e24', 1);
+    opening(c, 'R', .3, .25, 2.3, 1.9, .4, .6, 0, 11, '#22160c', '#3a2618');
+    hip(c, .3, .25, 2.3, 1.9, 17, 30, '#b08e4e', 'thatch', R, .1);
+    for (const [u, v] of [[.4, 2.45], [.7, 2.55], [1.0, 2.5]]) sack(c, ...P(u, v));
+    for (const [u, v] of [[2.75, .5], [2.8, .9], [2.7, 1.3]]) { const [x, y] = P(u, v); barrel(c, x, y); }
+    for (const [u, v] of [[1.9, 2.5], [2.3, 2.6]]) { const [x, y] = P(u, v); box(c, u - .15, v - .15, .3, .3, 0, 5, '#9a7a4e', 'plank', R); }
+  },
+  market(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#b0a07c');
+    c.save(); poly(c, diamond(.05, .05, 1.9, 1.9)); c.clip();
+    for (let k = 0; k < 40; k++) { const p = P(R() * 2, R() * 2); blob(c, p[0], p[1], 1.5 + R(), .8 + R() * .5, R() < .5 ? 'rgba(120,100,70,.35)' : 'rgba(220,210,180,.35)'); }
+    c.restore();
+    const stall = (u, v, col, goods) => {
+      shadow(c, u, v, .55, .4, 10, .18);
+      box(c, u + .05, v + .1, .45, .25, 0, 3.5, '#8a6a42', 'plank', R);
+      for (let k = 0; k < 5; k++) { const p = P(u + .1 + k * .08, v + .22, 3.5); blob(c, p[0], p[1], 1.3, 1, goods[k % goods.length]); }
+      for (const [a, b2] of [[0, 0], [.55, 0], [0, .4], [.55, .4]]) post(c, u + a, v + b2, 9, '#5a3e24', .8);
+      const aw = [P(u - .04, v - .04, 10), P(u + .59, v - .04, 10), P(u + .59, v + .48, 7), P(u - .04, v + .48, 7)];
+      fillPoly(c, aw, col);
+      c.save(); poly(c, aw); c.clip();
+      for (let k = 0; k < 6; k += 2) fillPoly(c, [lerp2(aw[0], aw[1], k / 6), lerp2(aw[0], aw[1], (k + 1) / 6), lerp2(aw[3], aw[2], (k + 1) / 6), lerp2(aw[3], aw[2], k / 6)], 'rgba(255,250,235,.75)');
+      c.restore();
+    };
+    stall(.15, .2, '#b8443a', ['#d8b04a', '#f2c94c']);
+    stall(1.15, .25, '#3e6aa8', ['#a9c2cf', '#c9784a']);
+    stall(.3, 1.2, '#d8a83a', ['#d84a3a', '#7aa23c', '#f2c94c']);
+    person(c, ...P(1.3, 1.3), '#a04a3a'); person(c, ...P(1.55, 1.15), '#4a6a3a');
+    for (const [u, v] of [[1.3, 1.75], [1.5, 1.8]]) { const [x, y] = P(u, v); blob(c, x, y - 1.5, 3, 2, '#9a7a48'); blob(c, x, y - 2.8, 2.4, 1, '#d8b04a'); }
+  },
+  temple(c, R, b) {
+    const g = BLD[b.type].god, col = godCol(g);
+    // the temple stands on its own terp (mound)
+    fillPoly(c, diamond(.02, .02, 1.96, 1.96), '#6a5636');
+    box(c, .08, .08, 1.84, 1.84, 0, 4, '#7a6040', null, R, '#7aa24a');
+    c.save(); poly(c, diamond(.08, .08, 1.84, 1.84, 4)); c.clip();
+    for (let k = 0; k < 60; k++) { const p = P(.1 + R() * 1.8, .1 + R() * 1.8, 4); line(c, p, [p[0], p[1] - 1.2], R() < .5 ? '#5f8a36' : '#98bf5c', .6); }
+    c.restore();
+    const u = .3, v = .5, du = 1.35, dv = .9, z = 4;
+    shadow(c, u, v, du, dv, 40, .2);
+    box(c, u, v, du, dv, z, 12, '#5d4330', 'vplank', R, null);
+    opening(c, 'L', u, v, du, dv, .4, .6, z, z + 9, '#1a100a', col);
+    opening(c, 'R', u, v, du, dv, .38, .62, z + 5, z + 8, '#1a100a');
+    gable(c, u, v, du, dv, z + 12, 20, 'u', '#4c3c2e', 'shingle', R, '#5d4330');
+    line(c, P(u - .05, v + dv / 2, z + 32), P(u + du + .05, v + dv / 2, z + 32), col, 1.6);
+    // crossed horse heads on the gable
+    const top = P(u + du, v + dv / 2, z + 32);
+    line(c, [top[0] - 4, top[1] - 5], [top[0] + 3, top[1] + 2], '#3a2a1c', 1.2); line(c, [top[0] + 4, top[1] - 5], [top[0] - 3, top[1] + 2], '#3a2a1c', 1.2);
+    blob(c, top[0] - 4.5, top[1] - 5.5, 1.2, .8, '#3a2a1c'); blob(c, top[0] + 4.5, top[1] - 5.5, 1.2, .8, '#3a2a1c');
+    flag(c, .35, 1.65, 26, col, R);
+    // each god's sign in front of the hall
+    const [x, y] = P(1.45, 1.6, 4);
+    blob(c, x + 3, y + 1, 6, 2, 'rgba(16,26,10,.25)');
+    if (g === 'wodan') {
+      line(c, [x, y], [x, y - 16], '#4a3420', 1.6);
+      fillPoly(c, [[x - 4, y - 17], [x + 1, y - 19], [x + 5, y - 17.5], [x + 1, y - 16]], '#1a1a22');
+      blob(c, x + 2.5, y - 19, 1.4, 1.2, '#1a1a22'); line(c, [x + 3.5, y - 19], [x + 5, y - 18.5], '#c8a040', .8);
+    } else if (g === 'donar') {
+      stone(c, x, y - 3, 5, 3.5, R, '#8a8a84');
+      fillPoly(c, [[x - 4, y - 14], [x + 4, y - 14], [x + 4, y - 10], [x - 4, y - 10]], '#6a6a70');
+      line(c, [x, y - 10], [x, y - 5], '#5a3e24', 1.6);
+      line(c, [x - 4, y - 14], [x + 4, y - 14], '#b0b0b8', .6);
+    } else if (g === 'frija') {
+      blob(c, x, y - 2, 5, 2.5, '#6a8a3a');
+      for (let k = 0; k < 7; k++) { const a = k / 7 * Math.PI * 2; blob(c, x + Math.cos(a) * 3, y - 3 + Math.sin(a) * 1.4, 1.2, 1, k % 2 ? '#f2d04a' : '#f8f0e0'); }
+      line(c, [x, y - 3], [x, y - 13], '#c8a040', 1.2); blob(c, x, y - 9, 2.2, 1.6, '#e8c860');
+    } else if (g === 'nehalennia') {
+      fillPoly(c, [[x - 7, y - 4], [x + 7, y - 4], [x + 5, y - 1], [x - 5, y - 1]], '#5a3d26');
+      line(c, [x, y - 4], [x, y - 14], '#4a3420', 1);
+      fillPoly(c, [[x + .5, y - 14], [x + 6, y - 8], [x + .5, y - 6]], '#e8e0cc');
+      blob(c, x - 7, y - 1, 2.2, 1.5, '#8a7050'); blob(c, x - 8.4, y - 2.6, 1.1, 1, '#8a7050');
+    } else {
+      blob(c, x, y - 1, 6, 2.6, '#8e8f88'); blob(c, x, y - 1.5, 4.6, 1.8, '#3e7c8a'); blob(c, x - 1, y - 2, 1.5, .5, 'rgba(220,240,250,.5)');
+      fillPoly(c, [[x - 1.5, y - 2], [x + 1.5, y - 2], [x + 1, y - 13], [x - 1, y - 13]], '#c8c8cc');
+      line(c, [x - 4, y - 11], [x + 4, y - 11], '#c8c8cc', .9); blob(c, x - 4, y - 9, 1.6, .6, '#c8c8cc'); blob(c, x + 4, y - 9, 1.6, .6, '#c8c8cc');
+    }
+  },
+  watch(c, R) {
+    groundPatch(c, .1, .1, .8, .8, '#8a7a5a', .5);
+    blob(c, ...P(.7, .5), 6, 2, 'rgba(16,26,10,.2)');
+    const u = .3, v = .3, d = .4, h = 22;
+    for (const [a, b2] of [[0, 0], [d, 0], [0, d], [d, d]]) post(c, u + a, v + b2, h, a + b2 > .5 ? '#4a3220' : '#5a3e24', 1.4);
+    line(c, P(u, v + d, 4), P(u + d, v + d, h - 4), '#5a3e24', .8); line(c, P(u + d, v, 4), P(u + d, v + d, h - 4), '#4a3220', .8);
+    box(c, u - .05, v - .05, d + .1, d + .1, h, 3, '#6a4a2e', 'plank', R);
+    hip(c, u - .1, v - .1, d + .2, d + .2, h + 9, 8, '#a08a50', 'thatch', R);
+    for (const [a, b2] of [[0, 0], [d, 0], [0, d], [d, d]]) post2(c, u + a, v + b2, h + 3, h + 9);
+    const [bx, by] = P(u + d / 2, v + d / 2, h + 8); blob(c, bx, by, 1.8, 2, '#c8a040'); blob(c, bx - .5, by - .6, .6, .6, '#f0d880');
+    for (const [a, b2] of [[.15, .85], [.3, .9]]) { const [x, y] = P(a, b2); fillPoly(c, [[x - 1.6, y], [x + 1.6, y], [x + 2, y - 3], [x - 2, y - 3]], '#7a7a80'); }
+  },
+  reeve(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#9a8a68');
+    shadow(c, .2, .3, 1.5, 1.1, 34);
+    box(c, .2, .3, 1.5, 1.1, 0, 13, '#ddd0b2', 'daub', R, null);
+    for (const t of [.1, .3, .7, .86]) opening(c, 'L', .2, .3, 1.5, 1.1, t, t + .08, 5, 9, '#26323c', '#5a3e24');
+    opening(c, 'L', .2, .3, 1.5, 1.1, .47, .58, 0, 8, '#3a2414', '#5a3e24');
+    gable(c, .2, .3, 1.5, 1.1, 13, 17, 'u', '#8a4630', 'tiles', R, '#ddd0b2');
+    box(c, .7, 1.4, .5, .12, 0, 1.5, '#9a9888', null, R); box(c, .75, 1.52, .4, .1, 0, .8, '#9a9888', null, R);
+    flag(c, 1.85, 1.75, 24, '#7a3fa0', R);
+    const [x, y] = P(1.75, .3); box(c, 1.6, .15, .3, .2, 0, 3.5, '#6a4628', 'plank', R); blob(c, x - 2, y - 7, 1.2, .6, '#e8c84a');
+  },
+  mead(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#8a7a58');
+    const u = .12, v = .45, du = 1.75, dv = .95;
+    shadow(c, u, v, du, dv, 32);
+    box(c, u, v, du, dv, 0, 10, '#6b4a30', 'vplank', R, null);
+    opening(c, 'L', u, v, du, dv, .42, .58, 0, 8, '#2a1408', '#c8a040');
+    opening(c, 'R', u, v, du, dv, .35, .65, 0, 7, '#22140a');
+    gable(c, u, v, du, dv, 10, 19, 'u', '#5a4634', 'shingle', R, '#6b4a30');
+    const top = P(u + du, v + dv / 2, 29);
+    line(c, [top[0] - 4, top[1] - 5], [top[0] + 3, top[1] + 2], '#3a2a1c', 1.2); line(c, [top[0] + 4, top[1] - 5], [top[0] - 3, top[1] + 2], '#3a2a1c', 1.2);
+    chimney(c, u + du * .3, v + dv / 2 - .05, 22, 9, '#6a6a64');
+    for (const [a, b2] of [[.4, 1.6], [.55, 1.7], [1.5, 1.65]]) { const [x, y] = P(a, b2); barrel(c, x, y); }
+    const [tx, ty] = P(.95, 1.5); line(c, [tx, ty], [tx, ty - 10], '#4a3420', 1); blob(c, tx, ty - 11, 1.4, 2, '#ffb03a'); blob(c, tx, ty - 11.5, .7, 1.1, '#fff0a0');
+  },
+  garden(c, R) {
+    groundPatch(c, .04, .04, .92, .92, '#6a8a3a', .9);
+    for (const [u, v, du, dv] of [[.06, .06, .88, .1], [.06, .06, .1, .88]]) box(c, u, v, du, dv, 0, 3, '#3f6a2a', null, R, '#5a8a3a');
+    fillPoly(c, diamond(.45, .16, .1, .78), '#c8b894');
+    const cols = ['#e04848', '#f2d04a', '#e080c8', '#f4f0e8', '#ff8a3a'];
+    for (let r = 0; r < 2; r++) for (let k = 0; k < 10; k++) {
+      const u = r ? .58 + R() * .3 : .18 + R() * .25, v = .2 + k * .07, p = P(u, v);
+      line(c, p, [p[0], p[1] - 2], '#3a6a2a', .5); blob(c, p[0], p[1] - 2.4, 1, .9, cols[(k + r * 2) % 5]);
+    }
+    for (const [u, v, du, dv] of [[.06, .84, .88, .1], [.84, .06, .1, .88]]) box(c, u, v, du, dv, 0, 3, '#3f6a2a', null, R, '#5a8a3a');
+  },
+  rune(c, R) {
+    groundPatch(c, .1, .1, .8, .8, '#7a8a5a', .5);
+    const [x, y] = P(.5, .5);
+    blob(c, x + 9, y, 10, 2.5, 'rgba(16,26,10,.25)');
+    c.beginPath(); c.moveTo(x - 5, y + 1); c.lineTo(x - 5.5, y - 14); c.quadraticCurveTo(x - 4, y - 25, x + 1, y - 26); c.quadraticCurveTo(x + 6, y - 24, x + 5.5, y - 12); c.lineTo(x + 5, y + 1); c.closePath();
+    const g = c.createLinearGradient(x - 6, 0, x + 6, 0); g.addColorStop(0, '#b8b8b0'); g.addColorStop(1, '#6a6a66'); c.fillStyle = g; c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.3)'; c.lineWidth = .5; c.stroke();
+    c.beginPath(); c.moveTo(x - 3, y - 2); c.quadraticCurveTo(x - 4, y - 20, x + 1, y - 22); c.quadraticCurveTo(x + 4, y - 20, x + 3, y - 2);
+    c.strokeStyle = '#a8342a'; c.lineWidth = 1; c.stroke();
+    for (let k = 0; k < 6; k++) { const yy = y - 4 - k * 2.6; line(c, [x - 1.2, yy], [x + 1.2, yy - 1.4], '#7a2a20', .6); line(c, [x, yy], [x, yy - 1.8], '#7a2a20', .5); }
+    blob(c, x - 3, y - 18, 2, 1.2, 'rgba(170,180,90,.4)');
+    for (const [u, v] of [[.2, .75], [.8, .3], [.75, .8]]) stone(c, ...P(u, v), 2, 1.3, R);
+  },
+  hunebed(c, R) {
+    groundPatch(c, .05, .05, 1.9, 1.9, '#7a8a50', .6);
+    shadow(c, .4, .5, 1.2, .9, 20, .25);
+    const sp = [[.45, .6], [.95, .45], [1.45, .55], [.5, 1.3], [1.0, 1.4], [1.5, 1.3]];
+    for (const [u, v] of sp) { const [x, y] = P(u, v); stone(c, x, y - 4, 5 + R() * 2, 5, R); }
+    const [cx, cy] = P(.95, .9, 9); stone(c, cx - 8, cy, 11, 5, R, '#9a9a92'); stone(c, cx + 9, cy + 2, 12, 5.5, R, '#8e8e86');
+    for (const [u, v] of [[.2, 1.7], [1.8, .3]]) stone(c, ...P(u, v), 3, 2, R);
+  },
+  dike(c, R, b) {
+    const m = b.mask || 0, h = 6, top = '#82a652', side = '#6a8a42';
+    const parts = [[.22, .22, .56, .56]];
+    if (m & 1) parts.unshift([.22, 0, .56, .22]); if (m & 8) parts.unshift([0, .22, .22, .56]);
+    if (m & 2) parts.push([.78, .22, .22, .56]); if (m & 4) parts.push([.22, .78, .56, .22]);
+    for (const [u, v, du, dv] of parts) shadow(c, u, v, du, dv, h, .18);
+    for (const [u, v, du, dv] of parts) {
+      box(c, u, v, du, dv, 0, h, side, null, R, top);
+      c.save(); poly(c, diamond(u, v, du, dv, h)); c.clip();
+      for (let k = 0; k < 10; k++) { const p = P(u + R() * du, v + R() * dv, h); line(c, p, [p[0], p[1] - 1.2], R() < .5 ? '#5f8a36' : '#a8c86a', .6); }
+      c.restore();
+    }
+  },
+};
+function post2(c, u, v, z0, z1) { line(c, P(u, v, z0), P(u, v, z1), '#4a3220', 1); }
+for (const g of GODS) ART['t_' + g.id] = ART.temple;
+
+function rubbleSpr(n) {
+  return spr('rb' + n, HW + 2, HW + 10, 10, TH + 2, (c, R) => {
+    groundPatch(c, .1, .1, .8, .8, '#5a4a3a', .6);
+    for (let k = 0; k < 5 + n * 2; k++) { const [x, y] = P(.2 + R() * .6, .2 + R() * .6); stone(c, x, y, 1.5 + R() * 2, 1 + R(), R, R() < .5 ? '#7a7066' : '#5a4636'); }
+    for (let k = 0; k < 3; k++) { const a = P(.2 + R() * .6, .2 + R() * .6); line(c, a, [a[0] + (R() - .5) * 12, a[1] + (R() - .5) * 4], '#2a1e16', 1.4); }
+  });
+}
+function dikeMask(b) {
+  const N = G.N, i = b.y * N + b.x; let m = 0;
+  if (b.y > 0 && isDike(i - N)) m |= 1; if (b.x < N - 1 && isDike(i + 1)) m |= 2;
+  if (b.y < N - 1 && isDike(i + N)) m |= 4; if (b.x > 0 && isDike(i - 1)) m |= 8;
+  return m;
+}
+function bldKey(b) {
+  if (b.type === 'house') return 'h' + b.lvl + '_' + b.var;
+  if (b.type === 'farm') return 'farm' + (b.stage = Math.min(4, Math.floor(b.out / 2)));
+  if (b.type === 'dike') return 'dk' + (b.mask = dikeMask(b));
+  return b.type;
+}
+function bldSpr(b) {
+  const key = bldKey(b), s = b.s;
+  return spr(key, s * HW + 14, s * HW + 56, 64 + s * 4, s * TH + 8, (c, R) => ART[b.type](c, R, b));
+}
+// small picture of a building for the build menu
+function thumb(type) {
+  const cv = document.createElement('canvas'); cv.width = 144; cv.height = 108;
+  const c = cv.getContext('2d'), s = (BLD[type] && BLD[type].size) || 1;
+  const k = Math.min(132 / (s * 64 + 16), 92 / (s * 32 + 44));
+  c.translate(72, 100 - s * 32 * k); c.scale(k, k); c.lineJoin = 'round'; c.lineCap = 'round';
+  const R = mulberry32(strHash(type));
+  if (type === 'road') { roadArt(c, R, 10, false); }
+  else if (type === 'clear') { treeArt(c, R, 'oak', 1); c.strokeStyle = '#ff5a5a'; c.lineWidth = 3; c.beginPath(); c.moveTo(-14, -14); c.lineTo(14, 26); c.moveTo(14, -14); c.lineTo(-14, 26); c.stroke(); }
+  else if (type === 'house') ART.house(c, R, { lvl: 3, var: 1 });
+  else ART[type](c, R, { type, mask: 10, stage: 4 });
+  return cv;
+}
+
+// ====================================================================
+// Drawing: the frame
+// ====================================================================
+const VIEWS = [['town', 'TOWN'], ['water', 'WATER'], ['gods', 'GODS'], ['fire', 'FIRE'], ['des', 'BEAUTY'], ['flood', 'FLOODS']];
+const VIEW_KEEP = { water: ['well'], gods: GODS.map(g => 't_' + g.id), fire: ['watch'], flood: ['dike'], des: ['garden', 'rune', 'hunebed'] };
+const DRAG_TOOLS = new Set(['road', 'house', 'clear', 'dike', 'garden']);
+const LINE_TOOLS = new Set(['road', 'dike']);
+let view = 'town', animT = 0, hoverTile = -1, selected = 0, selTile = -1;
+const tool = { type: null, drag: null };
+const fx = { smoke: [], clouds: [], gulls: [] };
+
+const tileTop = (x, y) => [(x - y) * HW, (x + y) * HH];
+function tileCenter(i) { const x = i % G.N, y = (i - x) / G.N; return [(x - y) * HW, (x + y) * HH + HH]; }
+const screenToWorld = (sx, sy) => [(sx - W / 2) / cam.z + cam.x, (sy - H / 2) / cam.z + cam.y];
+function worldToTile(wx, wy) { const a = wy / HH, b = wx / HW; return [Math.floor((a + b) / 2), Math.floor((a - b) / 2)]; }
+
+function render() {
+  setSprScale();
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#16232c'; ctx.fillRect(0, 0, W, H);
+  if (!G) return;
+  const z = cam.z, N = G.N;
+  ctx.setTransform(DPR * z, 0, 0, DPR * z, DPR * (W / 2 - cam.x * z), DPR * (H / 2 - cam.y * z));
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  const wx0 = cam.x - W / 2 / z, wx1 = cam.x + W / 2 / z, wy0 = cam.y - H / 2 / z, wy1 = cam.y + H / 2 / z;
+  const cs = [worldToTile(wx0, wy0), worldToTile(wx1, wy0), worldToTile(wx0, wy1 + 160), worldToTile(wx1, wy1 + 160)];
+  const tx0 = clamp(Math.min(...cs.map(c => c[0])) - 3, 0, N - 1), tx1 = clamp(Math.max(...cs.map(c => c[0])) + 3, 0, N - 1);
+  const ty0 = clamp(Math.min(...cs.map(c => c[1])) - 3, 0, N - 1), ty1 = clamp(Math.max(...cs.map(c => c[1])) + 3, 0, N - 1);
+  const frame = Math.floor(animT * 2.2) % 8;
+  const risk = view === 'flood' ? floodRisk() : null, mc = now();
+
+  // ground, roads and view tints
+  for (let y = ty0; y <= ty1; y++) for (let x = tx0; x <= tx1; x++) {
+    const px = (x - y) * HW, py = (x + y) * HH;
+    if (px < wx0 - TW || px > wx1 + TW || py < wy0 - TH || py > wy1) continue;
+    blit(groundSpr(y * N + x, frame), px, py);
+  }
+  drawTint();
+  drawEdges(tx0, tx1, ty0, ty1);
+  for (let y = ty0; y <= ty1; y++) for (let x = tx0; x <= tx1; x++) {
+    const px = (x - y) * HW, py = (x + y) * HH;
+    if (px < wx0 - TW || px > wx1 + TW || py < wy0 - TH || py > wy1) continue;
+    const i = y * N + x;
+    if (G.road[i]) blit(roadSpr(i), px, py);
+    if (G.flood[i] > 0) { ctx.globalAlpha = Math.min(.8, G.flood[i] / 3 * .8); blit(waterSpr('shallow', i, frame), px, py); ctx.globalAlpha = 1; }
+    let tint = null;
+    if (view === 'water') { if (G.water[i]) tint = 'rgba(70,150,255,.32)'; }
+    else if (view === 'des') { const v = G.des[i]; if (v > .5) tint = `rgba(90,230,110,${Math.min(.5, v / 25)})`; else if (v < -.5) tint = `rgba(255,70,60,${Math.min(.5, -v / 10)})`; }
+    else if (view === 'flood') { const r = risk[i]; if (r) tint = ['', 'rgba(255,220,60,.3)', 'rgba(255,150,40,.38)', 'rgba(255,60,50,.45)'][r]; }
+    else if (view === 'gods' || view === 'fire') {
+      const id = G.bld[i], b = id && G.ents.get(id);
+      if (b && view === 'gods' && b.type === 'house' && b.res) { const n = GODS.filter(g => mc - (b.rel[g.id] ?? -99) < SVC_MONTHS).length; tint = ['rgba(255,60,50,.5)', 'rgba(255,150,40,.45)', 'rgba(255,220,60,.42)', 'rgba(90,230,110,.45)'][Math.min(3, n)]; }
+      if (b && view === 'fire' && b.type !== 'dike') { const f = clamp(b.fire / 60, 0, 1); tint = `rgba(${Math.round(90 + 165 * f)},${Math.round(230 - 170 * f)},60,.45)`; }
+    }
+    if (tint) fillPoly(ctx, tileDiamond(px, py), tint);
+  }
+  drawFoam(tx0, tx1, ty0, ty1, wx0, wx1, wy0, wy1);
+  drawGhostTiles();
+  if (selected) { const b = G.ents.get(selected); if (b) { const [px, py] = tileTop(b.x, b.y); ctx.lineWidth = 2 / z; ctx.strokeStyle = '#ffd23f'; poly(ctx, diamond(0, 0, b.s, b.s).map(p => [p[0] + px, p[1] + py])); ctx.stroke(); } }
+  else if (selTile >= 0) { const [px, py] = tileTop(selTile % N, (selTile / N) | 0); ctx.lineWidth = 2 / z; ctx.strokeStyle = '#ffd23f'; poly(ctx, tileDiamond(px, py)); ctx.stroke(); }
+
+  // objects back to front: buildings sort by x+y+size-1, walkers by the bigger of their two tiles
+  const buckets = new Map();
+  for (const w of G.walkers) {
+    const [ax, ay] = [w.cur % N, (w.cur / N) | 0], k = w.nxt >= 0 ? Math.max(ax + ay, w.nxt % N + ((w.nxt / N) | 0)) : ax + ay;
+    (buckets.get(k) || buckets.set(k, []).get(k)).push(w);
+  }
+  const dim = view !== 'town';
+  for (let d = tx0 + ty0; d <= tx1 + ty1; d++) {
+    for (let x = Math.max(tx0, d - ty1); x <= Math.min(tx1, d - ty0); x++) {
+      const y = d - x, px = (x - y) * HW, py = (x + y) * HH;
+      if (px < wx0 - 4 * TW || px > wx1 + 4 * TW || py < wy0 - 40 || py > wy1 + 200) continue;
+      const i = y * N + x, id = G.bld[i];
+      if (id) {
+        const b = G.ents.get(id);
+        if (b && x === b.x + b.s - 1 && y === b.y) drawBuilding(b, dim && !(VIEW_KEEP[view] || []).includes(b.type) && !(view === 'gods' && b.type === 'house'));
+      } else if (G.tree[i]) { if (dim) ctx.globalAlpha = .45; blit(treeSpr(i), px, py); ctx.globalAlpha = 1; }
+      else if (G.rubble[i]) blit(rubbleSpr(G.rubble[i]), px, py);
+    }
+    const ws = buckets.get(d);
+    if (ws) for (const w of ws) drawWalker(w);
+  }
+  drawGhostBuilding();
+  drawSmoke();
+  drawSky(wx0, wx1, wy0, wy1);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const g = ctx.createLinearGradient(0, 0, 0, H * .45);
+  g.addColorStop(0, 'rgba(200,215,225,.16)'); g.addColorStop(1, 'rgba(200,215,225,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * .45);
+  const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .45, W / 2, H / 2, Math.max(W, H) * .8);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(5,10,20,.35)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+}
+// the land is a slab: show its sides along the front edges of the map
+function drawEdges(tx0, tx1, ty0, ty1) {
+  const N = G.N, D = 40;
+  const side = (i, a, b, f) => {
+    const w = isWater(G.terr[i]), g = ctx.createLinearGradient(0, a[1], 0, a[1] + D);
+    g.addColorStop(0, w ? shade('#2f6474', f) : shade('#6b5235', f)); g.addColorStop(.25, w ? shade('#1f4654', f) : shade('#4a3826', f)); g.addColorStop(1, '#16222a');
+    poly(ctx, [a, b, [b[0], b[1] + D], [a[0], a[1] + D]]); ctx.fillStyle = g; ctx.fill();
+  };
+  if (ty1 === N - 1) for (let x = tx0; x <= tx1; x++) { const [px, py] = tileTop(x, N - 1); side((N - 1) * N + x, [px, py + TH], [px - HW, py + HH], 1); }
+  if (tx1 === N - 1) for (let y = ty0; y <= ty1; y++) { const [px, py] = tileTop(N - 1, y); side(y * N + N - 1, [px + HW, py + HH], [px, py + TH], .7); }
+}
+const tileDiamond = (px, py) => [[px, py], [px + HW, py + HH], [px, py + TH], [px - HW, py + HH]];
+
+function drawFoam(tx0, tx1, ty0, ty1, wx0, wx1, wy0, wy1) {
+  const N = G.N;
+  ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+  for (let y = ty0; y <= ty1; y++) for (let x = tx0; x <= tx1; x++) {
+    const i = y * N + x;
+    if (!isWater(G.terr[i])) continue;
+    const px = (x - y) * HW, py = (x + y) * HH;
+    if (px < wx0 - TW || px > wx1 + TW || py < wy0 - TH || py > wy1) continue;
+    const a = .22 + .18 * Math.sin(animT * 1.6 + x * .7 + y * 1.3);
+    ctx.strokeStyle = `rgba(235,245,240,${a})`;
+    const D = tileDiamond(px, py), inset = (p, k) => [p[0] + (px - p[0]) * .1, p[1] + (py + HH - p[1]) * .1 + k];
+    const edge = (nx, ny, a1, b1) => { if (inMap(nx, ny) && !isWater(G.terr[ny * N + nx])) { ctx.beginPath(); const p = inset(D[a1], 0), q = inset(D[b1], 0); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); } };
+    edge(x, y - 1, 0, 1); edge(x + 1, y, 1, 2); edge(x, y + 1, 2, 3); edge(x - 1, y, 3, 0);
+  }
+}
+// chimney / kiln positions per building, in tiles + height
+function smokeAt(b) {
+  if (b.burn) return null;
+  if (b.type === 'house') return b.lvl === 5 ? [b.var & 1 ? .76 : .48, b.var & 1 ? .45 : .76, 33] : b.lvl === 6 ? [.5, .5, 46] : b.lvl === 4 ? [.5, .5, 24] : b.lvl === 3 ? [.5, .5, 22] : null;
+  if (b.type === 'potter') return [1.45, 1.25, 14];
+  if (b.type === 'mead') return [.66, .9, 32];
+  return null;
+}
+function drawBuilding(b, dim) {
+  const [px, py] = tileTop(b.x, b.y), s = bldSpr(b);
+  if (dim) ctx.globalAlpha = .4;
+  blit(s, px, py);
+  ctx.globalAlpha = 1;
+  if (b.burn) drawFlames(b, px, py);
+  const sm = smokeAt(b);
+  if (sm && running() && Math.random() < .03 * SPEEDS[speed]) {
+    const [x, y] = P(sm[0], sm[1], sm[2]);
+    fx.smoke.push({ x: px + x, y: py + y, r: 1.5, life: 0, max: 4 + Math.random() * 2, dark: false });
+  }
+  if (!b.conn && !BLD[b.type].fixed && !['dike', 'well', 'garden', 'rune'].includes(b.type)) {
+    const [x, y] = P(b.s / 2, b.s / 2, b.type === 'house' ? 30 : 46), bob = Math.sin(animT * 4) * 1.5;
+    blob(ctx, px + x, py + y + bob, 5, 5, '#d83a3a'); blob(ctx, px + x, py + y + bob, 3.8, 3.8, '#fff');
+    line(ctx, [px + x - 2.4, py + y + bob + 2.4], [px + x + 2.4, py + y + bob - 2.4], '#d83a3a', 1.2);
+  }
+}
+function drawFlames(b, px, py) {
+  const n = b.s * 4;
+  for (let k = 0; k < n; k++) {
+    const [x, y] = P((hash2(b.id, k, 1) * .8 + .1) * b.s, (hash2(b.id, k, 2) * .8 + .1) * b.s, 4 + hash2(b.id, k, 3) * 10);
+    const fl = .75 + .35 * Math.sin(animT * 13 + k * 1.9), h = (9 + hash2(b.id, k, 4) * 9) * fl, fx0 = px + x, fy0 = py + y;
+    const g = ctx.createLinearGradient(0, fy0 - h, 0, fy0);
+    g.addColorStop(0, 'rgba(255,240,140,.0)'); g.addColorStop(.3, 'rgba(255,200,60,.9)'); g.addColorStop(1, 'rgba(230,70,20,.85)');
+    ctx.beginPath(); ctx.moveTo(fx0 - 3.2, fy0); ctx.quadraticCurveTo(fx0 - 2.5, fy0 - h * .6, fx0 + Math.sin(animT * 9 + k) * 1.5, fy0 - h);
+    ctx.quadraticCurveTo(fx0 + 2.5, fy0 - h * .6, fx0 + 3.2, fy0); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+  }
+  if (Math.random() < .25) { const [x, y] = P(b.s / 2, b.s / 2, 22); fx.smoke.push({ x: px + x, y: py + y, r: 3, life: 0, max: 5, dark: true }); }
+}
+function drawSmoke() {
+  for (const s of fx.smoke) {
+    const k = s.life / s.max, a = (s.dark ? .5 : .32) * (1 - k) * Math.min(1, s.life * 3);
+    blob(ctx, s.x, s.y, s.r, s.r * .85, s.dark ? `rgba(40,36,34,${a})` : `rgba(225,225,220,${a})`);
+  }
+}
+function updateFx(dt, real) {
+  for (const s of fx.smoke) { s.life += dt; s.y -= dt * 7; s.x += dt * (4 + s.life * 2); s.r += dt * (s.dark ? 3 : 1.6); }
+  fx.smoke = fx.smoke.filter(s => s.life < s.max);
+  if (fx.smoke.length > 400) fx.smoke.splice(0, fx.smoke.length - 400);
+  for (const c of fx.clouds) { c.x += real * 6; if (c.x > G.N * HW + 400) c.x = -G.N * HW - 400; }
+}
+function initFx() {
+  const R = mulberry32(G.cfg.seed + 5);
+  fx.smoke = []; fx.clouds = []; fx.gulls = []; tintCv = null;
+  for (let k = 0; k < 7; k++) fx.clouds.push({ x: (R() * 2 - 1) * G.N * HW, y: R() * G.N * TH, rx: 160 + R() * 160, ry: 70 + R() * 60 });
+  const coast = [];
+  for (let i = 0; i < G.terr.length; i++) if (G.terr[i] === T_SAND) coast.push(i);
+  for (let k = 0; k < 8 && coast.length; k++) { const [x, y] = tileCenter(coast[Math.floor(R() * coast.length)]); fx.gulls.push({ x, y, r: 30 + R() * 70, sp: (.3 + R() * .4) * (R() < .5 ? -1 : 1), ph: R() * 6 }); }
+}
+function drawSky(wx0, wx1, wy0, wy1) {
+  for (const c of fx.clouds) {
+    if (c.x + c.rx < wx0 || c.x - c.rx > wx1 || c.y + c.ry < wy0 || c.y - c.ry > wy1) continue;
+    const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.rx);
+    g.addColorStop(0, 'rgba(10,20,30,.13)'); g.addColorStop(1, 'rgba(10,20,30,0)');
+    ctx.save(); ctx.translate(c.x, c.y); ctx.scale(1, c.ry / c.rx); ctx.translate(-c.x, -c.y);
+    ctx.fillStyle = g; ctx.fillRect(c.x - c.rx, c.y - c.rx, c.rx * 2, c.rx * 2); ctx.restore();
+  }
+  if (cam.z < .5) return;
+  ctx.lineWidth = 1.1; ctx.strokeStyle = '#f4f4ee';
+  for (const g of fx.gulls) {
+    const a = animT * g.sp + g.ph, x = g.x + Math.cos(a) * g.r, y = g.y + Math.sin(a) * g.r * .5 - 70, f = Math.sin(animT * 8 + g.ph) * 1.8;
+    ctx.beginPath(); ctx.moveTo(x - 4, y - f); ctx.quadraticCurveTo(x - 2, y - 2.5, x, y); ctx.quadraticCurveTo(x + 2, y - 2.5, x + 4, y - f); ctx.stroke();
+  }
+}
+
+// ---------- walkers ----------
+const WLOOK = {
+  immigrant: ['#7c6a4e', '#4a3a26'], cart: ['#8a5a36', '#3a2a1a'], fetch: ['#8a5a36', '#3a2a1a'], buyer: ['#a85a3e', '#6a3a1a'],
+  seller: ['#c0483a', '#d8b878'], watch: ['#3a5c9c', '#2a2a2a'], tax: ['#5a3a7a', '#1e1a24'], skald: ['#3a7a4a', '#8a5a2a'],
+};
+function drawWalker(w) {
+  const [ax, ay] = tileCenter(w.cur), [bx, by] = w.nxt >= 0 ? tileCenter(w.nxt) : [ax, ay];
+  const off = ((w.id % 3) - 1) * 2.5;
+  const x = ax + (bx - ax) * w.t + off, y = ay + (by - ay) * w.t + off * .4;
+  const dir = bx > ax ? 1 : bx < ax ? -1 : (w.id & 1 ? 1 : -1);
+  const sw = w.nxt >= 0 ? animT * 9 * w.speed * SPEEDS[speed] ** .5 + w.ph : 0;
+  const c = ctx;
+  if (w.kind === 'priest') return figure(c, x, y, dir, sw, GOD[w.god].col, '#e8e0d0', 'staff', true);
+  const [body, hair] = WLOOK[w.kind];
+  if (w.kind === 'cart' || w.kind === 'fetch') {
+    const full = w.kind === 'cart' ? !w.back && w.n > 0 : w.back && w.n > 0;
+    handcart(c, x + dir * 6, y, dir, full ? GOOD[w.good].col : null);
+  }
+  figure(c, x, y, dir, sw, body, hair, w.kind === 'immigrant' ? 'bundle' : w.kind === 'seller' ? 'basket' : w.kind === 'buyer' ? (w.back ? 'basket' : 'none') : w.kind === 'watch' ? 'bucket' : w.kind === 'tax' ? 'satchel' : w.kind === 'skald' ? 'lyre' : 'push', w.kind === 'seller' || w.kind === 'buyer');
+  if (w.kind === 'immigrant' && w.n >= 3) figure(c, x - dir * 5, y - 1.5, dir, sw + 1.4, '#6a5a44', '#3a2a1a', 'none', true, .8);
+}
+function figure(c, x, y, dir, sw, body, hair, item, long, s = 1) {
+  blob(c, x + 1.5, y, 3.2 * s, 1.1 * s, 'rgba(0,0,0,.28)');
+  const l = Math.sin(sw) * 1.5 * s;
+  line(c, [x - .6 * s, y - 3.6 * s], [x - .6 * s + l, y], '#33261a', 1 * s);
+  line(c, [x + .6 * s, y - 3.6 * s], [x + .6 * s - l, y], '#2a1e14', 1 * s);
+  const bot = long ? 1 : 3.2;
+  fillPoly(c, [[x - 2 * s, y - bot * s], [x + 2 * s, y - bot * s], [x + 1.5 * s, y - 8 * s], [x - 1.5 * s, y - 8 * s]], body);
+  fillPoly(c, [[x, y - bot * s], [x + 2 * s, y - bot * s], [x + 1.5 * s, y - 8 * s], [x, y - 8 * s]], 'rgba(0,0,0,.18)');
+  if (item !== 'push') line(c, [x + dir * 1.3 * s, y - 7.4 * s], [x + dir * (1.7 + Math.sin(sw) * .6) * s, y - 4.6 * s], shade(body, .78), .9 * s);
+  else line(c, [x + dir * 1.2 * s, y - 7.2 * s], [x + dir * 3.6 * s, y - 5 * s], shade(body, .78), .9 * s);
+  blob(c, x, y - 9.5 * s, 1.6 * s, 1.6 * s, '#e3bd98');
+  blob(c, x - dir * .4 * s, y - 10.4 * s, 1.6 * s, 1 * s, hair);
+  if (item === 'bundle') blob(c, x - dir * 2 * s, y - 7 * s, 1.8 * s, 1.8 * s, '#c8b48a');
+  else if (item === 'basket') { blob(c, x, y - 11.6 * s, 2.4 * s, 1 * s, '#9a7444'); blob(c, x, y - 12.2 * s, 1.8 * s, .7 * s, '#d8b04a'); }
+  else if (item === 'bucket') fillPoly(c, [[x + dir * 2.2, y - 4.6], [x + dir * 4.4, y - 4.6], [x + dir * 4, y - 2], [x + dir * 2.6, y - 2]], '#8a8a90');
+  else if (item === 'satchel') blob(c, x - dir * 1.6, y - 4.6, 1.5, 1.3, '#6a4a28');
+  else if (item === 'lyre') { line(c, [x + dir * 2, y - 7], [x + dir * 3, y - 3.5], '#c89a40', .8); line(c, [x + dir * 3.6, y - 7], [x + dir * 3, y - 3.5], '#c89a40', .8); }
+  else if (item === 'staff') line(c, [x + dir * 2.4, y - 12], [x + dir * 2.4, y], '#6a4a28', .9);
+}
+function handcart(c, x, y, dir, load) {
+  blob(c, x + 1, y, 4.5, 1.3, 'rgba(0,0,0,.25)');
+  fillPoly(c, [[x - 4, y - 5], [x + 4, y - 5], [x + 3.4, y - 2.6], [x - 3.4, y - 2.6]], '#7a5432');
+  if (load) { blob(c, x - 1.5, y - 5.6, 2.2, 1.6, load); blob(c, x + 1.5, y - 5.8, 2.2, 1.8, shade(load.length === 7 ? load : '#cccccc', .85)); }
+  c.beginPath(); c.arc(x + dir * .5, y - 2, 2, 0, Math.PI * 2); c.strokeStyle = '#3a2a1a'; c.lineWidth = .9; c.stroke();
+  line(c, [x - dir * 4, y - 4.6], [x - dir * 6.6, y - 5.2], '#5a3e24', .8);
+}
+
+// ---------- ghost of what you are about to build ----------
+function toolTiles() {
+  if (!tool.type || hoverTile < 0) return [];
+  const N = G.N, hx = hoverTile % N, hy = (hoverTile / N) | 0;
+  const d = tool.drag || { x0: hx, y0: hy, x1: hx, y1: hy }, out = [];
+  if (!DRAG_TOOLS.has(tool.type)) return [[hx, hy]];
+  if (LINE_TOOLS.has(tool.type)) {
+    const sx = Math.sign(d.x1 - d.x0), sy = Math.sign(d.y1 - d.y0);
+    for (let x = d.x0; ; x += sx) { out.push([x, d.y0]); if (x === d.x1 || !sx) break; }
+    if (sy) for (let y = d.y0 + sy; ; y += sy) { out.push([d.x1, y]); if (y === d.y1) break; }
+    return out;
+  }
+  for (let y = Math.min(d.y0, d.y1); y <= Math.max(d.y0, d.y1); y++) for (let x = Math.min(d.x0, d.x1); x <= Math.max(d.x0, d.x1); x++) out.push([x, y]);
+  return out;
+}
+function toolPlan() {
+  const tiles = toolTiles(), plan = [];
+  let cost = 0, why = '';
+  for (const [x, y] of tiles) {
+    if (tool.type === 'clear') { const c = clearTile(x, y, true); if (c >= 0) { plan.push([x, y, true]); cost += BLD.clear.cost; } else plan.push([x, y, false]); continue; }
+    const p = placeProblem(tool.type, x, y);
+    if (p) { plan.push([x, y, false]); if (!why) why = p; continue; }
+    plan.push([x, y, true]); cost += placeCost(tool.type, x, y);
+  }
+  return { plan, cost, why };
+}
+let planCache = null;
+function drawGhostTiles() {
+  planCache = null;
+  if (!tool.type || hoverTile < 0) return;
+  planCache = toolPlan();
+  const s = BLD[tool.type].size || 1, broke = G.money < planCache.cost;
+  for (const [x, y, ok] of planCache.plan) {
+    const [px, py] = tileTop(x, y);
+    const col = !ok ? 'rgba(255,70,60,.42)' : tool.type === 'clear' ? 'rgba(255,170,60,.42)' : broke ? 'rgba(255,200,60,.4)' : 'rgba(90,255,130,.35)';
+    poly(ctx, diamond(0, 0, s, s).map(p => [p[0] + px, p[1] + py])); ctx.fillStyle = col; ctx.fill();
+  }
+  if (tool.type === 'well' && planCache.plan[0]) {
+    const [x, y] = planCache.plan[0], [px, py] = tileTop(x - 2, y - 2);
+    poly(ctx, diamond(0, 0, 5, 5).map(p => [p[0] + px, p[1] + py])); ctx.strokeStyle = 'rgba(90,170,255,.9)'; ctx.lineWidth = 1.5 / cam.z; ctx.stroke();
+  }
+}
+function drawGhostBuilding() {
+  if (!planCache || !tool.type || DRAG_TOOLS.has(tool.type) || tool.type === 'clear') return;
+  const [x, y, ok] = planCache.plan[0] || [];
+  if (x === undefined || !ok) return;
+  const [px, py] = tileTop(x, y), fake = { type: tool.type, x, y, s: BLD[tool.type].size, lvl: 3, var: 1, out: 8, id: -1 };
+  ctx.globalAlpha = .7; blit(bldSpr(fake), px, py); ctx.globalAlpha = 1;
+}
+
+// ====================================================================
+// Input
+// ====================================================================
+const pointers = new Map();
+let pan = null, pinch = null, lastPt = [0, 0];
+const keys = new Set();
+function tileUnder(sx, sy) {
+  const [wx, wy] = screenToWorld(sx, sy), [x, y] = worldToTile(wx, wy);
+  return inMap(x, y) ? y * G.N + x : -1;
+}
+function setTool(t) {
+  tool.type = tool.type === t ? null : t; tool.drag = null;
+  renderItems(); updateTip();
+}
+function commitTool() {
+  const { plan, cost } = toolPlan();
+  if (!plan.some(p => p[2])) { if (tool.type && !DRAG_TOOLS.has(tool.type)) sfx('nope'); return; }
+  if (G.money < cost && tool.type !== 'clear') { sfx('nope'); toast('Not enough silver: that costs ' + cost + '.', 'bad'); return; }
+  let n = 0;
+  for (const [x, y, ok] of plan) {
+    if (!ok) continue;
+    if (tool.type === 'clear') { if (G.money >= BLD.clear.cost && clearTile(x, y) >= 0) { G.money -= BLD.clear.cost; n++; } }
+    else if (build(tool.type, x, y)) n++;
+  }
+  if (n) sfx(tool.type === 'clear' ? 'clear' : tool.type === 'road' ? 'road' : 'build');
+  if (tool.type !== 'clear' && tool.type !== 'road' && tool.type !== 'house' && tool.type !== 'dike' && n && !DRAG_TOOLS.has(tool.type)) { /* keep the tool for building more */ }
+}
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('pointerdown', e => {
+  if (!G) return;
+  audio();
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: cam.z, mx: (a[0] + b[0]) / 2, my: (a[1] + b[1]) / 2 };
+    tool.drag = null; pan = null; return;
+  }
+  hoverTile = tileUnder(e.clientX, e.clientY);
+  if (e.button === 0 && tool.type && DRAG_TOOLS.has(tool.type) && hoverTile >= 0) {
+    const x = hoverTile % G.N, y = (hoverTile / G.N) | 0;
+    tool.drag = { x0: x, y0: y, x1: x, y1: y };
+    return;
+  }
+  pan = { sx: e.clientX, sy: e.clientY, cx: cam.x, cy: cam.y, btn: e.button, moved: false };
+});
+canvas.addEventListener('pointermove', e => {
+  if (!G) return;
+  lastPt = [e.clientX, e.clientY];
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pinch && pointers.size === 2) {
+    const [a, b] = [...pointers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    zoomAt(pinch.z * d / pinch.d, mx, my);
+    cam.x -= (mx - pinch.mx) / cam.z; cam.y -= (my - pinch.my) / cam.z; pinch.mx = mx; pinch.my = my;
+    clampCam(); return;
+  }
+  hoverTile = tileUnder(e.clientX, e.clientY);
+  if (tool.drag && hoverTile >= 0) { tool.drag.x1 = hoverTile % G.N; tool.drag.y1 = (hoverTile / G.N) | 0; }
+  if (pan) {
+    const dx = e.clientX - pan.sx, dy = e.clientY - pan.sy;
+    if (!pan.moved && Math.hypot(dx, dy) > 6) { pan.moved = true; canvas.classList.add('pan'); }
+    if (pan.moved) { cam.x = pan.cx - dx / cam.z; cam.y = pan.cy - dy / cam.z; clampCam(); }
+  }
+  updateTip();
+});
+function endPointer(e) {
+  if (!G) return;
+  pointers.delete(e.pointerId);
+  if (pinch) { if (pointers.size < 2) pinch = null; pan = null; return; }
+  if (tool.drag) { commitTool(); tool.drag = null; updateTip(); return; }
+  if (pan) {
+    if (!pan.moved && e.type === 'pointerup') {
+      if (pan.btn === 2) { if (tool.type) setTool(null); else select(-1); }
+      else if (pan.btn === 0) {
+        if (tool.type) commitTool();
+        else select(tileUnder(e.clientX, e.clientY));
+      }
+    }
+    pan = null; canvas.classList.remove('pan');
+  }
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('pointerleave', () => { if (!pointers.size) { hoverTile = -1; updateTip(); } });
+canvas.addEventListener('wheel', e => { e.preventDefault(); if (G) zoomAt(cam.z * Math.exp(-e.deltaY * .0015), e.clientX, e.clientY); }, { passive: false });
+function zoomAt(z, sx, sy) {
+  const [wx, wy] = screenToWorld(sx, sy);
+  cam.z = clamp(z, .35, 2.2);
+  cam.x = wx - (sx - W / 2) / cam.z; cam.y = wy - (sy - H / 2) / cam.z;
+  clampCam();
+}
+function clampCam() {
+  if (!G) return;
+  cam.x = clamp(cam.x, -G.N * HW, G.N * HW); cam.y = clamp(cam.y, 0, G.N * TH);
+}
+function centerOn(i) { [cam.x, cam.y] = tileCenter(i); clampCam(); }
+addEventListener('keydown', e => {
+  if (!G || $('setup').hidden === false) return;
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { keys.add(k); e.preventDefault(); return; }
+  if (!$('pause').hidden || !$('over').hidden) { if (k === 'escape' && !$('pause').hidden) resume(); return; }
+  if (k === 'escape') { if (tool.type) setTool(null); else if (selected || selTile >= 0) select(-1); else openPause(); }
+  else if (k === ' ') { e.preventDefault(); setSpeed(speed ? 0 : lastSpeed || 1); }
+  else if (k === '1' || k === '2' || k === '3') setSpeed(+k);
+  else if (k === 'r') setTool('road');
+  else if (k === 'h') setTool('house');
+  else if (k === 'c') setTool('clear');
+  else if (k === 'v') cycleView();
+  else if (k === '+' || k === '=') zoomAt(cam.z * 1.2, W / 2, H / 2);
+  else if (k === '-') zoomAt(cam.z / 1.2, W / 2, H / 2);
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => keys.clear());
+function keyPan(dt) {
+  if (!keys.size) return;
+  const sp = 700 * dt / cam.z;
+  if (keys.has('arrowup') || keys.has('w')) cam.y -= sp;
+  if (keys.has('arrowdown') || keys.has('s')) cam.y += sp;
+  if (keys.has('arrowleft') || keys.has('a')) cam.x -= sp;
+  if (keys.has('arrowright') || keys.has('d')) cam.x += sp;
+  clampCam();
+}
+
+// ====================================================================
+// UI
+// ====================================================================
+const $ = id => document.getElementById(id);
+const SPEEDS = [0, 1, 2, 4];
+let speed = 1, lastSpeed = 1, cat = null, paused = true;
+const running = () => G && !paused && speed > 0;
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+function show(id) {
+  for (const o of ['setup', 'pause', 'over']) $(o).hidden = o !== id;
+  paused = !!id;
+  $('hud').hidden = $('bar').hidden = id === 'setup';
+}
+function setSpeed(s) {
+  if (s) lastSpeed = s;
+  speed = s;
+  $('speed').replaceChildren(...SPEEDS.map((v, k) => {
+    const b = document.createElement('button'); b.className = 'hb'; b.textContent = ['II', '>', '>>', '>>>'][k];
+    b.title = ['Pause (space)', 'Normal speed (1)', 'Fast (2)', 'Fastest (3)'][k];
+    b.setAttribute('aria-pressed', k === speed); b.onclick = () => { setSpeed(k); sfx('click'); };
+    return b;
+  }));
+}
+function cycleView() {
+  const k = (VIEWS.findIndex(v => v[0] === view) + 1) % VIEWS.length;
+  view = VIEWS[k][0]; $('viewBtn').textContent = 'VIEW: ' + VIEWS[k][1];
+  if (view === 'flood') toast('Red floods in any storm, orange in a heavy one, yellow only in a terrible one. Dikes stop the water.', 'tip');
+}
+const thumbs = new Map();
+function renderCats() {
+  $('cats').replaceChildren(...CATS.map(([id, label]) => {
+    const b = document.createElement('button'); b.className = 'hb'; b.textContent = label;
+    b.setAttribute('aria-pressed', cat === id);
+    b.onclick = () => { cat = cat === id ? null : id; renderCats(); renderItems(); sfx('click'); };
+    return b;
+  }));
+}
+function renderItems() {
+  if (!cat) { $('items').replaceChildren(); return; }
+  $('items').replaceChildren(...Object.entries(BLD).filter(([, d]) => d.cat === cat).map(([type, d]) => {
+    const b = document.createElement('button'); b.className = 'item'; b.title = d.name + ': ' + d.desc + (d.workers ? ' (' + d.workers + ' workers)' : '');
+    if (!thumbs.has(type)) thumbs.set(type, thumb(type));
+    const cv = thumbs.get(type), copy = document.createElement('canvas'); copy.width = cv.width; copy.height = cv.height; copy.getContext('2d').drawImage(cv, 0, 0);
+    const nm = document.createElement('b'); nm.textContent = d.name;
+    const cs = document.createElement('small'); cs.textContent = type === 'clear' ? d.cost + ' / TILE' : d.cost;
+    b.append(copy, nm, cs);
+    b.setAttribute('aria-pressed', tool.type === type);
+    b.onclick = () => { setTool(type); sfx('click'); };
+    return b;
+  }));
+}
+function updateTip() {
+  const tip = $('tip');
+  if (!G || !tool.type || hoverTile < 0 || paused) { tip.hidden = true; return; }
+  const p = toolPlan(), ok = p.plan.filter(q => q[2]).length;
+  let text = BLD[tool.type].name;
+  if (!ok) text = p.why || (tool.type === 'clear' ? 'Nothing to clear' : 'Cannot build here');
+  else {
+    text += (ok > 1 ? ' x' + ok : '') + ': ' + p.cost + ' silver' + (G.money < p.cost ? ' (too expensive)' : '');
+    if (tool.type === 'farm' || tool.type === 'dairy') { const [x, y] = p.plan[0]; text += ' · soil ' + Math.round(fertOf({ x, y, s: 3 }, BLD[tool.type].fert) * 100) + '%'; }
+  }
+  tip.textContent = text; tip.hidden = false;
+  tip.style.left = lastPt[0] + 'px'; tip.style.top = lastPt[1] + 'px';
+}
+
+let toastN = 0;
+function toast(text, kind = 'info', at = -1) {
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = text;
+  el.style.setProperty('--c', { bad: 'var(--red)', good: 'var(--green)', tip: 'var(--cyan)', info: 'var(--line)' }[kind] || 'var(--line)');
+  if (at >= 0) { el.title = 'Click to look'; el.onclick = () => { centerOn(at); el.remove(); }; } else el.onclick = () => el.remove();
+  const box = $('toasts'); box.prepend(el);
+  while (box.children.length > 4) box.lastChild.remove();
+  setTimeout(() => { el.classList.add('fade'); setTimeout(() => el.remove(), 700); }, kind === 'tip' ? 13000 : 7000);
+}
+function drainEvents() {
+  for (const e of G.ev) {
+    if (e[0] === 'msg') { toast(e[1], e[2], e[3]); if (e[2] === 'bad' && !G.ev.some(x => x[0] === 'sfx')) sfx('bell'); }
+    else if (e[0] === 'sfx') sfx(e[1]);
+    else if (e[0] === 'autosave') saveGame(true);
+    else if (e[0] === 'win') { sfx('win'); openOver(); }
+  }
+  G.ev.length = 0;
+}
+
+let hudT = 0;
+function updateHud() {
+  $('hMoney').textContent = fmt(G.money);
+  $('sMoney').className = 'st' + (G.money < 0 ? ' bad' : G.money < 200 ? ' warn' : '');
+  $('sMoney').title = 'Silver (sceattas). Last month: +' + G.ledger.tax + ' taxes, -' + G.ledger.wages + ' wages.';
+  $('hPop').textContent = fmt(G.pop);
+  $('hWork').textContent = G.employed + '/' + G.jobs;
+  $('sWork').className = 'st' + (G.jobs > G.workforce ? ' warn' : G.unemployed > .1 ? ' warn' : '');
+  $('sWork').title = G.jobs > G.workforce ? 'Not enough workers: every workplace runs at ' + Math.round(G.staffR * 100) + '%. Build more houses.'
+    : G.workforce - G.employed > 0 ? (G.workforce - G.employed) + ' people have no work. Build more workplaces.' : 'Everyone who can work has a job.';
+  $('hMood').textContent = G.sentiment + '%';
+  $('sMood').className = 'st' + (G.sentiment < 30 ? ' bad' : G.sentiment < 45 ? ' warn' : '');
+  $('hDate').textContent = MONTH_NAMES[G.month] + ' ' + G.year;
+  $('hTax').textContent = G.taxRate + '%';
+  if (!$('info').hidden) renderInfo();
+  if (!$('godsPanel').hidden) renderGods();
+  if (!$('goalsPanel').hidden) renderGoals();
+}
+$('taxDown').onclick = () => { G.taxRate = Math.max(0, G.taxRate - 1); updateHud(); sfx('click'); };
+$('taxUp').onclick = () => { G.taxRate = Math.min(25, G.taxRate + 1); updateHud(); sfx('click'); };
+$('viewBtn').onclick = () => { cycleView(); sfx('click'); };
+$('godsBtn').onclick = () => { togglePanel('godsPanel'); renderGods(); sfx('click'); };
+$('goalsBtn').onclick = () => { togglePanel('goalsPanel'); renderGoals(); sfx('click'); };
+$('menuBtn').onclick = () => openPause();
+for (const x of document.querySelectorAll('[data-close]')) x.onclick = () => { $(x.dataset.close).hidden = true; if (x.dataset.close === 'info') select(-1); };
+function togglePanel(id) {
+  const open = $(id).hidden;
+  for (const p of ['info', 'godsPanel', 'goalsPanel']) $(p).hidden = true;
+  $(id).hidden = !open;
+  if (id !== 'info') { selected = 0; selTile = -1; }
+}
+
+function select(i) {
+  selected = 0; selTile = -1;
+  if (i >= 0) { if (G.bld[i]) selected = G.bld[i]; else selTile = i; }
+  if (selected || selTile >= 0) { togglePanel('info'); $('info').hidden = false; renderInfo(); sfx('click'); }
+  else $('info').hidden = true;
+}
+const yes = (ok, text) => `<span class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'}</span> ${text}`;
+function bar(v, col) { return `<div class="bar"><i style="width:${clamp(v, 0, 100)}%;background:${col}"></i></div>`; }
+function renderInfo() {
+  const el = $('infoBody'), mc = now();
+  if (selTile >= 0) {
+    const i = selTile, t = G.terr[i];
+    const name = t === T_SEA ? 'The North Sea' : t === T_RIVER ? 'River' : t === T_SAND ? 'Dunes and beach' : t === T_MARSH ? 'Peat bog' : G.elev[i] === 0 ? 'Salt marsh' : G.tree[i] ? 'Woodland' : G.road[i] ? 'Road' : 'Meadow';
+    let html = `<h3>${name.toUpperCase()}</h3>`;
+    if (!isWater(t)) {
+      html += `<div class="kv"><span>Height</span><b>${['Sea level', 'Low', 'Middling', 'High'][G.elev[i]]}</b>`;
+      html += `<span>Floods</span><b>${['in any storm', 'in heavy storms', 'only in terrible storms', 'never'][G.elev[i]]}</b>`;
+      html += `<span>Soil for rye</span><b>${G.elev[i] === 0 ? 'too salty' : Math.round(G.fert[i] * 100) + '%'}</b>`;
+      html += `<span>Beauty</span><b>${Math.round(G.des[i])}</b></div>`;
+      if (G.road[i] && i === G.entry) html += '<p>The old road. Settlers come in this way.</p>';
+      if (t === T_MARSH) html += '<p>Too wet to build on, except for a clay pit, roads and dikes.</p>';
+      if (G.tree[i]) html += '<p>Trees cost ' + TREE_COST + ' silver to clear when you build here.</p>';
+    } else html += '<p>' + (t === T_RIVER ? 'Roads cross rivers as wooden bridges (' + BRIDGE_COST + ' extra).' : 'Fishers build on the shore.') + '</p>';
+    el.innerHTML = html; return;
+  }
+  const b = G.ents.get(selected);
+  if (!b) { $('info').hidden = true; selected = 0; return; }
+  const d = BLD[b.type];
+  let html = '';
+  if (b.type === 'house') {
+    const H = HOUSES[b.lvl], i = b.y * G.N + b.x;
+    html += `<h3>${H.name.toUpperCase()}</h3>`;
+    html += `<div class="kv"><span>People</span><b>${b.res} / ${HOUSES[Math.max(1, b.lvl)].cap}${b.inc ? ' (+' + b.inc + ' coming)' : ''}</b>`;
+    html += `<span>Beauty</span><b>${Math.round(G.des[i])}</b>`;
+    html += `<span>Pays taxes</span><b>${mc - b.tax < TAX_MONTHS ? '<span class="ok">yes</span>' : '<span class="no">no reeve visits</span>'}</b></div>`;
+    const foods = FOODS.filter(f => b.food[f] > .05).map(f => GOOD[f].name.toLowerCase() + ' ' + Math.ceil(b.food[f]));
+    const gods = GODS.filter(g => mc - (b.rel[g.id] ?? -99) < SVC_MONTHS).map(g => `<span style="color:${g.col}">${g.name}</span>`);
+    html += '<p>' + [yes(G.water[i], 'water'), yes(foods.length, 'food' + (foods.length ? ': ' + foods.join(', ') : '')),
+      yes(gods.length, 'gods' + (gods.length ? ': ' + gods.join(', ') : '')), yes(b.pottery > 0, 'pottery'),
+      yes(mc - b.ent < SVC_MONTHS, 'mead hall'), yes(b.cloth > 0, 'cloth')].join('<br>') + '</p>';
+    const want = houseWants(b);
+    html += want ? `<div class="need">To grow it needs <b>${esc(want)}</b>.</div>` : '<div class="need">As grand as a house gets. Keep it supplied!</div>';
+    html += `<p>Fire risk</p>${bar(b.fire / .7, b.fire > 50 ? '#ff5a5a' : '#ffb03a')}`;
+  } else {
+    html += `<h3>${d.name.toUpperCase()}</h3><p>${esc(d.desc)}</p><div class="kv">`;
+    if (d.workers) html += `<span>Workers</span><b>${Math.round(b.staff * d.workers)} / ${d.workers}</b>`;
+    if (d.makes) {
+      if (d.uses) html += `<span>${GOOD[d.uses].name} in stock</span><b>${Math.floor(b.inp)}</b>`;
+      html += `<span>${GOOD[d.makes].name} ready</span><b>${Math.floor(b.out)}</b>`;
+      if (d.fert) html += `<span>Soil</span><b>${Math.round(fertOf(b, d.fert) * 100)}%</b>`;
+      html += `<span>Output</span><b>~${(d.rate * b.staff * (d.fert ? fertOf(b, d.fert) : 1)).toFixed(1)} a month</b>`;
+    }
+    if (d.god) { const g = G.gods[d.god]; html += `<span>${GOD[d.god].name} is</span><b style="color:${GOD[d.god].col}">${moodWord(g.mood)}</b>`; }
+    if (b.stock) for (const g in b.stock) html += `<span>${GOOD[g].name}</span><b>${Math.floor(b.stock[g])}${b.type === 'store' ? ' / ' + BLD.store.cap : ''}</b>`;
+    html += '</div>';
+    if (b.status) html += `<div class="need"><b>${esc(b.status)}</b></div>`;
+    if (b.burn) html += `<div class="need"><b>On fire!</b> A fire watch walking past can still save it.</div>`;
+    if (d.fire) html += `<p>Fire risk</p>${bar(b.fire / .7, b.fire > 50 ? '#ff5a5a' : '#ffb03a')}`;
+  }
+  if (!d.fixed) html += `<div class="stack"><button class="btn" id="demolish" style="--c:var(--pink)">CLEAR (${BLD.clear.cost})</button></div>`;
+  el.innerHTML = html;
+  const dm = $('demolish');
+  if (dm) dm.onclick = () => { if (clearTile(b.x, b.y) >= 0) { G.money -= BLD.clear.cost; sfx('clear'); select(-1); } };
+}
+function renderGods() {
+  const c = festivalCost();
+  $('godsBody').innerHTML = '<p>Each god wants about one temple for every 500 people, and they are jealous of each other. A festival cheers one up for a while.</p>' + GODS.map(g => {
+    const s = G.gods[g.id], n = templeCount(g.id);
+    return `<div class="god"><h4 style="color:${g.col}">${g.name.toUpperCase()}</h4><button class="btn" data-fest="${g.id}" style="--c:${g.col}" ${s.festCd > 0 || G.money < c ? 'disabled' : ''}>FESTIVAL ${c}</button>
+      <div class="role">${g.role} ${n ? n + ' temple' + (n > 1 ? 's' : '') : '<span class="no">No temple</span>'} · <b class="${s.mood < 35 ? 'no' : s.mood < 50 ? 'meh' : 'ok'}" style="font-weight:400">${moodWord(s.mood)}</b></div>${bar(s.mood, g.col)}</div>`;
+  }).join('');
+  for (const b of $('godsBody').querySelectorAll('[data-fest]')) b.onclick = () => { if (festival(b.dataset.fest)) { drainEvents(); renderGods(); } };
+}
+function renderGoals() {
+  $('goalsBody').innerHTML = `<p>Make ${esc(G.name)} the pride of Frisia:</p>` + goalList().map(([t, ok, prog]) =>
+    `<div class="goal"><i class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '○'}</i><span>${esc(t)}${prog ? ' <span style="color:var(--dim)">(' + prog + ')</span>' : ''}</span></div>`).join('') +
+    (G.won ? '<p class="ok">All done! The Frisians call you their king.</p>' : '');
+}
+function openPause() {
+  if (!G) return;
+  $('pauseStats').innerHTML = `<div>TOWN<b>${esc(G.name.toUpperCase())}</b></div><div>PEOPLE<b>${fmt(G.pop)}</b></div><div>SILVER<b>${fmt(G.money)}</b></div>`;
+  $('soundBtn').textContent = 'SOUND: ' + (settings.sound ? 'ON' : 'OFF');
+  show('pause'); setTool(null);
+}
+function resume() { show(null); }
+function openOver() {
+  $('overText').textContent = `${G.name} has become the pride of the Frisian coast. The Thing gathers and names you king of the Lowlands. The gods are pleased, for now.`;
+  $('overStats').innerHTML = `<div>PEOPLE<b>${fmt(G.pop)}</b></div><div>YEARS<b>${G.year - START_YEAR}</b></div><div>FLOODS<b>${G.stats.floods}</b></div>`;
+  show('over');
+}
+$('resumeBtn').onclick = () => { resume(); sfx('click'); };
+$('saveBtn').onclick = () => { saveGame(); sfx('click'); };
+$('soundBtn').onclick = () => { settings.sound = !settings.sound; saveSettings(); $('soundBtn').textContent = 'SOUND: ' + (settings.sound ? 'ON' : 'OFF'); audio(); };
+$('quitBtn').onclick = () => { saveGame(true); G = null; renderSetup(); show('setup'); };
+$('keepBtn').onclick = () => { resume(); sfx('click'); };
+$('overNewBtn').onclick = () => { G = null; setup.tab = 'new'; renderSetup(); show('setup'); };
+
+// ====================================================================
+// Saving
+// ====================================================================
+const SAVE_KEY = 'polderheim', TOWN_KEY = 'polderheim-town';
+const settings = { size: 'medium', diff: 'normal', seed: (Math.random() * 1e9) | 0, sound: true };
+try { Object.assign(settings, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch (e) { /* private mode */ }
+function saveSettings() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(settings)); } catch (e) { /* private mode */ } }
+const NAME_A = ['Dok', 'Wier', 'Hol', 'Sne', 'Fran', 'Bols', 'Stav', 'Harl', 'Wor', 'Ame', 'Mak', 'Lin', 'Ter', 'Wijn', 'Ees', 'Rau', 'Hin', 'Ferw'];
+const NAME_B = ['kum', 'um', 'wert', 'sum', 'ward', 'dam', 'werd', 'hem', 'gum', 'ens', 'ingen', 'wier', 'buren', 'terp'];
+const townName = seed => { const R = mulberry32(seed ^ 0x5bd1); return NAME_A[Math.floor(R() * NAME_A.length)] + NAME_B[Math.floor(R() * NAME_B.length)]; };
+
+function saveGame(quiet) {
+  if (!G) return;
+  const ents = [...G.ents.values()].filter(b => !BLD[b.type].fixed).map(b => {
+    const o = { t: b.type, x: b.x, y: b.y, out: b.out, inp: b.inp, prog: b.prog, fire: Math.round(b.fire), burn: b.burn };
+    if (b.type === 'house') Object.assign(o, { lvl: b.lvl, res: b.res, food: b.food, pottery: b.pottery, cloth: b.cloth, rel: b.rel, ent: b.ent, tax: b.tax });
+    if (b.stock) o.stock = b.stock;
+    return o;
+  });
+  const flood = []; G.flood.forEach((v, i) => { if (v > 0) flood.push(i, v); });
+  const data = { v: 1, cfg: G.cfg, money: G.money, taxRate: G.taxRate, t: G.t, monthT: G.monthT, month: G.month, year: G.year,
+    sentiment: G.sentiment, boost: G.boost, gods: G.gods, storm: G.storm, won: G.won, tips: G.tips, stats: G.stats,
+    tree: Array.from(G.tree).join(''), road: Array.from(G.road).join(''), rubble: Array.from(G.rubble).join(''), flood, ents, cam: [cam.x, cam.y, cam.z] };
+  try { localStorage.setItem(TOWN_KEY, JSON.stringify(data)); if (!quiet) toast('Town saved.', 'good'); }
+  catch (e) { if (!quiet) toast('Could not save (is private browsing on?)', 'bad'); }
+}
+function loadSave() { try { return JSON.parse(localStorage.getItem(TOWN_KEY)); } catch (e) { return null; } }
+function loadGame(s) {
+  makeWorld(s.cfg);
+  G.ents.clear(); G.bld.fill(0); G.nextId = 1;
+  const num = str => Uint8Array.from(str, ch => ch.charCodeAt(0) - 48);
+  G.tree.set(num(s.tree)); G.road.set(num(s.road)); G.rubble.set(num(s.rubble));
+  for (let k = 0; k < s.flood.length; k += 2) G.flood[s.flood[k]] = s.flood[k + 1];
+  if (G.hune) addBuilding('hunebed', G.hune[0], G.hune[1]);
+  for (const o of s.ents) {
+    if (!BLD[o.t]) continue;
+    const b = addBuilding(o.t, o.x, o.y);
+    const { t, x, y, ...rest } = o;
+    Object.assign(b, rest);
+  }
+  for (const k of ['money', 'taxRate', 't', 'monthT', 'month', 'year', 'sentiment', 'boost', 'storm', 'won', 'tips', 'stats']) if (k in s) G[k] = s[k];
+  for (const g of GODS) if (s.gods && s.gods[g.id]) G.gods[g.id] = s.gods[g.id];
+  G.roadV++; updateConn(); labor(); calcDes(); calcWater();
+  G.pop = [...G.ents.values()].reduce((a, b) => a + (b.res || 0), 0);
+  if (s.cam) [cam.x, cam.y, cam.z] = s.cam; else centerOn(G.start);
+}
+addEventListener('pagehide', () => { if (G) saveGame(true); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && G) saveGame(true); });
+
+// ====================================================================
+// Sound: made on the fly
+// ====================================================================
+let AC = null, master = null, sfxGain = null, amb = null;
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      master = AC.createGain(); master.connect(AC.destination);
+      sfxGain = AC.createGain(); sfxGain.connect(master);
+    } catch (e) { AC = null; }
+  }
+  if (AC && AC.state === 'suspended') AC.resume();
+  if (AC) { master.gain.value = settings.sound ? .55 : 0; if (settings.sound && !amb) ambience(); }
+  return AC;
+}
+function tone(f0, f1, dur, type = 'triangle', vol = .05, delay = 0) {
+  const a = audio(); if (!a || !settings.sound) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(sfxGain); o.start(t); o.stop(t + dur + .05);
+}
+let noiseBuf = null;
+function noiseOf(a) {
+  if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate * 2, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  return noiseBuf;
+}
+function noise(dur, vol, freq, type = 'lowpass', delay = 0, attack = .005) {
+  const a = audio(); if (!a || !settings.sound) return;
+  const t = a.currentTime + delay, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  s.buffer = noiseOf(a); s.loop = true; f.type = type; f.frequency.value = freq;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  s.connect(f).connect(g).connect(sfxGain); s.start(t); s.stop(t + dur + .05);
+}
+// wind and surf, and now and then a bird
+function ambience() {
+  const a = AC; if (!a || amb) return;
+  amb = true;
+  const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), lfo = a.createOscillator(), lg = a.createGain();
+  s.buffer = noiseOf(a); s.loop = true; f.type = 'lowpass'; f.frequency.value = 420;
+  g.gain.value = .035; lfo.frequency.value = .09; lg.gain.value = .025;
+  lfo.connect(lg).connect(g.gain); s.connect(f).connect(g).connect(master);
+  s.start(); lfo.start();
+  amb = setInterval(() => { if (running() && Math.random() < .35) { const f0 = 2200 + Math.random() * 1400; tone(f0, f0 * 1.25, .07, 'sine', .012); tone(f0 * 1.1, f0 * .9, .09, 'sine', .01, .1); } }, 2500);
+}
+const SFX = {
+  click: () => tone(900, 900, .03, 'square', .015),
+  build: () => { noise(.08, .1, 900); tone(160, 110, .12, 'triangle', .09); tone(240, 160, .08, 'triangle', .05, .07); },
+  road: () => noise(.07, .07, 600),
+  clear: () => { noise(.25, .1, 500); tone(120, 60, .2, 'sine', .06); },
+  nope: () => tone(160, 120, .12, 'square', .03),
+  bell: () => { tone(660, 660, .5, 'sine', .05); tone(990, 990, .4, 'sine', .025); },
+  evolve: () => [523, 659, 784].forEach((f, i) => tone(f, f, .18, 'sine', .025, i * .08)),
+  fire: () => { noise(.5, .12, 1800, 'bandpass'); tone(880, 880, .15, 'square', .02); tone(880, 880, .15, 'square', .02, .25); },
+  thunder: () => { noise(1.6, .5, 160, 'lowpass', 0, .02); noise(.3, .3, 2500, 'highpass'); },
+  wrath: () => { tone(110, 98, 1.2, 'sawtooth', .05); tone(146, 130, 1.2, 'sawtooth', .035, .1); noise(1, .1, 300); },
+  bless: () => [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, f, .5, 'sine', .035, i * .09)),
+  flood: () => { noise(2.4, .35, 260, 'lowpass', 0, .6); noise(1.6, .12, 900, 'bandpass', .3, .3); },
+  win: () => [392, 523, 659, 784, 659, 784, 1046].forEach((f, i) => tone(f, f, .3, 'triangle', .06, i * .15)),
+};
+const lastSfx = {};
+function sfx(n) {
+  if (!settings.sound) return;
+  const t = performance.now();
+  if (t - (lastSfx[n] || 0) < 90) return;
+  lastSfx[n] = t;
+  try { SFX[n] && SFX[n](); } catch (e) { /* sound is optional */ }
+}
+
+// ====================================================================
+// Setup screen and the main loop
+// ====================================================================
+const setup = { tab: 'new' };
+function seg(id, opts, cur, choose, color = 'var(--cyan)') {
+  $(id).replaceChildren(...opts.map(([v, label, dis]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = label;
+    b.style.setProperty('--c', color); b.setAttribute('aria-pressed', v === cur); b.disabled = !!dis;
+    b.onclick = () => { choose(v); saveSettings(); renderSetup(); sfx('click'); };
+    return b;
+  }));
+}
+function renderSetup() {
+  const save = loadSave();
+  if (!save && setup.tab === 'cont') setup.tab = 'new';
+  seg('optTab', [['new', 'NEW TOWN'], ['cont', 'CONTINUE', !save]], setup.tab, v => setup.tab = v, 'var(--yellow)');
+  seg('optSize', Object.entries(SIZES).map(([k, s]) => [k, s.name]), settings.size, v => settings.size = v);
+  seg('optDiff', Object.entries(DIFF).map(([k, d]) => [k, d.name]), settings.diff, v => settings.diff = v, 'var(--pink)');
+  $('seedName').textContent = 'Your town: ' + townName(settings.seed);
+  $('newOpts').hidden = setup.tab !== 'new'; $('contOpts').hidden = setup.tab !== 'cont';
+  if (save) $('contInfo').textContent = `${townName(save.cfg.seed)}, ${MONTH_NAMES[save.month]} ${save.year}. ${save.ents.filter(e => e.t === 'house').reduce((a, e) => a + (e.res || 0), 0)} people, ${fmt(save.money)} silver.`;
+  $('startBtn').textContent = setup.tab === 'cont' ? 'CONTINUE' : 'FOUND THE TOWN';
+}
+$('reroll').onclick = () => { settings.seed = (Math.random() * 1e9) | 0; saveSettings(); renderSetup(); sfx('click'); };
+$('startBtn').onclick = () => {
+  audio();
+  const save = setup.tab === 'cont' && loadSave();
+  if (save) loadGame(save);
+  else {
+    makeWorld({ seed: settings.seed, size: settings.size, diff: settings.diff });
+    centerOn(G.start); cam.z = 1;
+    say(`Welcome to ${townName(settings.seed)}! Settlers come along the old road. Lay roads off it and put down house plots (H) next to them.`, 'tip', G.start);
+    settings.seed = (Math.random() * 1e9) | 0; saveSettings();
+  }
+  G.name = townName(G.cfg.seed);
+  initFx(); select(-1); cat = 'homes'; renderCats(); renderItems(); setSpeed(1);
+  for (const p of ['godsPanel', 'goalsPanel']) $(p).hidden = true;
+  show(null); updateHud(); drainEvents();
+};
+
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = innerWidth; H = innerHeight;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+}
+addEventListener('resize', resize);
+resize();
+
+let last = performance.now(), acc = 0;
+function loop(t) {
+  const dt = Math.min(.1, (t - last) / 1000); last = t;
+  animT += dt;
+  if (G) {
+    if (running()) {
+      acc += dt * SPEEDS[speed];
+      let n = 0;
+      while (acc >= STEP && n < 40) { step(); acc -= STEP; n++; }
+      if (n === 40) acc = 0;
+      drainEvents();
+    }
+    keyPan(dt);
+    updateFx(running() ? dt * SPEEDS[speed] : 0, dt);
+    if ((hudT -= dt) <= 0) { hudT = .25; updateHud(); }
+  }
+  try { render(); } catch (e) { console.error(e); }
+  requestAnimationFrame(loop);
+}
+renderSetup();
+show('setup');
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

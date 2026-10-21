@@ -106,6 +106,10 @@ details b{font-weight:400;color:var(--yellow)}
 .need b{font-weight:400;color:var(--yellow)}
 .bar{height:8px;background:#120a24;border:1px solid var(--line);margin:3px 0 6px}
 .bar i{display:block;height:100%}
+.tr{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line)}
+.tr .seg{grid-column:1/-1;gap:3px}
+.tr .hb{font-size:7px;padding:4px 6px}
+.tr span{color:var(--dim)}
 .god{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;padding:8px 0;border-bottom:2px dashed var(--line)}
 .god:last-child{border-bottom:0}
 .god h4{margin:0;font-family:'Press Start 2P',monospace;font-weight:400;font-size:10px}
@@ -140,12 +144,13 @@ details b{font-weight:400;color:var(--yellow)}
   <div class="st" id="sPop" title="People living in town"><small>PEOPLE</small><b id="hPop">0</b></div>
   <div class="st" id="sWork" title="Workers / jobs"><small>WORKERS</small><b id="hWork">0</b></div>
   <div class="st" id="sMood" title="How happy people are to live here. Low taxes, food, jobs and happy gods help."><small>MOOD</small><b id="hMood">0</b></div>
-  <div class="st" title="Date"><small>DATE</small><b id="hDate"></b></div>
+  <div class="st" title="Date and season"><small id="hSeason">WINTER</small><b id="hDate"></b></div>
   <div class="grp" id="speed"></div>
   <div class="grp" title="Tax rate. Higher taxes make people less happy.">
     <button class="hb" id="taxDown">-</button><div class="st"><small>TAX</small><b id="hTax">8%</b></div><button class="hb" id="taxUp">+</button>
   </div>
   <div class="spacer"></div>
+  <button class="hb" id="tradeBtn" style="--c:var(--cyan)">TRADE</button>
   <button class="hb" id="godsBtn" style="--c:var(--yellow)">GODS</button>
   <button class="hb" id="goalsBtn" style="--c:var(--green)">GOALS</button>
   <button class="hb" id="viewBtn" style="--c:var(--cyan)" title="Overlay (V)">VIEW: TOWN</button>
@@ -157,6 +162,7 @@ details b{font-weight:400;color:var(--yellow)}
 </div>
 
 <div class="side" id="info" hidden><button class="x" data-close="info">X</button><div id="infoBody"></div></div>
+<div class="side" id="tradePanel" hidden><button class="x" data-close="tradePanel">X</button><h3>TRADE</h3><div id="tradeBody"></div></div>
 <div class="side" id="godsPanel" hidden><button class="x" data-close="godsPanel">X</button><h3>THE FIVE GODS</h3><div id="godsBody"></div></div>
 <div class="side" id="goalsPanel" hidden><button class="x" data-close="goalsPanel">X</button><h3>GOALS</h3><div id="goalsBody"></div></div>
 <div id="toasts"></div>
@@ -166,7 +172,7 @@ details b{font-weight:400;color:var(--yellow)}
   <div class="panel">
     <a class="back" href="index.html">&#9664; ARCADE</a>
     <h1>POLDERHEIM<span>A FRISIAN CITY BUILDER</span></h1>
-    <p class="tag">The year is 690. Found a town on the wild Frisian coast, raise sod huts into gabled townhouses, keep five old gods happy and hold back the North Sea.</p>
+    <p class="tag">The year is 690. Found a town on the wild Frisian coast, raise sod huts into gabled townhouses, trade with Dorestad and Hedeby, keep five old gods happy, and hold back both the North Sea and the Northmen.</p>
     <div class="seg tabs" id="optTab"></div>
     <div id="newOpts">
       <div class="row"><label>LAND</label><div class="seg" id="optSize"></div></div>
@@ -180,9 +186,12 @@ details b{font-weight:400;color:var(--yellow)}
       <p>Settlers walk in along the <b>old road</b> at the edge of the map. Lay <b>roads</b> from it and put <b>house plots</b> next to them; families will move in and build sod huts.</p>
       <p>Everything in Polderheim is delivered on foot. <b>Walkers</b> leave their building and wander the roads: the market woman brings food, priests bring the gods, the fire watch puts out fires and the reeve collects taxes. A house only gets what walks past it.</p>
       <p>Houses grow when they get more: <b>water</b> from a well, then <b>food</b> and a <b>temple</b>, then <b>pottery</b>, then two kinds of food, a <b>mead hall</b>, two gods and a nice neighbourhood, and finally <b>cloth</b> and three gods. Click a house to see what it wants next.</p>
-      <p>Food and goods go round on handcarts: farms and crafts send them to a <b>storehouse</b>, and the market fetches them from there.</p>
+      <p>Food and goods go round on handcarts: farms and crafts send them to a <b>storehouse</b>, and the market fetches them from there. Some goods take several steps: <b>rye</b> goes to the windmill, <b>flour</b> to the bakery; <b>barley</b> goes to the brewery, and the mead hall needs its <b>ale</b>.</p>
+      <p>The year matters. Rye and barley are <b>harvested once, in September</b>; plan your storehouses for it. Peat is cut in summer and burned in winter: from November to March longhouses and better need <b>peat</b> or they shrink back.</p>
+      <p>Build a <b>trading wharf</b> on the sea shore and ships will come. Under <b>TRADE</b> you choose what to sell and what to buy. Silver from trade pays for the town.</p>
+      <p><b>Viking raiders</b> come for rich towns. A <b>militia hall</b> trains defenders, <b>watchtowers</b> shoot arrows and a <b>palisade</b> with gates slows them down. <b>Fever</b> spreads in houses near bogs or without wells; a <b>wise woman</b> keeps it away.</p>
       <p>The five gods, <b>Wodan, Donar, Frija, Nehalennia and Fosite</b>, each want temples as your town grows, and get jealous of each other. Happy gods send blessings, angry gods send disaster. A festival cheers one up quickly.</p>
-      <p>In autumn and winter, <b>storm floods</b> come off the sea. Low land floods first (VIEW: FLOODS shows it). Build <b>dikes</b> to keep the water out.</p>
+      <p>In autumn and winter, <b>storm floods</b> come off the sea. Low land floods first (VIEW: FLOODS shows it). Build <b>dikes</b> to keep the water out, <b>sluice gates</b> where roads cross them, or raise the land with <b>terps</b>.</p>
       <div class="keys">
         <b>Drag / arrows / WASD</b><span>move around</span>
         <b>Wheel / pinch</b><span>zoom</span>
@@ -233,28 +242,39 @@ const START_YEAR = 690;
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const T_GRASS = 0, T_SEA = 1, T_RIVER = 2, T_SAND = 3, T_MARSH = 4;
 const isWater = t => t === T_SEA || t === T_RIVER;
-const WAGE = .16;             // silver per worker per month
+const WAGE = .3;             // silver per worker per month
 const WORK_SHARE = .36;       // share of the people who go out to work
 const ROAM = 28;              // tiles a service walker wanders before heading home
 const SVC_MONTHS = 6;         // how long a priest's or skald's visit counts
 const TAX_MONTHS = 12;        // how long a reeve's visit counts
 const TREE_COST = 3, BRIDGE_COST = 20;
 const LOAD = 8, HOLD = 16;    // a handcart's load; what a farm or workshop keeps before it stops
+const FARM_HOLD = 200;        // a farm keeps its whole harvest and carts it off over the year
 const DIFF = {
-  easy: { name: 'EASY', money: 4500, pop: 600 },
-  normal: { name: 'NORMAL', money: 3000, pop: 1000 },
-  hard: { name: 'HARD', money: 2000, pop: 1500 },
+  easy: { name: 'EASY', money: 4500, pop: 600, raid: .6 },
+  normal: { name: 'NORMAL', money: 3000, pop: 1000, raid: 1 },
+  hard: { name: 'HARD', money: 2000, pop: 1500, raid: 1.4 },
 };
 const SIZES = { small: { name: 'SMALL', n: 64 }, medium: { name: 'MEDIUM', n: 80 }, large: { name: 'LARGE', n: 96 } };
 
-const GOODS = ['rye', 'cheese', 'fish', 'clay', 'pottery', 'wool', 'cloth'];
-const FOODS = ['rye', 'cheese', 'fish'];
+const GOODS = ['rye', 'barley', 'flour', 'bread', 'cheese', 'fish', 'beer', 'peat', 'salt', 'clay', 'pottery', 'wool', 'cloth'];
+const FOODS = ['bread', 'cheese', 'fish'];
+// buy: what a ship asks for one unit, sell: what it pays you
 const GOOD = {
-  rye: { name: 'Rye', col: '#d8b04a' }, cheese: { name: 'Cheese', col: '#f2c94c' }, fish: { name: 'Fish', col: '#a9c2cf' },
-  clay: { name: 'Clay', col: '#a65a36' }, pottery: { name: 'Pottery', col: '#c9784a' },
-  wool: { name: 'Wool', col: '#efe9da' }, cloth: { name: 'Cloth', col: '#4f6fa8' },
+  rye: { name: 'Rye', col: '#d8b04a', buy: 5, sell: 3 }, barley: { name: 'Barley', col: '#c8b468', buy: 5, sell: 3 },
+  flour: { name: 'Flour', col: '#efe6cf', buy: 8, sell: 5 }, bread: { name: 'Bread', col: '#b87a3a', buy: 11, sell: 7 },
+  cheese: { name: 'Cheese', col: '#f2c94c', buy: 10, sell: 6 }, fish: { name: 'Fish', col: '#a9c2cf', buy: 8, sell: 4 },
+  beer: { name: 'Ale', col: '#8a5a22', buy: 12, sell: 8 }, peat: { name: 'Peat', col: '#4a3a2a', buy: 6, sell: 3 },
+  salt: { name: 'Salt', col: '#f4f4f0', buy: 16, sell: 12 }, clay: { name: 'Clay', col: '#a65a36', buy: 4, sell: 2 },
+  pottery: { name: 'Pottery', col: '#c9784a', buy: 15, sell: 10 }, wool: { name: 'Wool', col: '#efe9da', buy: 8, sell: 5 },
+  cloth: { name: 'Cloth', col: '#4f6fa8', buy: 24, sell: 17 },
 };
-const MKT_MAX = { rye: 40, cheese: 40, fish: 40, pottery: 12, cloth: 12 };
+const MKT_MAX = { bread: 40, cheese: 40, fish: 40, peat: 30, pottery: 12, cloth: 12 };
+// the year: crops grow March to August and are brought in in September; houses burn peat November to March
+const SEASONS = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter'];
+const HARVEST = 8;
+const isCold = m => m >= 10 || m <= 2;
+const PORTS = ['Dorestad', 'Hedeby', 'Eoforwic', 'Quentovic', 'Lundenwic', 'Birka', 'Ribe', 'Domburg'];
 
 // The old gods of the Frisian coast. Each one wants temples as the town grows.
 const GODS = [
@@ -263,7 +283,7 @@ const GODS = [
     bless: 'Wodan shares his wisdom: a chest of silver appears at the hall.' },
   { id: 'donar', name: 'Donar', role: 'The Thunderer, friend of farmers.', col: '#d0503f',
     wrath: 'Donar hurls his hammer: lightning sets the town ablaze!',
-    bless: 'Donar sends gentle rain: every farm brings in an early harvest.' },
+    bless: 'Donar sends gentle rain: crops grow tall and the herds are fat.' },
   { id: 'frija', name: 'Frija', role: 'Lady of hearth, home and children.', col: '#e6ac3c',
     wrath: 'Frija turns away: hearths go cold and the food spoils.',
     bless: 'Frija blesses your hearths: newcomers flock to the town.' },
@@ -278,27 +298,42 @@ const GOD = Object.fromEntries(GODS.map(g => [g.id, g]));
 
 const HOUSES = [
   { name: 'Empty plot', cap: 0, tax: 0 },
-  { name: 'Sod hut', cap: 5, tax: .15 },
-  { name: 'Wattle hut', cap: 8, tax: .22 },
-  { name: 'Thatched cottage', cap: 12, tax: .35 },
-  { name: 'Longhouse', cap: 16, tax: .5 },
-  { name: 'Brick farmhouse', cap: 22, tax: .75 },
-  { name: 'Gabled townhouse', cap: 28, tax: 1.1 },
+  { name: 'Sod hut', cap: 5, tax: .14 },
+  { name: 'Wattle hut', cap: 8, tax: .21 },
+  { name: 'Thatched cottage', cap: 12, tax: .32 },
+  { name: 'Longhouse', cap: 16, tax: .46 },
+  { name: 'Brick farmhouse', cap: 22, tax: .7 },
+  { name: 'Gabled townhouse', cap: 28, tax: 1 },
 ];
 
 // Every building. size = tiles per side, workers = jobs, des = [desirability, range],
-// fire = fire risk added per month, makes/uses/rate (units a month at full staff).
+// fire = fire risk added per month, makes/uses/rate (units a month at full staff),
+// crop = harvested once a year, months = [first, last] month it works, carts = handcarts it can send at once.
 const BLD = {
   road: { name: 'Road', cat: 'roads', size: 1, cost: 2, desc: 'Packed earth. Every walker needs roads. Across a river it becomes a wooden bridge.' },
   dike: { name: 'Dike', cat: 'roads', size: 1, cost: 6, desc: 'An earthen sea wall. Storm floods cannot get past it, so close every gap.' },
   clear: { name: 'Clear land', cat: 'roads', size: 1, cost: 1, desc: 'Remove trees, rubble, roads and buildings. Drag to clear an area.' },
+  terp: { name: 'Raise a terp', cat: 'roads', size: 1, cost: 25, desc: 'Pile up earth to raise the land, twice at most. Raised land floods far less. Drag to raise an area.' },
+  sluice: { name: 'Sluice gate', cat: 'roads', size: 1, cost: 35, onRoad: true, desc: 'A gate in a dike where a road passes: walkers go through, floods do not. Build it on a road.' },
   house: { name: 'House plot', cat: 'homes', size: 1, cost: 8, desc: 'Settlers move in and build a home. Give it water, food, gods and more to make it grow.' },
-  farm: { name: 'Rye farm', cat: 'food', size: 3, cost: 50, workers: 8, makes: 'rye', rate: 9, fert: 1, des: [-2, 2], fire: 1,
-    desc: 'Grows rye. Rich, dark green land gives bigger harvests. Not on salt marsh.' },
-  dairy: { name: 'Dairy farm', cat: 'food', size: 3, cost: 60, workers: 8, makes: 'cheese', rate: 8, fert: .4, des: [-2, 2], fire: 1,
-    desc: 'Black-and-white cows and a cheese shed. Cows happily graze the salt marsh.' },
-  fisher: { name: "Fisher's hut", cat: 'food', size: 2, cost: 40, workers: 6, makes: 'fish', rate: 8, water: true, des: [-2, 2], fire: 1,
-    desc: 'Must be built on the shore of the sea or a river.' },
+  farm: { name: 'Rye farm', cat: 'food', size: 3, cost: 50, workers: 8, makes: 'rye', rate: 9, fert: 1, crop: true, carts: 3, des: [-2, 2], fire: 1,
+    desc: 'Grows rye for the windmill. One harvest a year, in September; rich, dark green land gives more. Not on salt marsh.' },
+  mill: { name: 'Windmill', cat: 'food', size: 2, cost: 80, workers: 4, uses: 'rye', makes: 'flour', rate: 12, des: [-1, 2], fire: 2,
+    desc: 'Grinds rye into flour for the bakery.' },
+  bakery: { name: 'Bakery', cat: 'food', size: 2, cost: 60, workers: 6, uses: 'flour', makes: 'bread', rate: 12, yield: 2, des: [-1, 2], fire: 5,
+    desc: 'Bakes two loaves from every sack of flour. Bread is one of the three foods.' },
+  dairy: { name: 'Dairy farm', cat: 'food', size: 3, cost: 60, workers: 8, makes: 'cheese', rate: 8, fert: .4, winter: .5, des: [-2, 2], fire: 1,
+    desc: 'Black-and-white cows and a cheese shed. Cows happily graze the salt marsh. Half as much in winter.' },
+  fisher: { name: "Fisher's hut", cat: 'food', size: 2, cost: 40, workers: 6, makes: 'fish', rate: 8, water: true, winter: .3, des: [-2, 2], fire: 1,
+    desc: 'Must be built on the shore of the sea or a river. Winter storms keep the boats in.' },
+  barley: { name: 'Barley farm', cat: 'industry', size: 3, cost: 50, workers: 8, makes: 'barley', rate: 9, fert: 1, crop: true, carts: 3, des: [-2, 2], fire: 1,
+    desc: 'Grows barley for the brewery. One harvest a year, in September. Not on salt marsh.' },
+  brewery: { name: 'Brewery', cat: 'industry', size: 2, cost: 60, workers: 6, uses: 'barley', makes: 'beer', rate: 7, des: [-2, 2], fire: 3,
+    desc: 'Brews ale from barley. A mead hall needs ale or the skald stays home.' },
+  peat: { name: 'Peat cutter', cat: 'industry', size: 2, cost: 35, workers: 6, makes: 'peat', rate: 15, bog: true, months: [3, 8], des: [-3, 2], fire: 1,
+    desc: 'Cuts peat in a bog from April to September. Longhouses and better burn it all winter.' },
+  salt: { name: 'Salt works', cat: 'industry', size: 2, cost: 50, workers: 6, makes: 'salt', rate: 12, saltMarsh: true, months: [4, 8], des: [-2, 2], fire: 0,
+    desc: 'Boils salt on the salt marsh from May to September. Ships pay well for salt.' },
   sheep: { name: 'Sheepfold', cat: 'industry', size: 3, cost: 45, workers: 6, makes: 'wool', rate: 7, des: [-2, 2], fire: 1,
     desc: 'Sheep for wool. The weaver turns it into Frisian cloth.' },
   claypit: { name: 'Clay pit', cat: 'industry', size: 2, cost: 40, workers: 6, makes: 'clay', rate: 8, wet: 3, des: [-4, 3], fire: 0,
@@ -310,25 +345,37 @@ const BLD = {
   store: { name: 'Storehouse', cat: 'trade', size: 3, cost: 70, workers: 6, cap: 24, des: [-3, 2], fire: 3,
     desc: 'Holds up to 24 of every good. Farms and crafts send their goods here; markets and workshops fetch from it.' },
   market: { name: 'Market', cat: 'trade', size: 2, cost: 45, workers: 5, walker: 'seller', des: [1, 2], fire: 2,
-    desc: 'A buyer fetches food and goods from the storehouse; the market woman carries them past the houses.' },
+    desc: 'A buyer fetches food, peat and goods from the storehouse; the market woman carries them past the houses.' },
+  harbour: { name: 'Trading wharf', cat: 'trade', size: 3, cost: 150, workers: 8, sea: true, des: [-2, 3], fire: 2,
+    desc: 'Ships from Dorestad, Hedeby and beyond trade with your storehouses. Choose what to sell and buy under TRADE.' },
   well: { name: 'Well', cat: 'services', size: 1, cost: 12, radius: 2, des: [1, 1],
     desc: 'Gives water to every house within 2 tiles. No workers needed.' },
   watch: { name: 'Fire watch', cat: 'services', size: 1, cost: 25, workers: 4, walker: 'watch', fire: 0,
     desc: 'A watchman walks the streets with a bucket, lowering the fire risk and putting out fires.' },
   reeve: { name: "Reeve's hall", cat: 'services', size: 2, cost: 60, workers: 5, walker: 'tax', des: [1, 2], fire: 2,
     desc: 'The reeve collects taxes. Only houses he visits pay anything.' },
-  mead: { name: 'Mead hall', cat: 'services', size: 2, cost: 70, workers: 6, walker: 'skald', des: [2, 2], fire: 4,
-    desc: 'Mead and songs. A skald walks out to entertain the houses.' },
+  mead: { name: 'Mead hall', cat: 'services', size: 2, cost: 70, workers: 6, walker: 'skald', uses: 'beer', des: [2, 2], fire: 4,
+    desc: 'Ale and songs. While there is ale, a skald walks out to entertain the houses.' },
+  healer: { name: 'Wise woman', cat: 'services', size: 1, cost: 30, workers: 3, walker: 'healer', des: [1, 1], fire: 1,
+    desc: 'Walks the streets with herbs, keeping fever out. Brick farmhouses want her visits.' },
+  militia: { name: 'Militia hall', cat: 'defence', size: 2, cost: 120, workers: 6, des: [-1, 2], fire: 2,
+    desc: 'Trains up to 4 militia. They march out to fight raiders and come back to heal.' },
+  tower: { name: 'Watchtower', cat: 'defence', size: 1, cost: 60, workers: 2, fire: 1,
+    desc: 'An archer shoots at raiders within 5 tiles.' },
+  wall: { name: 'Palisade', cat: 'defence', size: 1, cost: 4, wall: true,
+    desc: 'Sharpened stakes. Raiders must hack through. Drag to build a line.' },
+  gate: { name: 'Gate', cat: 'defence', size: 1, cost: 30, onRoad: true, wall: true,
+    desc: 'A palisade gate on a road: walkers and militia pass, raiders do not.' },
   garden: { name: 'Flower garden', cat: 'beauty', size: 1, cost: 10, des: [3, 2], desc: 'Makes the neighbourhood nicer. Better houses need nice surroundings.' },
   rune: { name: 'Rune stone', cat: 'beauty', size: 1, cost: 40, des: [6, 3], desc: 'A carved standing stone that tells of great deeds. Very nice to live near.' },
   hunebed: { name: 'Hunebed', size: 2, des: [5, 3], fixed: true, desc: 'A tomb of giant stones, older than anyone remembers.' },
 };
 for (const g of GODS) BLD['t_' + g.id] = {
-  name: 'Temple of ' + g.name, cat: 'gods', size: 2, cost: 90, workers: 3, walker: 'priest', god: g.id, des: [4, 3], fire: 1,
+  name: 'Temple of ' + g.name, cat: 'gods', size: 2, cost: 70, workers: 3, walker: 'priest', god: g.id, des: [4, 3], fire: 1,
   desc: g.role + ' A priest walks out to bless the houses.',
 };
-const CATS = [['roads', 'ROADS'], ['homes', 'HOMES'], ['food', 'FOOD'], ['industry', 'CRAFTS'], ['trade', 'STORAGE'], ['gods', 'GODS'], ['services', 'SERVICES'], ['beauty', 'BEAUTY']];
-const WALKER_FOR = { seller: 'seller', priest: 'priest', watch: 'watch', tax: 'tax', skald: 'skald' };
+const CATS = [['roads', 'LAND'], ['homes', 'HOMES'], ['food', 'FOOD'], ['industry', 'CRAFTS'], ['trade', 'TRADE'], ['gods', 'GODS'], ['services', 'SERVICES'], ['defence', 'DEFENCE'], ['beauty', 'BEAUTY']];
+const WALKER_FOR = { seller: 'seller', priest: 'priest', watch: 'watch', tax: 'tax', skald: 'skald', healer: 'healer' };
 
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const rnd = n => Math.floor(Math.random() * n);
@@ -498,7 +545,9 @@ function makeWorld(cfg) {
     gods: Object.fromEntries(GODS.map(g => [g.id, { mood: 60, fest: 0, wrathCd: 8, blessCd: 12, festCd: 0 }])),
     roadV: 1, compV: 0, desDirty: true, waterDirty: true, riskV: -1, risk: null,
     ev: [], storm: null, won: false, tips: {}, ledger: { tax: 0, wages: 0 },
-    immT: 2, laborT: 0, evoT: 0, desT: 0, stats: { built: 0, floods: 0, fires: 0 },
+    immT: 2, laborT: 0, evoT: 0, desT: 0, stats: { built: 0, floods: 0, fires: 0, trade: 0, raids: 0, beaten: 0, fevers: 0 },
+    terp: new Uint8Array(NN), trade: Object.fromEntries(GOODS.map(g => [g, 'none'])),
+    ship: null, shipT: 2, units: [], uid: 1, raid: null,
   };
   if (m.hune) addBuilding('hunebed', m.hune[0], m.hune[1]);
   return G;
@@ -508,15 +557,20 @@ const say = (text, kind = 'info', at = -1) => G.ev.push(['msg', text, kind, at])
 const snd = name => G.ev.push(['sfx', name]);
 const tileXY = i => [i % G.N, (i - i % G.N) / G.N];
 const inMap = (x, y) => x >= 0 && y >= 0 && x < G.N && y < G.N;
-const isDike = i => { const id = G.bld[i]; return id && G.ents.get(id).type === 'dike'; };
+const isDike = i => { const id = G.bld[i]; if (!id) return false; const t = G.ents.get(id).type; return t === 'dike' || t === 'sluice'; };
+const isWall = b => b && BLD[b.type].wall;
+const hpOf = type => type === 'house' ? 40 : type === 'wall' ? 80 : type === 'gate' ? 150 : 60 * BLD[type].size ** 2;
+const groundLvl = i => G.elev[i] + G.terp[i];   // what a storm has to beat to flood this tile
 
 function addBuilding(type, x, y) {
   const d = BLD[type], s = d.size || 1, id = G.nextId++;
   const b = { id, type, x, y, s, staff: 0, conn: false, out: 0, inp: 0, prog: 0, walker: 0, walker2: 0, cd: 1 + Math.random() * 3, cd2: 0,
-    fire: 0, burn: 0, acc: null, accV: -1, status: '' };
-  if (type === 'house') Object.assign(b, { lvl: 0, res: 0, inc: 0, food: { rye: 0, cheese: 0, fish: 0 }, pottery: 0, cloth: 0, rel: {}, ent: -99, tax: -99, down: 0, var: hash2(x, y, 7) * 4 | 0 });
+    fire: 0, burn: 0, acc: null, accV: -1, status: '', carts: 0, crop: 0, hp: hpOf(type) };
+  if (type === 'house') Object.assign(b, { lvl: 0, res: 0, inc: 0, food: Object.fromEntries(FOODS.map(f => [f, 0])), pottery: 0, cloth: 0, peat: 0,
+    rel: {}, ent: -99, tax: -99, heal: -99, sick: 0, fever: 0, down: 0, var: hash2(x, y, 7) * 4 | 0 });
   if (type === 'store') b.stock = Object.fromEntries(GOODS.map(g => [g, 0]));
-  if (type === 'market') b.stock = { rye: 0, cheese: 0, fish: 0, pottery: 0, cloth: 0 };
+  if (type === 'market') b.stock = Object.fromEntries(Object.keys(MKT_MAX).map(g => [g, 0]));
+  if (type === 'militia') b.trainT = MONTH / 2;
   for (let dy = 0; dy < s; dy++) for (let dx = 0; dx < s; dx++) {
     const i = (y + dy) * G.N + x + dx;
     G.bld[i] = id; G.tree[i] = 0; G.rubble[i] = 0;
@@ -534,37 +588,47 @@ function removeBuilding(b, ruin = false) {
   }
   G.ents.delete(b.id);
   for (const w of G.walkers) if (w.home === b.id || (w.kind === 'immigrant' && w.target === b.id)) kill(w);
+  for (const u of G.units) if (u.home === b.id) u.home = 0;
   if (b.type === 'house' && b.res) G.pop -= b.res;
   G.roadV++; G.desDirty = true;
   if (b.type === 'well') G.waterDirty = true;
 }
 
 // Why can't `type` go at x,y? '' when it can.
+// Why can't `type` go at x,y? '' when it can.
 function placeProblem(type, x, y) {
   const d = BLD[type], s = d.size || 1;
-  let wet = false, shore = false, salt = false;
+  let wet = false, shore = false, salt = 0, bog = 0, lift = -1;
   for (let dy = 0; dy < s; dy++) for (let dx = 0; dx < s; dx++) {
     const tx = x + dx, ty = y + dy;
     if (!inMap(tx, ty)) return 'Off the map';
     const i = ty * G.N + tx, t = G.terr[i];
     if (G.flood[i] > 0) return 'Still flooded';
+    if (type === 'terp') { if (isWater(t)) return 'Cannot raise water'; if (G.bld[i]) return 'Something is built here'; if (G.terp[i] >= 2) return 'As high as a terp goes'; continue; }
     if (G.bld[i]) return 'Something is built here';
+    if (d.onRoad) { if (!G.road[i]) return 'Must be built on a road'; continue; }
     if (type === 'road') { if (t === T_SEA) return 'Cannot build in the sea'; if (G.road[i]) return 'Already a road'; continue; }
     if (G.road[i]) return 'A road is in the way';
     if (isWater(t)) return 'Cannot build on water';
-    if (t === T_MARSH && type !== 'dike' && type !== 'claypit') return 'Too boggy';
-    if (G.elev[i] === 0) salt = true;
+    if (t === T_MARSH) { bog++; if (!['dike', 'claypit', 'peat', 'wall'].includes(type)) return 'Too boggy'; }
+    if (G.elev[i] === 0) salt++;
+    if (lift < 0) lift = G.terp[i]; else if (lift !== G.terp[i]) return 'The ground is uneven (part of it is a terp)';
   }
-  if (type === 'farm' && salt) return 'Rye will not grow on salt marsh';
-  if (d.water) {
+  if ((type === 'farm' || type === 'barley') && salt) return 'Crops will not grow on salt marsh';
+  if (d.saltMarsh && salt < s * s / 2) return 'Must be on salt marsh (the grey-green land by the sea)';
+  if (d.water || d.sea) {
     for (let k = -1; k <= s && !shore; k++) for (const [tx, ty] of [[x + k, y - 1], [x + k, y + s], [x - 1, y + k], [x + s, y + k]])
-      if (inMap(tx, ty) && isWater(G.terr[ty * G.N + tx])) shore = true;
-    if (!shore) return 'Must be on the shore';
+      if (inMap(tx, ty) && (d.sea ? G.terr[ty * G.N + tx] === T_SEA : isWater(G.terr[ty * G.N + tx]))) shore = true;
+    if (!shore) return d.sea ? 'Must be on the sea shore' : 'Must be on the shore';
   }
   if (d.wet) {
     for (let ty = y - d.wet; ty < y + s + d.wet && !wet; ty++) for (let tx = x - d.wet; tx < x + s + d.wet; tx++)
       if (inMap(tx, ty) && (isWater(G.terr[ty * G.N + tx]) || G.terr[ty * G.N + tx] === T_MARSH)) { wet = true; break; }
     if (!wet) return 'Must be near water or a bog';
+  }
+  if (d.bog) {
+    for (let ty = y - 1; ty <= y + s; ty++) for (let tx = x - 1; tx <= x + s; tx++) if (inMap(tx, ty) && G.terr[ty * G.N + tx] === T_MARSH) bog++;
+    if (bog < 3) return 'Must be in or next to a bog';
   }
   return '';
 }
@@ -576,6 +640,7 @@ function placeCost(type, x, y) {
     const i = ty * G.N + tx;
     if (G.tree[i]) c += TREE_COST;
     if (type === 'road' && G.terr[i] === T_RIVER) c += BRIDGE_COST;
+    if (type === 'terp' && G.terp[i]) c += BLD.terp.cost;   // the second level costs double
   }
   return c;
 }
@@ -584,7 +649,9 @@ function build(type, x, y) {
   const c = placeCost(type, x, y);
   if (G.money < c) return false;
   G.money -= c; G.stats.built++;
-  if (type === 'road') { const i = y * G.N + x; G.road[i] = 1; G.tree[i] = 0; G.rubble[i] = 0; G.roadV++; }
+  const i = y * G.N + x;
+  if (type === 'road') { G.road[i] = 1; G.tree[i] = 0; G.rubble[i] = 0; G.roadV++; }
+  else if (type === 'terp') { G.terp[i]++; G.tree[i] = 0; G.rubble[i] = 0; G.roadV++; }
   else addBuilding(type, x, y);
   return true;
 }
@@ -688,7 +755,7 @@ function roadNbrs(i) {
 // ====================================================================
 // kinds: immigrant, cart (carries goods out), fetch (goes to get goods), buyer (market),
 // and the roaming service walkers: seller, priest, watch, tax, skald
-const SPEED = { immigrant: 2.4, cart: 1.5, fetch: 1.6, buyer: 1.5, seller: 1.25, priest: 1.25, watch: 1.4, tax: 1.25, skald: 1.25 };
+const SPEED = { immigrant: 2.4, cart: 1.5, fetch: 1.6, buyer: 1.5, seller: 1.25, priest: 1.25, watch: 1.4, tax: 1.25, skald: 1.25, healer: 1.25 };
 
 function newWalker(kind, home, at) {
   const w = { id: G.wid++, kind, home: home ? home.id : 0, cur: at, nxt: -1, prev: -1, t: 0, path: null, pi: 1,
@@ -700,7 +767,7 @@ function kill(w) {
   if (w.dead) return;
   w.dead = true;
   const h = G.ents.get(w.home);
-  if (h) { if (h.walker === w.id) h.walker = 0; if (h.walker2 === w.id) h.walker2 = 0; }
+  if (h) { if (h.walker === w.id) h.walker = 0; if (h.walker2 === w.id) h.walker2 = 0; if (w.kind === 'cart') h.carts = Math.max(0, h.carts - 1); }
   if (w.kind === 'immigrant') { const t = G.ents.get(w.target); if (t) t.inc = Math.max(0, t.inc - w.n); }
 }
 function setPath(w, r) { w.path = r.path; w.pi = 1; w.nxt = -1; }
@@ -772,7 +839,7 @@ function done(w) {
   }
   if (w.back || w.roam) {               // home again
     if (h) {
-      if (w.kind === 'cart' && w.n) h.out = Math.min(HOLD, h.out + w.n);
+      if (w.kind === 'cart' && w.n) h.out = Math.min(BLD[h.type].crop ? FARM_HOLD : HOLD, h.out + w.n);
       if (w.kind === 'fetch' && w.n) h.inp = Math.min(HOLD, h.inp + w.n);
       if (w.kind === 'buyer' && w.load) for (const g in w.load) h.stock[g] += w.load[g];
       if (w.kind in WALKER_FOR) h.cd = MONTH * .3 / Math.max(.25, h.staff);
@@ -811,6 +878,7 @@ function serve(w, i) {
     if (w.kind === 'watch') { b.fire = 0; if (b.burn) { b.burn = 0; say('The fire watch put out a fire.', 'good', b.y * N + b.x); } continue; }
     if (b.type !== 'house' || !b.res) continue;
     if (w.kind === 'priest') b.rel[w.god] = mc;
+    else if (w.kind === 'healer') { b.heal = mc; b.sick = 0; b.fever = 0; }
     else if (w.kind === 'tax') b.tax = mc;
     else if (w.kind === 'skald') b.ent = mc;
     else if (w.kind === 'seller' && h) {
@@ -819,6 +887,7 @@ function serve(w, i) {
         const k = Math.min(want - b.food[f], h.stock[f]);
         if (k > 0) { b.food[f] += k; h.stock[f] -= k; }
       }
+      if (b.lvl >= 3 && b.peat < 3 && h.stock.peat >= 1) { const k = Math.min(3 - b.peat, Math.floor(h.stock.peat)); b.peat += k; h.stock.peat -= k; }
       if (b.lvl >= 3 && b.pottery < 2 && h.stock.pottery >= 1) { b.pottery++; h.stock.pottery--; }
       if (b.lvl >= 5 && b.cloth < 2 && h.stock.cloth >= 1) { b.cloth++; h.stock.cloth--; }
     }
@@ -836,6 +905,8 @@ function step() {
   if (G.desDirty && (G.desT -= dt) <= 0) { G.desT = .5; calcDes(); }
   if (G.waterDirty) calcWater();
   for (const b of G.ents.values()) tickBuilding(b, dt);
+  shipStep(dt);
+  unitsStep(dt);
   let dead = false;
   for (const w of G.walkers) { if (!w.dead) walkerStep(w, dt); if (w.dead) dead = true; }
   if (dead) G.walkers = G.walkers.filter(w => !w.dead);
@@ -890,23 +961,33 @@ function tickBuilding(b, dt) {
   }
   if (b.cd > 0) b.cd -= dt;
   if (b.cd2 > 0) b.cd2 -= dt;
+  const road = b.conn ? '' : 'No road to the town';
   if (d.makes) {
-    const rate = d.rate * b.staff * (d.fert ? fertOf(b, d.fert) : 1) / MONTH;
-    if (d.uses) {
-      if (b.inp >= 1 && b.out < HOLD) { b.prog += rate * dt; if (b.prog >= 1) { b.prog -= 1; b.inp -= 1; b.out += 1; } }
-    } else if (b.out < HOLD) { b.prog += rate * dt; if (b.prog >= 1) { b.prog -= 1; b.out += 1; } }
-    if (!b.walker && b.cd <= 0 && b.conn) {
-      if (b.out >= LOAD) sendCart(b);
-      else if (d.uses && b.inp <= HOLD - LOAD) fetchInput(b);
+    const k = b.staff * seasonK(d) * (d.fert ? fertOf(b, d.fert) : 1);
+    if (d.crop) { if (G.month >= 2 && G.month < HARVEST) b.crop += d.rate * 2 * k * dt / MONTH; }    // a year's crop grows in six months
+    else if (d.uses) { if (b.inp >= 1 && b.out < HOLD) { b.prog += d.rate * k * dt / MONTH; if (b.prog >= 1) { b.prog -= 1; b.inp -= 1; b.out += d.yield || 1; } } }
+    else if (b.out < HOLD) { b.prog += d.rate * k * dt / MONTH; if (b.prog >= 1) { b.prog -= 1; b.out += 1; } }
+    if (b.conn) {
+      if (b.out >= LOAD && b.carts < (d.carts || 1) && b.cd <= 0) sendCart(b);
+      if (d.uses && !b.walker2 && b.inp <= HOLD - LOAD && b.cd2 <= 0) fetchInput(b);
     }
-    b.status = !b.conn ? 'No road to the town' : !b.staff ? 'No workers' : d.uses && b.inp < 1 && b.out < HOLD ? 'Waiting for ' + GOOD[d.uses].name.toLowerCase() : b.out >= HOLD ? 'Nowhere to take the goods' : '';
+    b.status = road || (!b.staff ? 'No workers' : d.uses && b.inp < 1 && b.out < HOLD ? 'Waiting for ' + GOOD[d.uses].name.toLowerCase()
+      : b.stuck ? 'Nowhere to take the ' + GOOD[d.makes].name.toLowerCase() : !seasonK(d) ? 'Out of season until ' + MONTH_NAMES[d.months[0]] : '');
   } else if (d.walker) {
-    if (b.staff > 0 && !b.walker && b.cd <= 0) spawnRoamer(b);
+    const ale = !d.uses || b.inp >= .5;
+    if (d.uses && b.conn && b.staff > 0 && !b.walker2 && b.inp <= HOLD - LOAD && b.cd2 <= 0) fetchInput(b);
+    if (b.staff > 0 && !b.walker && b.cd <= 0 && ale && spawnRoamer(b) && d.uses) b.inp -= .5;
     if (b.type === 'market' && !b.walker2 && b.cd2 <= 0 && b.staff > 0) sendBuyer(b);
-    b.status = !b.conn ? 'No road to the town' : !b.staff ? 'No workers' : '';
-  } else if (b.type === 'store') {
-    b.status = !b.conn ? 'No road to the town' : !b.staff ? 'No workers' : '';
-  }
+    b.status = road || (!b.staff ? 'No workers' : !ale ? 'No ale, so the skald stays home' : '');
+  } else if (b.type === 'militia') { militiaTick(b, dt); b.status = road || (!b.staff ? 'No workers' : ''); }
+  else if (b.type === 'tower') { towerTick(b, dt); b.status = road || (!b.staff ? 'No archer' : ''); }
+  else if (b.type === 'store' || b.type === 'harbour') b.status = road || (!b.staff ? 'No workers' : '');
+}
+// how much a building gets done this month of the year
+function seasonK(d) {
+  const m = G.month;
+  if (d.months && (m < d.months[0] || m > d.months[1])) return 0;
+  return d.winter && SEASONS[m] === 'winter' ? d.winter : 1;
 }
 function fertOf(b, k) {
   if (b.fertC === undefined) {
@@ -923,17 +1004,18 @@ function sendCart(b) {
   const g = BLD[b.type].makes, acc = access(b).filter(i => G.comp[i]);
   let r = bfs(acc, nextTo(t => BLD[t.type].uses === g && t.inp < HOLD - LOAD && t.staff > 0, b.id), 900);
   if (!r) r = bfs(acc, nextTo(t => storeOk(t) && storeRoom(t, g) >= 1, b.id));
-  if (!r) { b.cd = 3; return; }
+  if (!r) { b.cd = 3; b.stuck = true; return; }
+  b.stuck = false;
   const n = Math.min(LOAD, Math.floor(b.out)); b.out -= n;
   const w = newWalker('cart', b, r.path[0]);
-  setPath(w, r); w.target = r.target; w.good = g; w.n = n; b.walker = w.id;
+  setPath(w, r); w.target = r.target; w.good = g; w.n = n; b.carts++; b.cd = .5;
 }
 function fetchInput(b) {
   const g = BLD[b.type].uses;
   const r = bfs(access(b).filter(i => G.comp[i]), nextTo(t => t.type === 'store' && t.stock[g] >= 1, b.id));
-  if (!r) { b.cd = 3; return; }
+  if (!r) { b.cd2 = 3; return; }
   const w = newWalker('fetch', b, r.path[0]);
-  setPath(w, r); w.target = r.target; w.good = g; w.n = Math.min(LOAD, HOLD - b.inp); b.walker = w.id;
+  setPath(w, r); w.target = r.target; w.good = g; w.n = Math.min(LOAD, HOLD - b.inp); b.walker2 = w.id;
 }
 function sendBuyer(b) {
   const want = Object.keys(MKT_MAX).filter(g => b.stock[g] < MKT_MAX[g] * .75);
@@ -945,11 +1027,12 @@ function sendBuyer(b) {
 }
 function spawnRoamer(b) {
   const acc = access(b).filter(i => G.comp[i]);
-  if (!acc.length) { b.cd = 3; return; }
+  if (!acc.length) { b.cd = 3; return false; }
   const w = newWalker(WALKER_FOR[BLD[b.type].walker], b, pick(acc));
   w.roam = true; w.visits = new Map([[w.cur, 1]]); w.god = BLD[b.type].god;
   b.walker = w.id;
   serve(w, w.cur);
+  return true;
 }
 
 // Settlers walk in along the old road to a house with room.
@@ -982,9 +1065,9 @@ function houseBest(b) {
   const rel = GODS.filter(g => mc - (b.rel[g.id] ?? -99) < SVC_MONTHS).length;
   const des = G.des[i];
   if (!ft || rel < 1) return 2;
-  if (b.pottery <= 0 || des < 0) return 3;
-  if (ft < 2 || rel < 2 || mc - b.ent >= SVC_MONTHS || des < 8) return 4;
-  if (b.cloth <= 0 || rel < 3 || des < 15) return 5;
+  if (b.pottery <= 0 || des < 0 || (isCold(G.month) && b.peat <= 0)) return 3;
+  if (ft < 2 || rel < 2 || mc - b.ent >= SVC_MONTHS || mc - b.heal >= SVC_MONTHS || des < 8) return 4;
+  if (b.cloth <= 0 || ft < 3 || rel < 3 || des < 15) return 5;
   return 6;
 }
 // What the house still needs to grow, in words
@@ -997,12 +1080,17 @@ function houseWants(b) {
   const des = G.des[i], miss = [];
   if (lvl <= 1) miss.push('water from a well');
   else if (lvl === 2) { if (!ft) miss.push('food from a market'); if (rel < 1) miss.push('a visit from a priest'); }
-  else if (lvl === 3) { if (b.pottery <= 0) miss.push('pottery from a market'); if (des < 0) miss.push('nicer surroundings'); }
-  else if (lvl === 4) {
+  else if (lvl === 3) {
+    if (b.pottery <= 0) miss.push('pottery from a market'); if (des < 0) miss.push('nicer surroundings');
+    if (isCold(G.month) && b.peat <= 0) miss.push('peat to burn this winter');
+  } else if (lvl === 4) {
     if (ft < 2) miss.push('a second kind of food'); if (rel < 2) miss.push('priests of two gods');
-    if (mc - b.ent >= SVC_MONTHS) miss.push('a skald from a mead hall'); if (des < 8) miss.push('much nicer surroundings');
-  } else if (lvl === 5) { if (b.cloth <= 0) miss.push('cloth from a market'); if (rel < 3) miss.push('priests of three gods'); if (des < 15) miss.push('beautiful surroundings (gardens, rune stones)'); }
-  else return '';
+    if (mc - b.ent >= SVC_MONTHS) miss.push('a skald from a mead hall'); if (mc - b.heal >= SVC_MONTHS) miss.push('visits from the wise woman');
+    if (des < 8) miss.push('much nicer surroundings');
+  } else if (lvl === 5) {
+    if (b.cloth <= 0) miss.push('cloth from a market'); if (ft < 3) miss.push('all three foods (bread, cheese and fish)');
+    if (rel < 3) miss.push('priests of three gods'); if (des < 15) miss.push('beautiful surroundings (gardens, rune stones)');
+  } else return '';
   return miss.join(', ');
 }
 function evolveHouses() {
@@ -1024,6 +1112,8 @@ function newMonth() {
   if (++G.month >= 12) { G.month = 0; G.year++; G.ev.push(['autosave']); }
   const mc = now();
   labor();
+  if (G.month === HARVEST) harvest();
+  if (!G.ship && harbour() && --G.shipT <= 0) spawnShip();
   // silver: taxes in, wages out
   let tax = 0;
   for (const b of G.ents.values()) if (b.type === 'house' && b.res && mc - b.tax < TAX_MONTHS) tax += b.res * HOUSES[b.lvl].tax * G.taxRate / 8;
@@ -1041,11 +1131,14 @@ function newMonth() {
       for (const f of have) { const k = Math.min(b.food[f], need / have.length); b.food[f] -= k; need -= k; if (b.food[f] < .01) b.food[f] = 0; }
     }
     if (b.lvl >= 4) b.pottery = Math.max(0, b.pottery - .25);
+    if (b.lvl >= 3 && isCold(G.month)) b.peat = Math.max(0, b.peat - .6);
     if (b.lvl >= 6) b.cloth = Math.max(0, b.cloth - .2);
   }
   fires();
+  disease();
   gods();
   storms();
+  raids();
   for (let i = 0; i < G.flood.length; i++) if (G.flood[i] > 0) G.flood[i] = Math.max(0, G.flood[i] - 1);
   if (G.boost > 0) G.boost--;
   mood();
@@ -1078,23 +1171,332 @@ function neighbours(b) {
   }
   return out;
 }
-function ignite(b) {
-  if (b.burn || BLD[b.type].fixed || b.type === 'dike' || b.type === 'well' || b.type === 'garden' || b.type === 'rune' || (b.type === 'house' && !b.lvl)) return;
+function ignite(b, quiet) {
+  if (b.burn || BLD[b.type].fixed || ['dike', 'sluice', 'well', 'garden', 'rune', 'wall', 'gate'].includes(b.type) || (b.type === 'house' && !b.lvl)) return false;
   b.burn = .01; G.stats.fires++;
+  if (quiet) return true;
   say('Fire! A ' + (b.type === 'house' ? HOUSES[b.lvl].name.toLowerCase() : BLD[b.type].name.toLowerCase()) + ' is burning.', 'bad', b.y * G.N + b.x);
   snd('fire');
+  return true;
+}
+
+// ---------- the year ----------
+function harvest() {
+  const got = {};
+  for (const b of G.ents.values()) if (BLD[b.type].crop && b.crop >= 1) {
+    const k = Math.floor(b.crop), g = BLD[b.type].makes;
+    b.out = Math.min(FARM_HOLD, b.out + k); b.crop = 0; got[g] = (got[g] || 0) + k;
+  }
+  const list = Object.entries(got).map(([g, n]) => n + ' ' + GOOD[g].name.toLowerCase());
+  if (list.length) { say('Harvest time! The farms bring in ' + list.join(' and ') + '. Handcarts will take it away over the coming months.', 'good'); snd('evolve'); }
+}
+
+// ---------- fever ----------
+function nearBog(b) {
+  if (b.bogC === undefined) {
+    b.bogC = false;
+    for (let y = b.y - 2; y <= b.y + 2; y++) for (let x = b.x - 2; x <= b.x + 2; x++) if (inMap(x, y) && G.terr[y * G.N + x] === T_MARSH) b.bogC = true;
+  }
+  return b.bogC;
+}
+function disease() {
+  let sick = 0, dead = 0, at = -1;
+  const caught = b => { b.fever = 2; b.sick = 0; const k = Math.ceil(b.res * .3); b.res -= k; G.pop -= k; dead += k; sick++; G.stats.fevers++; at = b.y * G.N + b.x; };
+  for (const b of [...G.ents.values()]) {
+    if (b.type !== 'house' || !b.res) continue;
+    if (b.fever > 0) {
+      b.fever--;
+      for (const n of neighbours(b)) if (n.type === 'house' && n.res && !n.fever && Math.random() < .1) caught(n);
+      continue;
+    }
+    let add = 1 + b.lvl * .25;
+    if (!G.water[b.y * G.N + b.x]) add += 1.5;
+    if (nearBog(b)) add += 2;
+    if (G.gods.frija.mood >= 70) add *= .6;
+    b.sick += add;
+    if (b.sick > 60 && Math.random() < (b.sick - 60) / 250) caught(b);
+  }
+  if (sick) { say(`Fever! ${sick} house${sick > 1 ? 's are' : ' is'} sick and ${dead} people died. A wise woman keeps it away.`, 'bad', at); snd('wrath'); }
+}
+
+// ---------- trade ships ----------
+function harbour() { for (const b of G.ents.values()) if (b.type === 'harbour' && b.conn && b.staff > 0 && !b.burn) return b; return null; }
+// from the edge of the map over open sea to the wharf
+function shipPath(h) {
+  const N = G.N, prev = new Int32Array(N * N).fill(-2), q = [];
+  for (let k = -1; k <= h.s; k++) for (const [x, y] of [[h.x + k, h.y - 1], [h.x + k, h.y + h.s], [h.x - 1, h.y + k], [h.x + h.s, h.y + k]]) {
+    if (!inMap(x, y)) continue;
+    const i = y * N + x;
+    if (G.terr[i] === T_SEA && prev[i] === -2) { prev[i] = -1; q.push(i); }
+  }
+  for (let hd = 0; hd < q.length; hd++) {
+    const i = q[hd], x = i % N, y = (i - x) / N;
+    if (x === 0 || y === 0 || x === N - 1 || y === N - 1) { const p = []; for (let k = i; k >= 0; k = prev[k]) p.push(k); return p; }
+    for (const [dx, dy] of D4) {
+      const nx = x + dx, ny = y + dy; if (!inMap(nx, ny)) continue;
+      const j = ny * N + nx; if (G.terr[j] === T_SEA && prev[j] === -2) { prev[j] = i; q.push(j); }
+    }
+  }
+  return null;
+}
+function spawnShip() {
+  const h = harbour(); if (!h) return;
+  if (G.gods.nehalennia.mood < 20) { G.shipT = 2; say('No ships dare to come while Nehalennia is furious.', 'bad'); return; }
+  const p = shipPath(h);
+  if (!p) { G.shipT = 3; return; }
+  G.ship = { path: p, pos: 0, dock: h.id, state: 'in', wait: 0, from: pick(PORTS) };
+  say(`A trading ship from ${G.ship.from} is coming in.`, 'info', h.y * G.N + h.x);
+}
+function shipStep(dt) {
+  const s = G.ship; if (!s) return;
+  if (s.state === 'dock') { if ((s.wait -= dt) <= 0) s.state = 'out'; return; }
+  s.pos += (s.state === 'in' ? 1 : -1) * 2.2 * dt;
+  if (s.state === 'in' && s.pos >= s.path.length - 1) {
+    s.pos = s.path.length - 1; s.state = 'dock'; s.wait = MONTH * .5;
+    const h = G.ents.get(s.dock); if (h) trade(h, s.from);
+  } else if (s.state === 'out' && s.pos <= 0) { G.ship = null; G.shipT = 2 + rnd(2); }
+}
+// the ship buys what you sell and sells what you buy, through every storehouse on the roads
+function trade(h, from) {
+  const stores = [...G.ents.values()].filter(b => storeOk(b) && b.conn);
+  let room = 40, budget = 24, earned = 0, spent = 0;
+  const sold = [], bought = [];
+  for (const g of GOODS) {
+    let n = 0;
+    if (G.trade[g] === 'sell') {
+      for (const s of stores) { const k = Math.min(Math.floor(s.stock[g]), room); s.stock[g] -= k; room -= k; n += k; }
+      if (n) { sold.push(n + ' ' + GOOD[g].name.toLowerCase()); earned += n * GOOD[g].sell; }
+    } else if (G.trade[g] === 'buy') {
+      for (const s of stores) {
+        const k = Math.max(0, Math.min(16 - Math.floor(s.stock[g]), budget, Math.floor((G.money + earned - spent) / GOOD[g].buy)));
+        s.stock[g] += k; budget -= k; n += k; spent += k * GOOD[g].buy;
+      }
+      if (n) bought.push(n + ' ' + GOOD[g].name.toLowerCase());
+    }
+  }
+  G.money += earned - spent; G.stats.trade += earned;
+  const at = h.y * G.N + h.x;
+  if (!stores.length) say(`The ship from ${from} found no storehouse to trade with.`, 'bad', at);
+  else if (!sold.length && !bought.length) say(`The ship from ${from} found nothing to trade. Choose goods to sell or buy under TRADE.`, 'info', at);
+  else { say(`The ship from ${from}` + (sold.length ? ` bought ${sold.join(', ')} for ${earned} silver` : '') + (sold.length && bought.length ? ' and' : '') +
+    (bought.length ? ` sold you ${bought.join(', ')} for ${spent}` : '') + '.', 'good', at); snd('coin'); }
+}
+
+// ---------- raiders and militia ----------
+const RAIDER = { hp: 40, dmg: 8, bdmg: 12, speed: 1.5 }, SOLDIER = { hp: 70, dmg: 11, speed: 1.8 };
+const NO_LOOT = new Set(['dike', 'sluice', 'wall', 'gate', 'hunebed', 'well', 'garden', 'rune']);
+function newUnit(kind, i, home = 0) {
+  const N = G.N, u = { id: G.uid++, kind, x: i % N + .3 + Math.random() * .4, y: ((i / N) | 0) + .3 + Math.random() * .4,
+    hp: kind === 'raider' ? RAIDER.hp : SOLDIER.hp, path: [], target: 0, foe: 0, think: Math.random() * .5, loot: 0, home, dead: false, ph: Math.random() * 6, dir: 1, fight: 0 };
+  u.max = u.hp;
+  G.units.push(u);
+  return u;
+}
+const uTile = u => Math.floor(u.y) * G.N + Math.floor(u.x);
+// right next to (or diagonally next to) a building's footprint
+const besideB = t => i => { const N = G.N, x = i % N, y = (i - x) / N; return x >= t.x - 1 && x <= t.x + t.s && y >= t.y - 1 && y <= t.y + t.s && !(x >= t.x && x < t.x + t.s && y >= t.y && y < t.y + t.s); };
+function stepCost(j, who) {
+  const t = G.terr[j], id = G.bld[j];
+  if (isWater(t) && !G.road[j]) return -1;
+  if (id) {
+    const b = G.ents.get(id);
+    if (b.type === 'dike' || b.type === 'sluice') return 1.2;
+    if (isWall(b)) return who === 'raider' ? 10 : b.type === 'gate' ? 1 : -1;
+    return -1;
+  }
+  return G.road[j] ? .8 : t === T_MARSH ? 2 : 1;
+}
+// cheapest way over land (Dijkstra); raiders will hack through palisades, militia use gates
+let pqI = null, pqC = null, pDist = null, pFrom = null, pMark = null, pGen = 0;
+function landPath(start, goal, who, limit = 9000) {
+  const N = G.N, NN = N * N;
+  if (!pDist || pDist.length !== NN) { pDist = new Float32Array(NN); pFrom = new Int32Array(NN); pMark = new Int32Array(NN); pqI = new Int32Array(NN * 5); pqC = new Float32Array(NN * 5); }
+  const gen = ++pGen;
+  let n = 0;
+  const swap = (a, b) => { const i = pqI[a], c = pqC[a]; pqI[a] = pqI[b]; pqC[a] = pqC[b]; pqI[b] = i; pqC[b] = c; };
+  const push = (i, c) => { if (n >= pqI.length) return; let k = n++; pqI[k] = i; pqC[k] = c; while (k > 0) { const p = (k - 1) >> 1; if (pqC[p] <= pqC[k]) break; swap(p, k); k = p; } };
+  pMark[start] = gen; pDist[start] = 0; pFrom[start] = -1; push(start, 0);
+  for (let pops = 0; n > 0 && pops < limit; pops++) {
+    const i = pqI[0], c = pqC[0];
+    n--; pqI[0] = pqI[n]; pqC[0] = pqC[n];
+    for (let k = 0; ;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < n && pqC[l] < pqC[m]) m = l; if (r < n && pqC[r] < pqC[m]) m = r; if (m === k) break; swap(m, k); k = m; }
+    if (c > pDist[i]) continue;
+    if (goal(i)) { const p = []; for (let k = i; k !== start; k = pFrom[k]) p.push(k); return p.reverse(); }
+    const x = i % N, y = (i - x) / N;
+    for (const [dx, dy] of D4) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const j = ny * N + nx, sc = stepCost(j, who);
+      if (sc < 0) continue;
+      const nd = c + sc;
+      if (pMark[j] !== gen || nd < pDist[j]) { pMark[j] = gen; pDist[j] = nd; pFrom[j] = i; push(j, nd); }
+    }
+  }
+  return null;
+}
+function moveUnit(u, dt, sp) {
+  if (!u.path.length) return;
+  const N = G.N, j = u.path[0], tx = j % N + .5, ty = ((j / N) | 0) + .5;
+  const b = G.bld[j] && G.ents.get(G.bld[j]);
+  if (b && isWall(b) && u.kind === 'raider') { hurtBuilding(b, RAIDER.bdmg * dt, u); u.fight = .3; return; }
+  const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy), st = sp * dt;
+  if (Math.abs(dx - dy) > .01) u.dir = dx - dy > 0 ? 1 : -1;
+  if (d <= st) { u.x = tx; u.y = ty; u.path.shift(); } else { u.x += dx / d * st; u.y += dy / d * st; }
+}
+function hurtBuilding(b, dmg, u) {
+  b.hp -= dmg;
+  if (b.hp > 0) return;
+  const at = b.y * G.N + b.x;
+  if (isWall(b)) { removeBuilding(b, true); say('Raiders hacked through the palisade!', 'bad', at); return; }
+  const steal = Math.min(Math.max(0, Math.floor(G.money)), b.type === 'house' ? 10 + b.lvl * 6 : 30);
+  G.money -= steal; G.raid.loot += steal; u.loot++;
+  b.hp = hpOf(b.type);
+  if (!ignite(b, true)) removeBuilding(b, true);
+}
+function nearest(u, kind, range) {
+  let best = null, bd = range * range;
+  for (const o of G.units) if (o.kind === kind && !o.dead) { const d = (o.x - u.x) ** 2 + (o.y - u.y) ** 2; if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+function raiderThink(u) {
+  const me = uTile(u), r = G.raid;
+  const foe = nearest(u, 'soldier', 1.4);
+  if (foe) { u.foe = foe.id; u.path = []; return; }
+  u.foe = 0;
+  if (r.state === 'leaving' || u.loot >= 2) {
+    if (me === r.shore || Math.hypot(u.x - (r.shore % G.N + .5), u.y - ((r.shore / G.N | 0) + .5)) < .8) { u.dead = true; r.escaped++; return; }
+    if (u.target !== -1 || !u.path.length) { u.target = -1; u.path = landPath(me, i => i === r.shore, 'raider') || []; if (!u.path.length) { u.dead = true; r.escaped++; } }
+    return;
+  }
+  let t = G.ents.get(u.target);
+  if (!t || t.burn) {
+    t = null; let bd = 1e9;
+    for (const b of G.ents.values()) {
+      if (b.burn || NO_LOOT.has(b.type) || (b.type === 'house' && !b.lvl)) continue;
+      const d = (b.x + b.s / 2 - u.x) ** 2 + (b.y + b.s / 2 - u.y) ** 2;
+      if (d < bd) { bd = d; t = b; }
+    }
+    u.target = t ? t.id : 0; u.path = [];
+    if (!t) { r.state = 'leaving'; return; }
+  }
+  if (besideB(t)(me)) { u.path = []; return; }
+  if (!u.path.length) { u.path = landPath(me, besideB(t), 'raider') || []; if (!u.path.length) u.target = 0; }
+}
+function soldierThink(u) {
+  const me = uTile(u), home = G.ents.get(u.home);
+  const bx = home ? home.x + home.s / 2 : u.x, by = home ? home.y + home.s / 2 : u.y;
+  let foe = null, bd = 30 * 30;
+  for (const o of G.units) if (o.kind === 'raider' && !o.dead) { const d = (o.x - bx) ** 2 + (o.y - by) ** 2; if (d < bd) { bd = d; foe = o; } }
+  if (foe) {
+    u.foe = foe.id;
+    if (Math.hypot(foe.x - u.x, foe.y - u.y) < 1.2) u.path = [];
+    else { const ft = uTile(foe); u.path = landPath(me, i => i === ft || Math.abs(i % G.N - ft % G.N) + Math.abs(((i / G.N) | 0) - ((ft / G.N) | 0)) <= 1, 'soldier', 5000) || []; }
+    return;
+  }
+  u.foe = 0;
+  if (!home) { u.dead = true; return; }
+  if (besideB(home)(me)) { u.path = []; u.hp = Math.min(u.max, u.hp + 4); }
+  else if (!u.path.length) u.path = landPath(me, besideB(home), 'soldier', 6000) || [];
+}
+function unitsStep(dt) {
+  if (!G.units.length) { if (G.raid && G.raid.state !== 'coming') endRaid(); return; }
+  const byId = new Map(G.units.map(u => [u.id, u]));
+  const wodan = G.gods.wodan.mood >= 70 ? 1.25 : 1;
+  for (const u of G.units) {
+    if (u.dead) continue;
+    if (u.hp <= 0) { u.dead = true; if (u.kind === 'raider' && G.raid) G.raid.killed++; continue; }
+    if (u.fight > 0) u.fight -= dt;
+    if ((u.think -= dt) <= 0) { u.think = .5 + Math.random() * .3; if (u.kind === 'raider') { if (G.raid) raiderThink(u); else u.dead = true; } else soldierThink(u); }
+    if (u.dead) continue;
+    const foe = u.foe && byId.get(u.foe);
+    if (foe && !foe.dead && Math.hypot(foe.x - u.x, foe.y - u.y) < 1.4) {
+      foe.hp -= (u.kind === 'raider' ? RAIDER.dmg : SOLDIER.dmg * wodan) * dt; u.fight = .3;
+      u.dir = foe.x - foe.y > u.x - u.y ? 1 : -1;
+      continue;
+    }
+    const t = u.kind === 'raider' && u.target > 0 && G.ents.get(u.target);
+    if (t && !t.burn && besideB(t)(uTile(u))) { hurtBuilding(t, RAIDER.bdmg * dt, u); u.fight = .3; continue; }
+    moveUnit(u, dt, u.kind === 'raider' ? RAIDER.speed : SOLDIER.speed);
+  }
+  if (G.units.some(u => u.dead)) G.units = G.units.filter(u => !u.dead);
+  if (G.raid && G.raid.state !== 'coming' && !G.units.some(u => u.kind === 'raider')) endRaid();
+}
+function militiaTick(b, dt) {
+  if (!b.conn || !b.staff) return;
+  let n = 0;
+  for (const u of G.units) if (u.home === b.id) n++;
+  if (n >= 4) { b.trainT = MONTH / 2; return; }
+  if ((b.trainT -= dt * b.staff) > 0) return;
+  b.trainT = MONTH / 2;
+  const acc = access(b);
+  newUnit('soldier', acc.length ? pick(acc) : b.y * G.N + b.x + b.s, b.id);
+}
+function towerTick(b, dt) {
+  if (!b.staff || !G.raid || G.raid.state === 'coming' || b.cd > 0) return;
+  const me = { x: b.x + .5, y: b.y + .5 }, r = nearest(me, 'raider', 5.5);
+  if (!r) return;
+  r.hp -= 9; b.cd = 1 / b.staff;
+  G.ev.push(['arrow', me.x, me.y, r.x, r.y]);
+}
+function raids() {
+  const r = G.raid;
+  if (r) {
+    if (r.state === 'coming' && now() >= r.at) landRaid();
+    else if (r.state === 'landed' && now() >= r.until) r.state = 'leaving';
+    return;
+  }
+  if (G.year < START_YEAR + 3 || G.pop < 150) return;
+  const chance = .03 + Math.min(.05, G.pop / 25000) + (G.gods.wodan.mood < 35 ? .05 : 0);
+  if (Math.random() >= chance) return;
+  const spot = landingSpot();
+  if (!spot) return;
+  G.raid = { state: 'coming', at: now() + 1, n: Math.round(clamp(2 + G.pop / 180, 3, 16) * DIFF[G.cfg.diff].raid), sea: spot[0], shore: spot[1], loot: 0, killed: 0, escaped: 0 };
+  G.stats.raids++;
+  say('Longships on the horizon! Raiders will land in about a month. Ready your militia and close the palisade.', 'bad', spot[1]);
+  snd('horn');
+}
+// the raiders beach their longship on the shore closest to the town
+function landingSpot() {
+  const N = G.N, hs = [...G.ents.values()].filter(b => b.type === 'house');
+  if (!hs.length) return null;
+  const cx = hs.reduce((a, b) => a + b.x, 0) / hs.length, cy = hs.reduce((a, b) => a + b.y, 0) / hs.length, spots = [];
+  for (let i = 0; i < N * N; i++) {
+    if (G.terr[i] !== T_SEA) continue;
+    const x = i % N, y = (i - x) / N;
+    for (const [dx, dy] of D4) {
+      const nx = x + dx, ny = y + dy; if (!inMap(nx, ny)) continue;
+      const j = ny * N + nx;
+      if (!isWater(G.terr[j]) && !G.bld[j]) spots.push([i, j, (nx - cx) ** 2 + (ny - cy) ** 2]);
+    }
+  }
+  if (!spots.length) return null;
+  spots.sort((a, b) => a[2] - b[2]);
+  return pick(spots.slice(0, 12));
+}
+function landRaid() {
+  const r = G.raid;
+  r.state = 'landed'; r.until = now() + 3;
+  for (let k = 0; k < r.n; k++) newUnit('raider', r.shore);
+  say(`${r.n} raiders have landed and are coming for your silver!`, 'bad', r.shore);
+  snd('horn');
+}
+function endRaid() {
+  const r = G.raid;
+  G.raid = null;
+  if (!r) return;
+  if (r.killed >= r.escaped) { G.stats.beaten++; say(`The raiders are beaten! ${r.killed} fell` + (r.loot ? `, though they got away with ${r.loot} silver.` : ' and they took nothing.'), 'good'); snd('bless'); }
+  else say(`The raiders sailed off with ${r.loot} silver.` + (r.killed ? ` ${r.killed} of them will not see home again.` : ''), 'bad');
 }
 
 const moodWord = m => m < 20 ? 'Furious' : m < 35 ? 'Angry' : m < 50 ? 'Displeased' : m < 70 ? 'Content' : m < 85 ? 'Pleased' : 'Delighted';
 const templeCount = id => { let n = 0; for (const b of G.ents.values()) if (b.type === 't_' + id) n++; return n; };
 function godTarget(id) {
-  // a temple keeps about 500 people's worth of a god happy; small villages are forgiven
+  // a temple keeps about 500 people's worth of a god happy; villages under 200 are forgiven
   let eff = 0;
   for (const b of G.ents.values()) if (b.type === 't_' + id) eff += b.staff > 0 ? 1 : .4;
-  const pop = G.pop, ratio = pop < 120 ? 1 : Math.min(1.5, (eff * 500 + 120) / pop);
+  const pop = G.pop, ratio = pop < 200 ? 1 : Math.min(1.5, (eff * 500 + 200) / pop);
   let t = 10 + 70 * Math.min(1, ratio) + Math.max(0, ratio - 1) * 30;
   const others = GODS.filter(g => g.id !== id).map(g => templeCount(g.id));
-  if (pop >= 120 && templeCount(id) < others.reduce((a, b) => a + b, 0) / others.length - .5) t -= 12;   // jealous
+  if (pop >= 200 && templeCount(id) < others.reduce((a, b) => a + b, 0) / others.length - .5) t -= 12;   // jealous
   return t + G.gods[id].fest;
 }
 function gods() {
@@ -1139,7 +1541,7 @@ function wrath(g) {
 function bless(g) {
   say(g.bless, 'good'); snd('bless');
   if (g.id === 'wodan') G.money += 300 + Math.round(G.pop * .5);
-  else if (g.id === 'donar') { for (const b of G.ents.values()) if (BLD[b.type].makes && !BLD[b.type].uses) b.out = Math.max(b.out, LOAD); }
+  else if (g.id === 'donar') { for (const b of G.ents.values()) if (BLD[b.type].crop) b.crop *= 1.5; else if (BLD[b.type].makes && !BLD[b.type].uses) b.out = Math.max(b.out, LOAD); }
   else if (g.id === 'frija') G.boost = 3;
   else if (g.id === 'nehalennia') {
     const s = [...G.ents.values()].find(b => b.type === 'store');
@@ -1158,7 +1560,7 @@ function floodReach(lvl) {
     for (const [dx, dy] of D4) {
       const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
       const j = ny * N + nx;
-      if (!out[j] && G.elev[j] < lvl && !isDike(j)) { out[j] = 1; q.push(j); }
+      if (!out[j] && groundLvl(j) < lvl && !isDike(j)) { out[j] = 1; q.push(j); }
     }
   }
   return out;
@@ -1226,12 +1628,18 @@ function advisor() {
   const tip = (id, cond, text) => { if (!G.tips[id] && cond) { G.tips[id] = 1; say(text, 'tip'); } };
   const hs = houses(), has = t => [...G.ents.values()].some(b => b.type === t);
   tip('water', hs.some(b => b.lvl === 1 && b.res >= 4), 'Sod huts want water. Build a well among the houses so they can grow.');
-  tip('food', G.pop >= 50 && !has('market'), 'Time to feed people: a rye farm, a storehouse and a market. The market woman carries food to the houses.');
+  tip('food', G.pop >= 50 && !has('market'), 'Time to feed people: a dairy farm or a fisher, a storehouse and a market. The market woman carries food to the houses.');
   tip('gods', G.pop >= 70 && !GODS.some(g => templeCount(g.id)), 'The gods are watching. Thatched cottages need a priest to visit, so build a temple.');
   tip('tax', G.pop >= 90 && !has('reeve'), 'A reeve\'s hall sends out a tax collector. Without one, nobody pays taxes.');
   tip('fire', G.pop >= 120 && !has('watch'), 'Thatch burns! A fire watch keeps houses from catching fire.');
   tip('pots', hs.some(b => b.lvl === 3) && !has('potter'), 'Cottages want pottery to become longhouses: dig a clay pit near water and build a potter.');
-  tip('dike', G.year >= START_YEAR + 1 && G.month === 8, 'Autumn brings storm floods. Check VIEW: FLOODS and build dikes in front of low land.');
+  tip('peat', hs.some(b => b.lvl >= 3) && G.month >= 4 && G.month <= 8 && !has('peat'), 'Winter is coming. Longhouses must burn peat from November to March: cut it in a bog over the summer.');
+  tip('dike', G.year >= START_YEAR + 1 && G.month === 8, 'Autumn brings storm floods. Check VIEW: FLOODS and build dikes or terps in front of low land.');
+  tip('bread', hs.some(b => b.lvl >= 4) && !has('bakery'), 'Better houses want more kinds of food. Bread takes a rye farm, a windmill and a bakery; the rye is harvested once a year.');
+  tip('trade', G.pop >= 200 && !has('harbour'), 'The Frisians are traders! A trading wharf on the sea shore brings ships that pay well for salt, cloth and pottery.');
+  tip('ale', has('mead') && !has('brewery'), 'A mead hall without ale is a quiet place. Barley farm, brewery, then the skald can sing.');
+  tip('fever', G.pop >= 250 && !has('healer'), 'Crowded houses near bogs or without wells catch fever. A wise woman keeps it away.');
+  tip('raid', G.year >= START_YEAR + 2 && G.pop >= 150 && !has('militia'), 'Northmen raid rich towns along this coast. A militia hall, watchtowers and a palisade will keep your silver safe.');
   tip('jealous', G.pop >= 300, 'The gods are jealous of each other. Give each of the five a temple.');
 }
 
@@ -1243,8 +1651,11 @@ function goalList() {
     ['A gabled townhouse', hs.some(b => b.lvl >= 6), ''],
     ['A temple for each of the five gods', GODS.every(g => templeCount(g.id) > 0), GODS.filter(g => templeCount(g.id) > 0).length + ' / 5'],
     ['Every god at least content', GODS.every(g => G.gods[g.id].mood >= 50), GODS.filter(g => G.gods[g.id].mood >= 50).length + ' / 5'],
+    ['Earn 1,500 silver from trade', G.stats.trade >= 1500, fmtN(G.stats.trade) + ' / 1,500'],
+    ['Beat off a Viking raid', G.stats.beaten >= 1, ''],
   ];
 }
+const fmtN = n => Math.round(n).toLocaleString('en-US');
 function checkGoals() {
   if (G.won) return;
   if (goalList().every(g => g[1])) { G.won = true; G.ev.push(['win']); }
@@ -1765,17 +2176,24 @@ const ART = {
     fillPoly(c, [[x + .5, y - h - 5], [x + 3.5, y - h - 5], [x + 3, y - h - 2], [x + 1, y - h - 2]], '#7a5432');
   },
   farm(c, R, b) {
-    const st = b.stage ?? 4;
+    const st = b.stage ?? 4, barley = b.type === 'barley';
     fillPoly(c, diamond(.08, .9, 2.86, 2.04), '#7c5c3a');
     c.save(); poly(c, diamond(.08, .9, 2.86, 2.04)); c.clip();
     for (let v = 1; v < 2.95; v += .13) line(c, P(.08, v), P(2.94, v), 'rgba(50,32,18,.45)', .9);
-    const cols = ['#7c5c3a', '#6e9a3a', '#7aa23c', '#b5b048', '#d8b04a'], tip = ['#7c5c3a', '#8cba4a', '#9cc050', '#d0c460', '#ecd27a'];
+    const cols = barley ? ['#7c5c3a', '#74a040', '#88aa48', '#c0bc68', '#d6c880'] : ['#7c5c3a', '#6e9a3a', '#7aa23c', '#b5b048', '#d8b04a'];
+    const tip = barley ? ['#7c5c3a', '#94c050', '#a8c45c', '#dcd488', '#efe2a0'] : ['#7c5c3a', '#8cba4a', '#9cc050', '#d0c460', '#ecd27a'];
     if (st > 0) for (let v = 1; v < 2.92; v += .13) for (let u = .14; u < 2.92; u += .075) {
       const p = P(u + (R() - .5) * .03, v + .02), hh = 1.4 + st * 1.5 + R();
       line(c, p, [p[0] + (R() - .5) * .8, p[1] - hh], cols[st], .8);
-      if (st >= 3) blob(c, p[0], p[1] - hh, .6, .9, tip[st]);
+      if (st >= 3) { blob(c, p[0], p[1] - hh, .6, .9, tip[st]); if (barley) line(c, [p[0], p[1] - hh], [p[0] + 1.2, p[1] - hh - 1.6], tip[st], .4); }
     }
+    else for (let v = 1; v < 2.92; v += .13) for (let u = .14; u < 2.92; u += .12) { const p = P(u + R() * .05, v + .02); line(c, p, [p[0], p[1] - 1], 'rgba(200,170,90,.55)', .6); }
     c.restore();
+    for (let k = 0; k < (b.sheaves || 0); k++) {
+      const [x, y] = P(.5 + k * .35, 2.55);
+      c.beginPath(); c.ellipse(x, y - 3, 3.5, 5, 0, Math.PI, 0); c.lineTo(x + 3.5, y); c.lineTo(x - 3.5, y); c.closePath(); c.fillStyle = barley ? '#d8c880' : '#d8b04a'; c.fill();
+      line(c, [x - 3.5, y - 3], [x + 3.5, y - 3], 'rgba(90,60,20,.5)', .7);
+    }
     shadow(c, .18, .12, 1.4, .62, 22);
     box(c, .18, .12, 1.4, .62, 0, 10, '#7d5a3a', 'vplank', R, null);
     gable(c, .18, .12, 1.4, .62, 10, 13, 'u', '#b8995a', 'thatch', R, '#7d5a3a');
@@ -2048,6 +2466,208 @@ const ART = {
 };
 function post2(c, u, v, z0, z1) { line(c, P(u, v, z0), P(u, v, z1), '#4a3220', 1); }
 for (const g of GODS) ART['t_' + g.id] = ART.temple;
+ART.barley = ART.farm;
+// stakes along a line (palisades, the wings of gates)
+function stakes(c, u0, v0, u1, v1, h, R) {
+  const n = Math.max(2, Math.round(Math.hypot(u1 - u0, v1 - v0) * 8));
+  for (let k = 0; k <= n; k++) {
+    const u = u0 + (u1 - u0) * k / n, v = v0 + (v1 - v0) * k / n, hh = h * (.9 + R() * .18), [x, y] = P(u, v);
+    fillPoly(c, [[x - 2.1, y], [x + 2.1, y], [x + 2.1, y - hh + 2.6], [x, y - hh], [x - 2.1, y - hh + 2.6]], k % 2 ? '#7a5a38' : '#6a4c30');
+    line(c, [x + 1, y], [x + 1, y - hh + 2.4], 'rgba(0,0,0,.28)', 1.1);
+    line(c, [x - 1.2, y - 1], [x - 1.2, y - hh + 3], 'rgba(255,230,190,.12)', .7);
+  }
+  for (const f of [.3, .7]) line(c, P(u0, v0, h * f), P(u1, v1, h * f), '#3e2c1a', 1.1);
+}
+// which neighbours a 1-tile piece of wall/dike connects to (bits: 1 = -y, 2 = +x, 4 = +y, 8 = -x)
+function linkMask(b, test) {
+  const N = G.N, i = b.y * N + b.x, at = j => { const id = G.bld[j]; return id && test(G.ents.get(id)); };
+  let m = 0;
+  if (b.y > 0 && at(i - N)) m |= 1; if (b.x < N - 1 && at(i + 1)) m |= 2;
+  if (b.y < N - 1 && at(i + N)) m |= 4; if (b.x > 0 && at(i - 1)) m |= 8;
+  return m;
+}
+// does the road through this tile run along x (true) or along y?
+const roadAlongX = b => { const m = roadMask(b.y * G.N + b.x); return !!(m & 10) || !(m & 5); };
+Object.assign(ART, {
+  mill(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#8a7a52');
+    c.beginPath(); c.ellipse(...P(1, 1), 26, 12, 0, 0, Math.PI * 2); c.fillStyle = '#7a8a48'; c.fill();
+    shadow(c, .7, .75, .6, .5, 60, .2);
+    // the trestle and the post the whole mill turns on
+    for (const [u, v] of [[.7, .7], [1.3, .7], [.7, 1.3], [1.3, 1.3]]) line(c, P(u, v), P(1, 1, 12), '#4a3420', 1.6);
+    line(c, P(1, 1), P(1, 1, 15), '#3a2818', 2.6);
+    box(c, .7, .75, .6, .5, 15, 20, '#8a6a46', 'vplank', R, null);
+    gable(c, .7, .75, .6, .5, 35, 8, 'v', '#5e4e3e', 'shingle', R, '#8a6a46');
+    opening(c, 'R', .7, .75, .6, .5, .3, .7, 15, 23, '#2a1d12');
+    line(c, P(1.3, 1.0, 16), P(1.95, 1.45, 3), '#5a3e24', 1.2);   // the steps and tail pole
+    for (let k = 1; k < 6; k++) { const a = lerp2(P(1.3, 1.0, 16), P(1.95, 1.45, 3), k / 6); line(c, a, [a[0] + 3, a[1] - 1], '#5a3e24', .8); }
+    for (const [u, v] of [[.4, 1.7], [.6, 1.8]]) sack(c, ...P(u, v), '#e8dcc0');
+  },
+  bakery(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#9a8a68');
+    shadow(c, .15, .2, 1.1, .8, 26);
+    box(c, .15, .2, 1.1, .8, 0, 11, '#e2d6bc', 'daub', R, null);
+    gable(c, .15, .2, 1.1, .8, 11, 14, 'u', '#8a4630', 'tiles', R, '#e2d6bc');
+    opening(c, 'L', .15, .2, 1.1, .8, .3, .45, 0, 7.5, '#3a2616', '#5a3e24');
+    opening(c, 'L', .15, .2, 1.1, .8, .62, .82, 4, 7.5, '#ffb050', '#5a3e24');
+    chimney(c, .9, .5, 20, 9, '#8a5a40');
+    const [kx, ky] = P(1.55, 1.35);
+    blob(c, kx + 6, ky + 1, 9, 3, 'rgba(16,26,10,.25)');
+    c.beginPath(); c.ellipse(kx, ky, 7, 3.6, 0, 0, Math.PI); c.lineTo(kx - 7, ky - 2); c.ellipse(kx, ky - 2, 7, 7.5, 0, Math.PI, 0); c.closePath();
+    const g = c.createLinearGradient(kx - 7, ky - 10, kx + 7, ky); g.addColorStop(0, '#c8a888'); g.addColorStop(1, '#7a5a44'); c.fillStyle = g; c.fill();
+    c.beginPath(); c.ellipse(kx - 2, ky - .5, 2.2, 2.6, 0, Math.PI, 0); c.closePath(); c.fillStyle = '#ff9a30'; c.fill();
+    box(c, .4, 1.3, .5, .25, 0, 3.5, '#8a6a42', 'plank', R);
+    for (let k = 0; k < 4; k++) { const [x, y] = P(.47 + k * .11, 1.42, 3.5); blob(c, x, y - .8, 1.6, 1, '#b87a3a'); blob(c, x - .4, y - 1.2, .6, .3, 'rgba(255,230,180,.5)'); }
+  },
+  brewery(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#8e8462');
+    shadow(c, .15, .15, 1.2, .85, 26);
+    box(c, .15, .15, 1.2, .85, 0, 11, '#7a5838', 'vplank', R, null);
+    hip(c, .15, .15, 1.2, .85, 11, 15, '#b29050', 'thatch', R);
+    opening(c, 'L', .15, .15, 1.2, .85, .42, .6, 0, 8, '#2a1a0e', '#4a3020');
+    const [kx, ky] = P(1.55, 1.3);
+    blob(c, kx + 4, ky + 1, 7, 2.5, 'rgba(16,26,10,.25)');
+    fillPoly(c, [[kx - 6, ky - 1], [kx + 6, ky - 1], [kx + 5, ky - 8], [kx - 5, ky - 8]], '#b8652e');
+    blob(c, kx, ky - 8, 5, 2, '#d88a4a'); blob(c, kx, ky - 8, 3.6, 1.3, '#5a3a18');
+    fillPoly(c, [[kx - 6, ky - 1], [kx + 6, ky - 1], [kx + 5, ky + 1], [kx - 5, ky + 1]], '#3a3a3a');
+    for (const [u, v] of [[.3, 1.35], [.5, 1.45], [.7, 1.55], [.4, 1.7], [.6, 1.8]]) barrel(c, ...P(u, v));
+  },
+  peat(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#5a5a34');
+    for (const [u, v, du, dv] of [[.25, .9, 1.4, .25], [.25, 1.3, 1.4, .25]]) {
+      fillPoly(c, diamond(u, v, du, dv), '#3a2a1a');
+      fillPoly(c, [P(u, v), P(u + du, v), P(u + du, v, -3), P(u, v, -3)].map(p => [p[0], p[1] + 3]), '#4a3422');
+    }
+    for (const [u, v] of [[1.25, .25], [1.6, .4], [1.5, 1.75], [.4, 1.75]]) {
+      const [x, y] = P(u, v);
+      for (let r = 0; r < 3; r++) for (let k = 0; k < 3 - r; k++) {
+        const bx = x - 4 + k * 3 + r * 1.5, by = y - r * 2.2;
+        fillPoly(c, [[bx - 1.4, by], [bx + 1.4, by], [bx + 1.4, by - 2], [bx - 1.4, by - 2]], r % 2 ? '#3e2c1c' : '#4e3826');
+      }
+    }
+    shadow(c, .1, .1, .5, .45, 12);
+    box(c, .1, .1, .5, .45, 0, 6, '#6a4a2e', 'vplank', R, null);
+    gable(c, .1, .1, .5, .45, 6, 6, 'u', '#8a8050', 'reed', R, '#6a4a2e');
+    const [x, y] = P(1.0, 1.15); line(c, [x - 2, y - 9], [x + 1, y], '#6a4a28', 1); fillPoly(c, [[x, y - 1], [x + 3, y - 1], [x + 2.5, y + 2], [x + .5, y + 2]], '#8a8a90');
+  },
+  salt(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#9a9a7a');
+    for (const [u, v] of [[.15, .9], [.6, .9], [.15, 1.4], [.6, 1.4], [1.05, 1.4]]) {
+      fillPoly(c, diamond(u, v, .4, .4), '#6e6a56');
+      fillPoly(c, diamond(u + .04, v + .04, .32, .32), '#a8bcc4');
+      for (let k = 0; k < 4; k++) { const p = P(u + .08 + R() * .24, v + .08 + R() * .24); blob(c, p[0], p[1], 1.6, .7, 'rgba(250,250,245,.85)'); }
+    }
+    shadow(c, 1.1, .2, .7, .6, 16);
+    box(c, 1.1, .2, .7, .6, 0, 7, '#7a5a3e', 'plank', R, null);
+    gable(c, 1.1, .2, .7, .6, 7, 9, 'v', '#9a8a58', 'reed', R, '#7a5a3e');
+    chimney(c, 1.4, .45, 13, 6, '#7a7066');
+    for (const [u, v] of [[.35, .35], [.65, .3]]) { const [x, y] = P(u, v); c.beginPath(); c.moveTo(x - 5, y); c.lineTo(x, y - 7); c.lineTo(x + 5, y); c.closePath(); c.fillStyle = '#f4f2ec'; c.fill(); line(c, [x, y - 7], [x + 5, y], 'rgba(150,150,160,.5)', .8); }
+  },
+  harbour(c, R) {
+    fillPoly(c, diamond(.02, .02, 2.96, 2.96), '#6e5436');
+    c.save(); poly(c, diamond(.02, .02, 2.96, 2.96)); c.clip();
+    for (let k = 0; k < 30; k++) line(c, P(.02, k * .1), P(2.98, k * .1), 'rgba(30,18,8,.35)', .7);
+    for (let k = 0; k < 25; k++) { const p = P(R() * 3, R() * 3); line(c, p, [p[0] + 6, p[1] + 3], 'rgba(255,230,190,.08)', 1.2); }
+    c.restore();
+    for (let k = 0; k <= 6; k++) { post(c, k * .5, 2.98, 5, '#3a2818', 1.6); post(c, 2.98, k * .5, 5, '#3a2818', 1.6); }
+    shadow(c, .2, .2, 1.4, 1.0, 30);
+    box(c, .2, .2, 1.4, 1.0, 0, 14, '#7a5838', 'vplank', R, null);
+    gable(c, .2, .2, 1.4, 1.0, 14, 16, 'u', '#a88a4c', 'thatch', R, '#7a5838');
+    opening(c, 'L', .2, .2, 1.4, 1.0, .35, .65, 0, 10, '#22140a', '#4a3020');
+    // a treadwheel crane
+    const [x, y] = P(2.2, 1.0);
+    line(c, [x, y], [x, y - 26], '#4a3420', 2); line(c, [x, y - 26], [x + 18, y - 20], '#4a3420', 1.6); line(c, [x + 17, y - 20], [x + 17, y - 8], '#cbb890', .5);
+    fillPoly(c, [[x + 14, y - 8], [x + 20, y - 8], [x + 20, y - 4], [x + 14, y - 4]], '#8a6a3a');
+    c.beginPath(); c.ellipse(x - 5, y - 5, 2.2, 6, 0, 0, Math.PI * 2); c.strokeStyle = '#5a3e24'; c.lineWidth = 1.4; c.stroke();
+    for (const [u, v] of [[1.9, 2.4], [2.2, 2.6], [1.6, 2.6]]) barrel(c, ...P(u, v));
+    for (const [u, v] of [[.6, 2.3], [.9, 2.4]]) box(c, u - .15, v - .15, .3, .3, 0, 5, '#9a7a4e', 'plank', R);
+    sack(c, ...P(1.25, 2.5)); sack(c, ...P(1.4, 2.65), '#f4f2ec');
+  },
+  healer(c, R) {
+    groundPatch(c, .06, .06, .88, .88, '#6a8a3a', .7);
+    for (let k = 0; k < 12; k++) { const p = P(.55 + R() * .35, .1 + R() * .35); line(c, p, [p[0], p[1] - 2.5], '#3a6a2a', .6); blob(c, p[0], p[1] - 2.8, 1, .8, ['#c080e0', '#f2d04a', '#f4f0e8'][k % 3]); }
+    shadow(c, .2, .4, .5, .45, 14);
+    box(c, .2, .4, .5, .45, 0, 6, '#9a7a4e', 'wattle', R, null);
+    gable(c, .2, .4, .5, .45, 6, 9, 'v', '#a8925a', 'thatch', R, '#9a7a4e');
+    opening(c, 'L', .2, .4, .5, .45, .35, .65, 0, 4.5, '#2a1d12');
+    const [x, y] = P(.82, .85);
+    line(c, [x - 3, y], [x, y - 5], '#3a2a1a', .7); line(c, [x + 3, y], [x, y - 5], '#3a2a1a', .7);
+    blob(c, x, y - 1.5, 2.6, 1.8, '#2a2a2a'); blob(c, x, y - 2.6, 2.2, .7, '#5aa04a');
+    for (let k = 0; k < 3; k++) line(c, P(.22 + k * .12, .86, 5.5), P(.22 + k * .12, .86, 3), '#6a8a3a', 1.4);
+  },
+  militia(c, R) {
+    fillPoly(c, diamond(.05, .05, 1.9, 1.9), '#8a7a58');
+    shadow(c, .15, .3, 1.5, .9, 30);
+    box(c, .15, .3, 1.5, .9, 0, 10, '#6a4a30', 'vplank', R, null);
+    for (const [t, col] of [[.15, '#c4473a'], [.32, '#e8e0cc'], [.68, '#3d6b8c'], [.85, '#c4473a']]) {
+      const p = faceAt({ side: 'L', u: .15, v: .3, du: 1.5, dv: .9 }, t, 6); blob(c, p[0], p[1], 2.4, 2.4, col); blob(c, p[0], p[1], .8, .8, '#8a8a90');
+    }
+    opening(c, 'L', .15, .3, 1.5, .9, .45, .58, 0, 7.5, '#1e120a', '#4a3020');
+    gable(c, .15, .3, 1.5, .9, 10, 17, 'u', '#4c3c2e', 'shingle', R, '#6a4a30');
+    flag(c, 1.85, 1.8, 24, '#3d6b8c', R);
+    const [x, y] = P(1.2, 1.65);
+    line(c, [x - 6, y - 4], [x + 6, y - 1], '#5a3e24', 1.2);
+    for (let k = 0; k < 5; k++) line(c, [x - 5 + k * 2.6, y - 1 + k * .6], [x - 4 + k * 2.6, y - 16 + k * .6], '#6a4a28', .8);
+    for (let k = 0; k < 5; k++) blob(c, x - 4 + k * 2.6, y - 16.5 + k * .6, .6, 1.4, '#b0b0b8');
+  },
+  tower(c, R) {
+    groundPatch(c, .1, .1, .8, .8, '#8a7a5a', .5);
+    blob(c, ...P(.8, .4), 8, 2.5, 'rgba(16,26,10,.22)');
+    const u = .25, v = .25, d = .5, h = 30;
+    for (const [a, b2] of [[0, 0], [d, 0], [0, d], [d, d]]) post(c, u + a, v + b2, h, a + b2 > .6 ? '#4a3220' : '#5a3e24', 1.8);
+    for (const z of [8, 18]) { line(c, P(u, v + d, z), P(u + d, v + d, z + 8), '#5a3e24', .8); line(c, P(u + d, v, z), P(u + d, v + d, z + 8), '#4a3220', .8); }
+    box(c, u - .1, v - .1, d + .2, d + .2, h, 2.5, '#6a4a2e', 'plank', R);
+    stakes(c, u - .1, v + d + .1, u + d + .1, v + d + .1, 6, R); stakes(c, u + d + .1, v - .1, u + d + .1, v + d + .1, 6, R);
+    hip(c, u - .12, v - .12, d + .24, d + .24, h + 10, 9, '#8a7a50', 'shingle', R);
+    for (const [a, b2] of [[0, 0], [d, 0], [0, d], [d, d]]) post2(c, u + a, v + b2, h + 5, h + 10);
+  },
+  wall(c, R, b) {
+    const m = b.mask || 0, h = 17;
+    const segs = [];
+    if (m & 1) segs.push([.5, 0, .5, .5]); if (m & 8) segs.push([0, .5, .5, .5]);
+    if (m & 2) segs.push([.5, .5, 1, .5]); if (m & 4) segs.push([.5, .5, .5, 1]);
+    if (!segs.length) segs.push([.2, .5, .8, .5]);
+    segs.sort((p, q) => p[0] + p[1] - q[0] - q[1]);
+    for (const [u0, v0, u1, v1] of segs) { const [a, b2] = [P(u0, v0), P(u1, v1)]; c.fillStyle = 'rgba(16,26,10,.2)'; poly(c, [a, b2, [b2[0] + 8, b2[1]], [a[0] + 8, a[1]]]); c.fill(); }
+    for (const s of segs) stakes(c, ...s, h, R);
+  },
+  gate(c, R, b) {
+    const alongX = b.alongX ?? true, h = 24;
+    // big posts either side of the road, a roofed beam across and two open doors
+    const [pa, pb] = alongX ? [[.5, .08], [.5, .92]] : [[.08, .5], [.92, .5]];
+    stakes(c, ...(alongX ? [.5, 0, .5, .1] : [0, .5, .1, .5]), 17, R);
+    post(c, ...pa, h, '#4a3220', 3.6);
+    fillPoly(c, alongX ? [P(.5, .1), P(.8, .14), P(.8, .14, 14), P(.5, .1, 15)] : [P(.1, .5), P(.14, .8), P(.14, .8, 14), P(.1, .5, 15)], '#7a5a38');
+    fillPoly(c, alongX ? [P(.5, .9), P(.8, .86), P(.8, .86, 14), P(.5, .9, 15)] : [P(.9, .5), P(.86, .8), P(.86, .8, 14), P(.9, .5, 15)], '#6a4c30');
+    post(c, ...pb, h, '#3a2818', 3.6);
+    fillPoly(c, alongX ? diamond(.42, 0, .16, 1, h + 3) : diamond(0, .42, 1, .16, h + 3), '#5e4e3e');
+    line(c, P(...pa, h), P(...pb, h), '#4a3220', 3);
+    stakes(c, ...(alongX ? [.5, .9, .5, 1] : [.9, .5, 1, .5]), 17, R);
+  },
+  sluice(c, R, b) {
+    const alongX = b.alongX ?? true, h = 7;
+    const walls = alongX ? [[0, .02, 1, .16], [0, .82, 1, .16]] : [[.02, 0, .16, 1], [.82, 0, .16, 1]];
+    for (const [u, v, du, dv] of walls) { shadow(c, u, v, du, dv, h, .2); box(c, u, v, du, dv, 0, h, '#7a7a70', 'stone', R, '#8e8e84'); }
+    const [a, b2] = alongX ? [[.5, .1], [.5, .9]] : [[.1, .5], [.9, .5]];
+    post(c, ...a, 16, '#4a3220', 2); post(c, ...b2, 16, '#3a2818', 2);
+    line(c, P(...a, 16), P(...b2, 16), '#4a3220', 2);
+    fillPoly(c, [P(...a, 15), P(...b2, 15), P(...b2, 11), P(...a, 11)], '#6a4c30');
+    line(c, P(...a, 13), P(...b2, 13), 'rgba(0,0,0,.3)', .6);
+  },
+});
+// the sails of a windmill, turning when it works
+function millSails(c, x, y, ang, s = 1) {
+  const U = [.894, .447], Z = [0, -1];
+  for (let k = 0; k < 4; k++) {
+    const a = ang + k * Math.PI / 2, d = [Math.cos(a) * U[0] + Math.sin(a) * Z[0], Math.cos(a) * U[1] + Math.sin(a) * Z[1]];
+    const e = [-Math.sin(a) * U[0] + Math.cos(a) * Z[0], -Math.sin(a) * U[1] + Math.cos(a) * Z[1]];
+    const L = 30 * s, w0 = 2 * s, w1 = 6 * s, at = (l, w) => [x + d[0] * l + e[0] * w, y + d[1] * l + e[1] * w];
+    line(c, [x, y], at(L, 0), '#4a3420', 1.1 * s);
+    fillPoly(c, [at(5 * s, w0 * .2), at(L, w0 * .2), at(L, w1), at(5 * s, w1 * .7)], 'rgba(232,224,204,.92)');
+    for (let l = 8; l < 30; l += 4) line(c, at(l * s, 0), at(l * s, w1 * (.6 + l / 75)), 'rgba(74,52,32,.7)', .5 * s);
+  }
+  blob(c, x, y, 1.6 * s, 1.6 * s, '#3a2818');
+}
 
 function rubbleSpr(n) {
   return spr('rb' + n, HW + 2, HW + 10, 10, TH + 2, (c, R) => {
@@ -2064,8 +2684,15 @@ function dikeMask(b) {
 }
 function bldKey(b) {
   if (b.type === 'house') return 'h' + b.lvl + '_' + b.var;
-  if (b.type === 'farm') return 'farm' + (b.stage = Math.min(4, Math.floor(b.out / 2)));
+  if (BLD[b.type].crop) {
+    const m = G.month;
+    b.stage = m < 2 || m >= HARVEST || b.crop < .5 ? 0 : m < 4 ? 1 : m < 5 ? 2 : m < 6 ? 3 : 4;
+    b.sheaves = Math.min(4, Math.ceil(b.out / 40));
+    return b.type + b.stage + '_' + b.sheaves;
+  }
   if (b.type === 'dike') return 'dk' + (b.mask = dikeMask(b));
+  if (b.type === 'wall') return 'wl' + (b.mask = linkMask(b, isWall));
+  if (b.type === 'gate' || b.type === 'sluice') return b.type + ((b.alongX = roadAlongX(b)) ? 'x' : 'y');
   return b.type;
 }
 function bldSpr(b) {
@@ -2082,20 +2709,26 @@ function thumb(type) {
   if (type === 'road') { roadArt(c, R, 10, false); }
   else if (type === 'clear') { treeArt(c, R, 'oak', 1); c.strokeStyle = '#ff5a5a'; c.lineWidth = 3; c.beginPath(); c.moveTo(-14, -14); c.lineTo(14, 26); c.moveTo(14, -14); c.lineTo(-14, 26); c.stroke(); }
   else if (type === 'house') ART.house(c, R, { lvl: 3, var: 1 });
-  else ART[type](c, R, { type, mask: 10, stage: 4 });
+  else if (type === 'terp') { box(c, .1, .1, .8, .8, 0, 8, '#7a6040', null, R, '#7aa24a'); c.translate(0, -8); ART.house(c, R, { lvl: 4, var: 0 }); }
+  else {
+    ART[type](c, R, { type, mask: 10, stage: 4, sheaves: 1, alongX: true });
+    if (type === 'mill') millSails(c, ...P(1, 1.26, 31), .4);
+  }
   return cv;
 }
 
 // ====================================================================
 // Drawing: the frame
 // ====================================================================
-const VIEWS = [['town', 'TOWN'], ['water', 'WATER'], ['gods', 'GODS'], ['fire', 'FIRE'], ['des', 'BEAUTY'], ['flood', 'FLOODS']];
-const VIEW_KEEP = { water: ['well'], gods: GODS.map(g => 't_' + g.id), fire: ['watch'], flood: ['dike'], des: ['garden', 'rune', 'hunebed'] };
-const DRAG_TOOLS = new Set(['road', 'house', 'clear', 'dike', 'garden']);
-const LINE_TOOLS = new Set(['road', 'dike']);
+const VIEWS = [['town', 'TOWN'], ['water', 'WATER'], ['gods', 'GODS'], ['fire', 'FIRE'], ['health', 'HEALTH'], ['des', 'BEAUTY'], ['flood', 'FLOODS']];
+const VIEW_KEEP = { water: ['well'], gods: GODS.map(g => 't_' + g.id), fire: ['watch'], health: ['healer', 'well'], flood: ['dike', 'sluice'], des: ['garden', 'rune', 'hunebed'] };
+const DRAG_TOOLS = new Set(['road', 'house', 'clear', 'dike', 'garden', 'terp', 'wall']);
+const LINE_TOOLS = new Set(['road', 'dike', 'wall']);
+const LIFT = 6;   // px a terp level raises the ground
+const liftAt = i => G.terp[i] * LIFT;
 let view = 'town', animT = 0, hoverTile = -1, selected = 0, selTile = -1;
 const tool = { type: null, drag: null };
-const fx = { smoke: [], clouds: [], gulls: [] };
+const fx = { smoke: [], clouds: [], gulls: [], arrows: [], snow: [] };
 
 const tileTop = (x, y) => [(x - y) * HW, (x + y) * HH];
 function tileCenter(i) { const x = i % G.N, y = (i - x) / G.N; return [(x - y) * HW, (x + y) * HH + HH]; }
@@ -2129,8 +2762,9 @@ function render() {
   for (let y = ty0; y <= ty1; y++) for (let x = tx0; x <= tx1; x++) {
     const px = (x - y) * HW, py = (x + y) * HH;
     if (px < wx0 - TW || px > wx1 + TW || py < wy0 - TH || py > wy1) continue;
-    const i = y * N + x;
-    if (G.road[i]) blit(roadSpr(i), px, py);
+    const i = y * N + x, lift = liftAt(i);
+    if (lift) drawTerp(i, x, y, px, py, lift, frame);
+    if (G.road[i]) blit(roadSpr(i), px, py - lift);
     if (G.flood[i] > 0) { ctx.globalAlpha = Math.min(.8, G.flood[i] / 3 * .8); blit(waterSpr('shallow', i, frame), px, py); ctx.globalAlpha = 1; }
     let tint = null;
     if (view === 'water') { if (G.water[i]) tint = 'rgba(70,150,255,.32)'; }
@@ -2140,8 +2774,11 @@ function render() {
       const id = G.bld[i], b = id && G.ents.get(id);
       if (b && view === 'gods' && b.type === 'house' && b.res) { const n = GODS.filter(g => mc - (b.rel[g.id] ?? -99) < SVC_MONTHS).length; tint = ['rgba(255,60,50,.5)', 'rgba(255,150,40,.45)', 'rgba(255,220,60,.42)', 'rgba(90,230,110,.45)'][Math.min(3, n)]; }
       if (b && view === 'fire' && b.type !== 'dike') { const f = clamp(b.fire / 60, 0, 1); tint = `rgba(${Math.round(90 + 165 * f)},${Math.round(230 - 170 * f)},60,.45)`; }
+    } else if (view === 'health') {
+      const id = G.bld[i], b = id && G.ents.get(id);
+      if (b && b.type === 'house' && b.res) { const f = b.fever ? 1 : clamp(b.sick / 60, 0, 1); tint = b.fever ? 'rgba(170,60,220,.55)' : `rgba(${Math.round(90 + 165 * f)},${Math.round(230 - 170 * f)},60,.45)`; }
     }
-    if (tint) fillPoly(ctx, tileDiamond(px, py), tint);
+    if (tint) fillPoly(ctx, tileDiamond(px, py - lift), tint);
   }
   drawFoam(tx0, tx1, ty0, ty1, wx0, wx1, wy0, wy1);
   drawGhostTiles();
@@ -2154,7 +2791,11 @@ function render() {
     const [ax, ay] = [w.cur % N, (w.cur / N) | 0], k = w.nxt >= 0 ? Math.max(ax + ay, w.nxt % N + ((w.nxt / N) | 0)) : ax + ay;
     (buckets.get(k) || buckets.set(k, []).get(k)).push(w);
   }
+  for (const u of G.units) { const k = Math.floor(u.x) + Math.floor(u.y); (buckets.get(k) || buckets.set(k, []).get(k)).push(u); }
   const dim = view !== 'town';
+  shipKey = -1;
+  const sh = shipSpots();
+  if (sh.length) shipKey = clamp(Math.max(...sh.map(s => Math.floor(s.tx) + Math.floor(s.ty))), tx0 + ty0, tx1 + ty1);
   for (let d = tx0 + ty0; d <= tx1 + ty1; d++) {
     for (let x = Math.max(tx0, d - ty1); x <= Math.min(tx1, d - ty0); x++) {
       const y = d - x, px = (x - y) * HW, py = (x + y) * HH;
@@ -2163,16 +2804,19 @@ function render() {
       if (id) {
         const b = G.ents.get(id);
         if (b && x === b.x + b.s - 1 && y === b.y) drawBuilding(b, dim && !(VIEW_KEEP[view] || []).includes(b.type) && !(view === 'gods' && b.type === 'house'));
-      } else if (G.tree[i]) { if (dim) ctx.globalAlpha = .45; blit(treeSpr(i), px, py); ctx.globalAlpha = 1; }
-      else if (G.rubble[i]) blit(rubbleSpr(G.rubble[i]), px, py);
+      } else if (G.tree[i]) { if (dim) ctx.globalAlpha = .45; blit(treeSpr(i), px, py - liftAt(i)); ctx.globalAlpha = 1; }
+      else if (G.rubble[i]) blit(rubbleSpr(G.rubble[i]), px, py - liftAt(i));
     }
+    if (shipKey === d) drawShips();
     const ws = buckets.get(d);
-    if (ws) for (const w of ws) drawWalker(w);
+    if (ws) for (const w of ws) (w.kind === 'raider' || w.kind === 'soldier' ? drawUnit : drawWalker)(w);
   }
   drawGhostBuilding();
+  drawArrows();
   drawSmoke();
   drawSky(wx0, wx1, wy0, wy1);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawSeason();
   const g = ctx.createLinearGradient(0, 0, 0, H * .45);
   g.addColorStop(0, 'rgba(200,215,225,.16)'); g.addColorStop(1, 'rgba(200,215,225,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * .45);
@@ -2190,6 +2834,62 @@ function drawEdges(tx0, tx1, ty0, ty1) {
   };
   if (ty1 === N - 1) for (let x = tx0; x <= tx1; x++) { const [px, py] = tileTop(x, N - 1); side((N - 1) * N + x, [px, py + TH], [px - HW, py + HH], 1); }
   if (tx1 === N - 1) for (let y = ty0; y <= ty1; y++) { const [px, py] = tileTop(N - 1, y); side(y * N + N - 1, [px + HW, py + HH], [px, py + TH], .7); }
+}
+// a terp: the tile raised `lift` px, with earth banks where the land in front is lower
+function drawTerp(i, x, y, px, py, lift, frame) {
+  const N = G.N, D = tileDiamond(px, py), up = p => [p[0], p[1] - lift];
+  const nl = (nx, ny) => inMap(nx, ny) ? liftAt(ny * N + nx) : 0;
+  const bank = (a, b, low, col) => {
+    if (low >= lift) return;
+    poly(ctx, [up(a), up(b), [b[0], b[1] - low], [a[0], a[1] - low]]); ctx.fillStyle = col; ctx.fill();
+    line(ctx, up(a), up(b), 'rgba(120,160,70,.9)', 1.2);
+  };
+  bank(D[1], D[2], nl(x + 1, y), '#5e4a32');
+  bank(D[2], D[3], nl(x, y + 1), '#7a6040');
+  blit(groundSpr(i, frame), px, py - lift);
+  if (G.terr[i] === T_GRASS) fillPoly(ctx, D.map(up), terpTint(i));
+}
+const terpTints = new Map();
+function terpTint(i) {
+  const k = grassKind(i) + G.shade[i];
+  if (!terpTints.has(k)) { const [r, g, b] = rgb(PAL[grassKind(i)][1]); terpTints.set(k, `rgba(${r},${g},${b},.55)`); }
+  return terpTints.get(k);
+}
+let shipKey = -1;
+// where the trading ship and the raiders' longship are, in tile coordinates
+function shipSpots() {
+  const out = [], N = G.N;
+  if (G.ship) {
+    const s = G.ship, k = Math.floor(s.pos), f = s.pos - k, a = s.path[k], b = s.path[Math.min(s.path.length - 1, k + 1)];
+    const ax = a % N + .5, ay = ((a / N) | 0) + .5, bx = b % N + .5, by = ((b / N) | 0) + .5;
+    const dx = (bx - ax) * (s.state === 'out' ? -1 : 1), dy = (by - ay) * (s.state === 'out' ? -1 : 1);
+    out.push({ tx: ax + (bx - ax) * f, ty: ay + (by - ay) * f, dir: dx - dy >= 0 ? 1 : -1, kind: 'knarr' });
+  }
+  if (G.raid && G.raid.state !== 'coming') {
+    const s = G.raid.sea, l = G.raid.shore;
+    out.push({ tx: s % N + .5, ty: ((s / N) | 0) + .5, dir: (l % N - s % N) - (((l / N) | 0) - ((s / N) | 0)) >= 0 ? 1 : -1, kind: 'longship' });
+  }
+  return out;
+}
+function drawShips() {
+  for (const s of shipSpots()) {
+    const x = (s.tx - s.ty) * HW, y = (s.tx + s.ty) * HH, d = s.dir, bob = Math.sin(animT * 1.6 + s.tx) * 1.2, c = ctx;
+    blob(c, x, y + 3, 26, 6, 'rgba(10,30,40,.3)');
+    const long = s.kind === 'longship', L = long ? 26 : 22;
+    c.beginPath(); c.moveTo(x - L * d, y - 6 + bob); c.quadraticCurveTo(x, y + 6 + bob, x + L * d, y - 6 + bob); c.lineTo(x + (L - 4) * d, y - 2 + bob); c.lineTo(x - (L - 4) * d, y - 2 + bob); c.closePath();
+    c.fillStyle = long ? '#3e2a1a' : '#5a3d26'; c.fill();
+    c.beginPath(); c.moveTo(x - (L - 4) * d, y - 2 + bob); c.quadraticCurveTo(x, y + 2 + bob, x + (L - 4) * d, y - 2 + bob); c.strokeStyle = 'rgba(255,230,190,.25)'; c.lineWidth = 1; c.stroke();
+    if (long) {
+      line(c, [x + L * d, y - 6 + bob], [x + (L + 3) * d, y - 13 + bob], '#3e2a1a', 1.8); blob(c, x + (L + 4) * d, y - 14 + bob, 2.2, 1.6, '#3e2a1a');
+      for (let k = -3; k <= 3; k++) { blob(c, x + k * 5.5 * d, y - 2.5 + bob + Math.abs(k) * .3, 2.2, 2.2, k % 2 ? '#c4473a' : '#e8e0cc'); }
+    }
+    line(c, [x, y - 3 + bob], [x, y - 34 + bob], '#3a2818', 1.6);
+    const sail = [[x - 12, y - 31 + bob], [x + 12, y - 31 + bob], [x + 13 + 2 * d, y - 9 + bob], [x - 11 + 2 * d, y - 9 + bob]];
+    fillPoly(c, sail, long ? '#e8e0cc' : '#d8ccae');
+    if (long) for (let k = 0; k < 4; k += 2) fillPoly(c, [lerp2(sail[0], sail[1], k / 4), lerp2(sail[0], sail[1], (k + 1) / 4), lerp2(sail[3], sail[2], (k + 1) / 4), lerp2(sail[3], sail[2], k / 4)], '#c4473a');
+    else line(c, lerp2(sail[0], sail[3], .5), lerp2(sail[1], sail[2], .5), '#4f6fa8', 2.4);
+    line(c, sail[0], sail[1], '#4a3420', 1.2);
+  }
 }
 const tileDiamond = (px, py) => [[px, py], [px + HW, py + HH], [px, py + TH], [px - HW, py + HH]];
 
@@ -2214,20 +2914,28 @@ function smokeAt(b) {
   if (b.type === 'house') return b.lvl === 5 ? [b.var & 1 ? .76 : .48, b.var & 1 ? .45 : .76, 33] : b.lvl === 6 ? [.5, .5, 46] : b.lvl === 4 ? [.5, .5, 24] : b.lvl === 3 ? [.5, .5, 22] : null;
   if (b.type === 'potter') return [1.45, 1.25, 14];
   if (b.type === 'mead') return [.66, .9, 32];
+  if (b.type === 'bakery') return [.95, .55, 30];
+  if (b.type === 'brewery') return [1.55, 1.3, 9];
+  if (b.type === 'salt' && seasonK(BLD.salt)) return [1.45, .5, 20];
   return null;
 }
 function drawBuilding(b, dim) {
-  const [px, py] = tileTop(b.x, b.y), s = bldSpr(b);
+  const [px, py0] = tileTop(b.x, b.y), py = py0 - liftAt(b.y * G.N + b.x), s = bldSpr(b);
   if (dim) ctx.globalAlpha = .4;
   blit(s, px, py);
+  if (b.type === 'mill') {
+    if (b.staff > 0 && (b.inp >= 1 || b.prog > 0) && running()) b.sail = (b.sail || 0) + .04 * SPEEDS[speed] * b.staff;
+    const [x, y] = P(1, 1.26, 31); millSails(ctx, px + x, py + y, b.sail || 0);
+  }
   ctx.globalAlpha = 1;
+  if (b.hp < hpOf(b.type) && b.hp > 0 && G.raid) { const [x, y] = P(b.s / 2, b.s / 2, 30); hpBar(px + x, py + y, b.hp / hpOf(b.type)); }
   if (b.burn) drawFlames(b, px, py);
   const sm = smokeAt(b);
   if (sm && running() && Math.random() < .03 * SPEEDS[speed]) {
     const [x, y] = P(sm[0], sm[1], sm[2]);
     fx.smoke.push({ x: px + x, y: py + y, r: 1.5, life: 0, max: 4 + Math.random() * 2, dark: false });
   }
-  if (!b.conn && !BLD[b.type].fixed && !['dike', 'well', 'garden', 'rune'].includes(b.type)) {
+  if (!b.conn && !BLD[b.type].fixed && !['dike', 'sluice', 'wall', 'gate', 'well', 'garden', 'rune'].includes(b.type)) {
     const [x, y] = P(b.s / 2, b.s / 2, b.type === 'house' ? 30 : 46), bob = Math.sin(animT * 4) * 1.5;
     blob(ctx, px + x, py + y + bob, 5, 5, '#d83a3a'); blob(ctx, px + x, py + y + bob, 3.8, 3.8, '#fff');
     line(ctx, [px + x - 2.4, py + y + bob + 2.4], [px + x + 2.4, py + y + bob - 2.4], '#d83a3a', 1.2);
@@ -2256,6 +2964,9 @@ function updateFx(dt, real) {
   fx.smoke = fx.smoke.filter(s => s.life < s.max);
   if (fx.smoke.length > 400) fx.smoke.splice(0, fx.smoke.length - 400);
   for (const c of fx.clouds) { c.x += real * 6; if (c.x > G.N * HW + 400) c.x = -G.N * HW - 400; }
+  for (const a of fx.arrows) a.t += dt;
+  fx.arrows = fx.arrows.filter(a => a.t < .3);
+  for (const p of fx.snow) { p.y += real * (25 + p.s * 18); p.x += real * (8 + Math.sin(animT + p.s * 9) * 10); if (p.y > H) { p.y = -4; p.x = Math.random() * W; } }
 }
 function initFx() {
   const R = mulberry32(G.cfg.seed + 5);
@@ -2284,12 +2995,13 @@ function drawSky(wx0, wx1, wy0, wy1) {
 // ---------- walkers ----------
 const WLOOK = {
   immigrant: ['#7c6a4e', '#4a3a26'], cart: ['#8a5a36', '#3a2a1a'], fetch: ['#8a5a36', '#3a2a1a'], buyer: ['#a85a3e', '#6a3a1a'],
-  seller: ['#c0483a', '#d8b878'], watch: ['#3a5c9c', '#2a2a2a'], tax: ['#5a3a7a', '#1e1a24'], skald: ['#3a7a4a', '#8a5a2a'],
+  seller: ['#c0483a', '#d8b878'], watch: ['#3a5c9c', '#2a2a2a'], tax: ['#5a3a7a', '#1e1a24'], skald: ['#3a7a4a', '#8a5a2a'], healer: ['#6a7a4a', '#c8c0b0'],
 };
 function drawWalker(w) {
   const [ax, ay] = tileCenter(w.cur), [bx, by] = w.nxt >= 0 ? tileCenter(w.nxt) : [ax, ay];
   const off = ((w.id % 3) - 1) * 2.5;
-  const x = ax + (bx - ax) * w.t + off, y = ay + (by - ay) * w.t + off * .4;
+  const lift = liftAt(w.cur) + (w.nxt >= 0 ? (liftAt(w.nxt) - liftAt(w.cur)) * w.t : 0);
+  const x = ax + (bx - ax) * w.t + off, y = ay + (by - ay) * w.t + off * .4 - lift;
   const dir = bx > ax ? 1 : bx < ax ? -1 : (w.id & 1 ? 1 : -1);
   const sw = w.nxt >= 0 ? animT * 9 * w.speed * SPEEDS[speed] ** .5 + w.ph : 0;
   const c = ctx;
@@ -2299,8 +3011,53 @@ function drawWalker(w) {
     const full = w.kind === 'cart' ? !w.back && w.n > 0 : w.back && w.n > 0;
     handcart(c, x + dir * 6, y, dir, full ? GOOD[w.good].col : null);
   }
-  figure(c, x, y, dir, sw, body, hair, w.kind === 'immigrant' ? 'bundle' : w.kind === 'seller' ? 'basket' : w.kind === 'buyer' ? (w.back ? 'basket' : 'none') : w.kind === 'watch' ? 'bucket' : w.kind === 'tax' ? 'satchel' : w.kind === 'skald' ? 'lyre' : 'push', w.kind === 'seller' || w.kind === 'buyer');
+  figure(c, x, y, dir, sw, body, hair, w.kind === 'immigrant' ? 'bundle' : w.kind === 'seller' ? 'basket' : w.kind === 'buyer' ? (w.back ? 'basket' : 'none') : w.kind === 'watch' ? 'bucket' : w.kind === 'tax' ? 'satchel' : w.kind === 'skald' ? 'lyre' : w.kind === 'healer' ? 'herbs' : 'push', w.kind === 'seller' || w.kind === 'buyer' || w.kind === 'healer');
   if (w.kind === 'immigrant' && w.n >= 3) figure(c, x - dir * 5, y - 1.5, dir, sw + 1.4, '#6a5a44', '#3a2a1a', 'none', true, .8);
+}
+function hpBar(x, y, f) {
+  ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(x - 8, y, 16, 2.6);
+  ctx.fillStyle = f > .5 ? '#7dff6a' : f > .25 ? '#ffd23f' : '#ff5a5a'; ctx.fillRect(x - 7.6, y + .4, 15.2 * f, 1.8);
+}
+// raiders and militia
+function drawUnit(u) {
+  // a little spread so a band of raiders doesn't look like one man
+  const c = ctx, x = (u.x - u.y) * HW + ((u.id * 37) % 9 - 4) * 1.6, y = (u.x + u.y) * HH - liftAt(uTile(u)) + ((u.id * 53) % 5 - 2) * 1.6, d = u.dir || 1;
+  const moving = u.path.length > 0, sw = moving ? animT * 10 + u.ph : 0, hit = u.fight > 0 ? Math.sin(animT * 18 + u.ph) : 0;
+  const raider = u.kind === 'raider';
+  figure(c, x, y, d, sw, raider ? '#6b4a34' : '#3d6b8c', raider ? '#d8b878' : '#5a3a1a', 'none', false, 1.05);
+  blob(c, x, y - 10.6, 1.8, 1.1, raider ? '#8a8a90' : '#6a4a2a');            // helmet or cap
+  if (raider) {
+    const ax = x + d * (2.4 + hit * 1.5), ay = y - 9 + hit * 2;
+    line(c, [x + d * 1.2, y - 6.5], [ax, ay], '#5a3e24', .9); fillPoly(c, [[ax, ay], [ax + d * 2.2, ay - 1], [ax + d * 2.2, ay + 2.2]], '#b0b0b8');
+    blob(c, x - d * 2.4, y - 5.5, 2.8, 3, '#c4473a'); blob(c, x - d * 2.4, y - 5.5, 1.6, 1.8, '#e8e0cc'); blob(c, x - d * 2.4, y - 5.5, .7, .7, '#8a8a90');
+  } else {
+    const tipX = x + d * (3 + hit * 3), tipY = y - 15 + Math.abs(hit) * 6;
+    line(c, [x + d * 2.4, y - 1], [tipX, tipY], '#6a4a28', .9); fillPoly(c, [[tipX, tipY], [tipX - 1, tipY + 2], [tipX + 1, tipY + 2]], '#c8c8d0');
+    blob(c, x - d * 2.3, y - 5.5, 2.8, 3, '#2e6a4a'); blob(c, x - d * 2.3, y - 5.5, .7, .7, '#c8a040');
+  }
+  if (u.hp < u.max) hpBar(x, y - 16, u.hp / u.max);
+}
+function drawArrows() {
+  for (const a of fx.arrows) {
+    const k = Math.min(1, a.t / .3), x = a.x0 + (a.x1 - a.x0) * k, y = a.y0 + (a.y1 - a.y0) * k - Math.sin(k * Math.PI) * 14 - 26 * (1 - k);
+    const dx = a.x1 - a.x0, dy = a.y1 - a.y0, l = Math.hypot(dx, dy) || 1;
+    line(ctx, [x, y], [x - dx / l * 5, y - dy / l * 5], '#2a1e14', 1);
+  }
+}
+// winter greys the land and brings snow, autumn warms it up
+const seasonBump = (f, centre, width) => { let dd = Math.abs(f - centre); dd = Math.min(dd, 12 - dd); return clamp(1 - dd / width, 0, 1); };
+function drawSeason() {
+  const f = G.month + G.monthT / MONTH, w = seasonBump(f, .5, 2.2), a = seasonBump(f, 9.6, 1.6), c = ctx;
+  if (w > 0) {
+    c.globalCompositeOperation = 'saturation'; c.fillStyle = `rgba(128,128,128,${.5 * w})`; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = 'source-over'; c.fillStyle = `rgba(225,235,248,${.17 * w})`; c.fillRect(0, 0, W, H);
+  }
+  if (a > 0) { c.globalCompositeOperation = 'soft-light'; c.fillStyle = `rgba(235,140,40,${.35 * a})`; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over'; }
+  if (w > .55) {
+    while (fx.snow.length < 90 * w) fx.snow.push({ x: Math.random() * W, y: Math.random() * H, s: .6 + Math.random() * 1.4 });
+    c.fillStyle = 'rgba(255,255,255,.75)';
+    for (const p of fx.snow) { c.beginPath(); c.arc(p.x, p.y, p.s, 0, Math.PI * 2); c.fill(); }
+  } else fx.snow.length = 0;
 }
 function figure(c, x, y, dir, sw, body, hair, item, long, s = 1) {
   blob(c, x + 1.5, y, 3.2 * s, 1.1 * s, 'rgba(0,0,0,.28)');
@@ -2320,6 +3077,7 @@ function figure(c, x, y, dir, sw, body, hair, item, long, s = 1) {
   else if (item === 'satchel') blob(c, x - dir * 1.6, y - 4.6, 1.5, 1.3, '#6a4a28');
   else if (item === 'lyre') { line(c, [x + dir * 2, y - 7], [x + dir * 3, y - 3.5], '#c89a40', .8); line(c, [x + dir * 3.6, y - 7], [x + dir * 3, y - 3.5], '#c89a40', .8); }
   else if (item === 'staff') line(c, [x + dir * 2.4, y - 12], [x + dir * 2.4, y], '#6a4a28', .9);
+  else if (item === 'herbs') { blob(c, x + dir * 2.6, y - 4.4, 1.8, 1.2, '#8a6a3a'); blob(c, x + dir * 2.6, y - 5.4, 1.4, .8, '#7ab050'); }
 }
 function handcart(c, x, y, dir, load) {
   blob(c, x + 1, y, 4.5, 1.3, 'rgba(0,0,0,.25)');
@@ -2387,6 +3145,13 @@ let pan = null, pinch = null, lastPt = [0, 0];
 const keys = new Set();
 function tileUnder(sx, sy) {
   const [wx, wy] = screenToWorld(sx, sy), [x, y] = worldToTile(wx, wy);
+  for (const [cx, cy] of [[x + 1, y + 1], [x + 1, y], [x, y + 1], [x, y]]) {
+    if (!inMap(cx, cy)) continue;
+    const i = cy * G.N + cx, lift = liftAt(i);
+    if (!lift && (cx !== x || cy !== y)) continue;
+    const [px, py] = tileTop(cx, cy);
+    if (Math.abs(wx - px) / HW + Math.abs(wy - (py - lift) - HH) / HH <= 1) return i;
+  }
   return inMap(x, y) ? y * G.N + x : -1;
 }
 function setTool(t) {
@@ -2587,6 +3352,7 @@ function drainEvents() {
     else if (e[0] === 'sfx') sfx(e[1]);
     else if (e[0] === 'autosave') saveGame(true);
     else if (e[0] === 'win') { sfx('win'); openOver(); }
+    else if (e[0] === 'arrow') fx.arrows.push({ x0: (e[1] - e[2]) * HW, y0: (e[1] + e[2]) * HH - 30, x1: (e[3] - e[4]) * HW, y1: (e[3] + e[4]) * HH - 6, t: 0 });
   }
   G.ev.length = 0;
 }
@@ -2607,18 +3373,21 @@ function updateHud() {
   $('hTax').textContent = G.taxRate + '%';
   if (!$('info').hidden) renderInfo();
   if (!$('godsPanel').hidden) renderGods();
+  if (!$('tradePanel').hidden) renderTrade();
+  $('hSeason').textContent = SEASONS[G.month].toUpperCase() + (G.raid ? ' · RAID!' : '');
   if (!$('goalsPanel').hidden) renderGoals();
 }
 $('taxDown').onclick = () => { G.taxRate = Math.max(0, G.taxRate - 1); updateHud(); sfx('click'); };
 $('taxUp').onclick = () => { G.taxRate = Math.min(25, G.taxRate + 1); updateHud(); sfx('click'); };
 $('viewBtn').onclick = () => { cycleView(); sfx('click'); };
+$('tradeBtn').onclick = () => { togglePanel('tradePanel'); renderTrade(); sfx('click'); };
 $('godsBtn').onclick = () => { togglePanel('godsPanel'); renderGods(); sfx('click'); };
 $('goalsBtn').onclick = () => { togglePanel('goalsPanel'); renderGoals(); sfx('click'); };
 $('menuBtn').onclick = () => openPause();
 for (const x of document.querySelectorAll('[data-close]')) x.onclick = () => { $(x.dataset.close).hidden = true; if (x.dataset.close === 'info') select(-1); };
 function togglePanel(id) {
   const open = $(id).hidden;
-  for (const p of ['info', 'godsPanel', 'goalsPanel']) $(p).hidden = true;
+  for (const p of ['info', 'godsPanel', 'goalsPanel', 'tradePanel']) $(p).hidden = true;
   $(id).hidden = !open;
   if (id !== 'info') { selected = 0; selTile = -1; }
 }
@@ -2643,7 +3412,8 @@ function renderInfo() {
       html += `<span>Soil for rye</span><b>${G.elev[i] === 0 ? 'too salty' : Math.round(G.fert[i] * 100) + '%'}</b>`;
       html += `<span>Beauty</span><b>${Math.round(G.des[i])}</b></div>`;
       if (G.road[i] && i === G.entry) html += '<p>The old road. Settlers come in this way.</p>';
-      if (t === T_MARSH) html += '<p>Too wet to build on, except for a clay pit, roads and dikes.</p>';
+      if (G.terp[i]) html += `<p>Raised by a terp (${G.terp[i] === 1 ? 'one level' : 'two levels'}): it floods ${['in any storm', 'in heavy storms', 'only in terrible storms', 'never', 'never'][Math.min(4, groundLvl(i))]}.</p>`;
+      if (t === T_MARSH) html += '<p>Too wet for most buildings. Peat cutters, clay pits, roads, dikes and palisades are fine.</p>';
       if (G.tree[i]) html += '<p>Trees cost ' + TREE_COST + ' silver to clear when you build here.</p>';
     } else html += '<p>' + (t === T_RIVER ? 'Roads cross rivers as wooden bridges (' + BRIDGE_COST + ' extra).' : 'Fishers build on the shore.') + '</p>';
     el.innerHTML = html; return;
@@ -2662,23 +3432,30 @@ function renderInfo() {
     const gods = GODS.filter(g => mc - (b.rel[g.id] ?? -99) < SVC_MONTHS).map(g => `<span style="color:${g.col}">${g.name}</span>`);
     html += '<p>' + [yes(G.water[i], 'water'), yes(foods.length, 'food' + (foods.length ? ': ' + foods.join(', ') : '')),
       yes(gods.length, 'gods' + (gods.length ? ': ' + gods.join(', ') : '')), yes(b.pottery > 0, 'pottery'),
-      yes(mc - b.ent < SVC_MONTHS, 'mead hall'), yes(b.cloth > 0, 'cloth')].join('<br>') + '</p>';
+      yes(b.peat > 0 || !isCold(G.month), 'peat' + (b.peat > 0 ? ' ' + Math.ceil(b.peat) : isCold(G.month) ? '' : ' (not needed till November)')),
+      yes(mc - b.ent < SVC_MONTHS, 'mead hall'), yes(mc - b.heal < SVC_MONTHS, 'wise woman'), yes(b.cloth > 0, 'cloth')].join('<br>') + '</p>';
+    if (b.fever) html += '<div class="need"><b>Fever!</b> A wise woman walking past can cure it.</div>';
     const want = houseWants(b);
     html += want ? `<div class="need">To grow it needs <b>${esc(want)}</b>.</div>` : '<div class="need">As grand as a house gets. Keep it supplied!</div>';
-    html += `<p>Fire risk</p>${bar(b.fire / .7, b.fire > 50 ? '#ff5a5a' : '#ffb03a')}`;
+    html += `<p>Fire risk</p>${bar(b.fire / .7, b.fire > 50 ? '#ff5a5a' : '#ffb03a')}<p>Fever risk</p>${bar(b.sick / .7, b.sick > 50 ? '#c060ff' : '#a080d0')}`;
   } else {
     html += `<h3>${d.name.toUpperCase()}</h3><p>${esc(d.desc)}</p><div class="kv">`;
     if (d.workers) html += `<span>Workers</span><b>${Math.round(b.staff * d.workers)} / ${d.workers}</b>`;
     if (d.makes) {
       if (d.uses) html += `<span>${GOOD[d.uses].name} in stock</span><b>${Math.floor(b.inp)}</b>`;
-      html += `<span>${GOOD[d.makes].name} ready</span><b>${Math.floor(b.out)}</b>`;
+      html += `<span>${GOOD[d.makes].name} ${d.crop ? 'in the barn' : 'ready'}</span><b>${Math.floor(b.out)}</b>`;
       if (d.fert) html += `<span>Soil</span><b>${Math.round(fertOf(b, d.fert) * 100)}%</b>`;
-      html += `<span>Output</span><b>~${(d.rate * b.staff * (d.fert ? fertOf(b, d.fert) : 1)).toFixed(1)} a month</b>`;
+      if (d.crop) html += `<span>In the field</span><b>${Math.floor(b.crop)} (harvest in Sep)</b><span>Harvest at full staff</span><b>~${Math.round(d.rate * 12 * fertOf(b, d.fert))} a year</b>`;
+      else html += `<span>Output</span><b>~${(d.rate * (d.yield || 1) * b.staff * (d.fert ? fertOf(b, d.fert) : 1)).toFixed(1)} a month${d.months ? ' (' + MONTH_NAMES[d.months[0]] + '-' + MONTH_NAMES[d.months[1]] + ')' : d.winter ? ' (less in winter)' : ''}</b>`;
     }
+    if (b.type === 'mead') html += `<span>Ale</span><b>${Math.floor(b.inp)}</b>`;
+    if (b.type === 'militia') html += `<span>Militia</span><b>${G.units.filter(u => u.home === b.id).length} / 4</b>`;
+    if (BLD[b.type].wall) html += `<span>Strength</span><b>${Math.ceil(b.hp)} / ${hpOf(b.type)}</b>`;
     if (d.god) { const g = G.gods[d.god]; html += `<span>${GOD[d.god].name} is</span><b style="color:${GOD[d.god].col}">${moodWord(g.mood)}</b>`; }
     if (b.stock) for (const g in b.stock) html += `<span>${GOOD[g].name}</span><b>${Math.floor(b.stock[g])}${b.type === 'store' ? ' / ' + BLD.store.cap : ''}</b>`;
     html += '</div>';
     if (b.status) html += `<div class="need"><b>${esc(b.status)}</b></div>`;
+    if (b.type === 'harbour') html += `<div class="stack"><button class="btn" id="openTrade" style="--c:var(--cyan)">TRADE</button></div>`;
     if (b.burn) html += `<div class="need"><b>On fire!</b> A fire watch walking past can still save it.</div>`;
     if (d.fire) html += `<p>Fire risk</p>${bar(b.fire / .7, b.fire > 50 ? '#ff5a5a' : '#ffb03a')}`;
   }
@@ -2686,6 +3463,22 @@ function renderInfo() {
   el.innerHTML = html;
   const dm = $('demolish');
   if (dm) dm.onclick = () => { if (clearTile(b.x, b.y) >= 0) { G.money -= BLD.clear.cost; sfx('clear'); select(-1); } };
+  const ot = $('openTrade');
+  if (ot) ot.onclick = () => { togglePanel('tradePanel'); renderTrade(); };
+}
+function renderTrade() {
+  const h = [...G.ents.values()].find(b => b.type === 'harbour');
+  const stock = g => { let n = 0; for (const s of G.ents.values()) if (s.type === 'store') n += s.stock[g]; return Math.floor(n); };
+  let html = !h ? '<p class="no">Build a trading wharf on the sea shore and ships will come.</p>'
+    : G.ship ? `<p>A ship from ${G.ship.from} is ${G.ship.state === 'dock' ? 'at your wharf' : G.ship.state === 'in' ? 'sailing in' : 'leaving'}.</p>`
+    : harbour() ? `<p>Next ship in about ${Math.max(1, G.shipT)} month${G.shipT > 1 ? 's' : ''}.</p>` : `<p class="no">Your wharf needs workers and a road before ships come.</p>`;
+  html += '<p>Ships trade with your storehouses: they take up to 40 goods away and bring up to 24. Prices are per unit.</p>';
+  html += GOODS.map(g => `<div class="tr"><b style="font-weight:400;color:${GOOD[g].col}">${GOOD[g].name}</b><span>${stock(g)} in store</span><div class="seg">` +
+    [['none', 'KEEP'], ['sell', 'SELL ' + GOOD[g].sell], ['buy', 'BUY ' + GOOD[g].buy]].map(([v, l]) =>
+      `<button class="hb" data-g="${g}" data-v="${v}" aria-pressed="${G.trade[g] === v}" style="--c:${v === 'sell' ? 'var(--green)' : v === 'buy' ? 'var(--orange)' : 'var(--dim)'}">${l}</button>`).join('') + '</div></div>').join('');
+  html += `<p>Earned from trade so far: <b style="font-weight:400;color:var(--yellow)">${fmt(G.stats.trade)}</b> silver.</p>`;
+  $('tradeBody').innerHTML = html;
+  for (const b of $('tradeBody').querySelectorAll('[data-g]')) b.onclick = () => { G.trade[b.dataset.g] = b.dataset.v; renderTrade(); sfx('click'); };
 }
 function renderGods() {
   const c = festivalCost();
@@ -2734,13 +3527,13 @@ const townName = seed => { const R = mulberry32(seed ^ 0x5bd1); return NAME_A[Ma
 function saveGame(quiet) {
   if (!G) return;
   const ents = [...G.ents.values()].filter(b => !BLD[b.type].fixed).map(b => {
-    const o = { t: b.type, x: b.x, y: b.y, out: b.out, inp: b.inp, prog: b.prog, fire: Math.round(b.fire), burn: b.burn };
-    if (b.type === 'house') Object.assign(o, { lvl: b.lvl, res: b.res, food: b.food, pottery: b.pottery, cloth: b.cloth, rel: b.rel, ent: b.ent, tax: b.tax });
+    const o = { t: b.type, x: b.x, y: b.y, out: b.out, inp: b.inp, prog: b.prog, crop: b.crop, fire: Math.round(b.fire), burn: b.burn };
+    if (b.type === 'house') Object.assign(o, { lvl: b.lvl, res: b.res, food: b.food, pottery: b.pottery, cloth: b.cloth, peat: b.peat, rel: b.rel, ent: b.ent, tax: b.tax, heal: b.heal, sick: b.sick, fever: b.fever });
     if (b.stock) o.stock = b.stock;
     return o;
   });
   const flood = []; G.flood.forEach((v, i) => { if (v > 0) flood.push(i, v); });
-  const data = { v: 1, cfg: G.cfg, money: G.money, taxRate: G.taxRate, t: G.t, monthT: G.monthT, month: G.month, year: G.year,
+  const data = { v: 2, cfg: G.cfg, terp: Array.from(G.terp).join(''), trade: G.trade, shipT: G.shipT, raid: G.raid && G.raid.state === 'coming' ? G.raid : null, money: G.money, taxRate: G.taxRate, t: G.t, monthT: G.monthT, month: G.month, year: G.year,
     sentiment: G.sentiment, boost: G.boost, gods: G.gods, storm: G.storm, won: G.won, tips: G.tips, stats: G.stats,
     tree: Array.from(G.tree).join(''), road: Array.from(G.road).join(''), rubble: Array.from(G.rubble).join(''), flood, ents, cam: [cam.x, cam.y, cam.z] };
   try { localStorage.setItem(TOWN_KEY, JSON.stringify(data)); if (!quiet) toast('Town saved.', 'good'); }
@@ -2759,8 +3552,15 @@ function loadGame(s) {
     const b = addBuilding(o.t, o.x, o.y);
     const { t, x, y, ...rest } = o;
     Object.assign(b, rest);
+    // older saves: rye was eaten as it was, and goods came and went
+    if (b.type === 'house') { const f = rest.food || {}; b.food = Object.fromEntries(FOODS.map(k => [k, f[k] ?? (k === 'bread' ? f.rye || 0 : 0)])); b.peat ??= 0; b.heal ??= -99; b.sick ??= 0; b.fever ??= 0; }
+    if (b.stock) b.stock = Object.fromEntries((b.type === 'store' ? GOODS : Object.keys(MKT_MAX)).map(g => [g, (rest.stock || {})[g] || 0]));
+    b.crop ??= 0;
   }
-  for (const k of ['money', 'taxRate', 't', 'monthT', 'month', 'year', 'sentiment', 'boost', 'storm', 'won', 'tips', 'stats']) if (k in s) G[k] = s[k];
+  if (s.terp) G.terp.set(num(s.terp));
+  if (s.trade) Object.assign(G.trade, s.trade);
+  for (const k of ['money', 'taxRate', 't', 'monthT', 'month', 'year', 'sentiment', 'boost', 'storm', 'won', 'tips', 'shipT', 'raid']) if (k in s) G[k] = s[k];
+  Object.assign(G.stats, s.stats || {});
   for (const g of GODS) if (s.gods && s.gods[g.id]) G.gods[g.id] = s.gods[g.id];
   G.roadV++; updateConn(); labor(); calcDes(); calcWater();
   G.pop = [...G.ents.values()].reduce((a, b) => a + (b.res || 0), 0);
@@ -2829,6 +3629,8 @@ const SFX = {
   bless: () => [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, f, .5, 'sine', .035, i * .09)),
   flood: () => { noise(2.4, .35, 260, 'lowpass', 0, .6); noise(1.6, .12, 900, 'bandpass', .3, .3); },
   win: () => [392, 523, 659, 784, 659, 784, 1046].forEach((f, i) => tone(f, f, .3, 'triangle', .06, i * .15)),
+  horn: () => { tone(98, 98, 1.4, 'sawtooth', .06); tone(147, 147, 1.4, 'sawtooth', .03, .05); tone(98, 110, .6, 'sawtooth', .05, 1.5); },
+  coin: () => [1320, 1760, 1320, 1980].forEach((f, i) => tone(f, f, .08, 'square', .02, i * .06)),
 };
 const lastSfx = {};
 function sfx(n) {
@@ -2875,7 +3677,7 @@ $('startBtn').onclick = () => {
   }
   G.name = townName(G.cfg.seed);
   initFx(); select(-1); cat = 'homes'; renderCats(); renderItems(); setSpeed(1);
-  for (const p of ['godsPanel', 'goalsPanel']) $(p).hidden = true;
+  for (const p of ['godsPanel', 'goalsPanel', 'tradePanel']) $(p).hidden = true;
   show(null); updateHud(); drainEvents();
 };
 

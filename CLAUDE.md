@@ -207,25 +207,42 @@ New-game commits are titled `Add <Game>, a <one-line pitch>`.
 around 690 AD. Its script is split into banner-commented sections:
 
 - **Constants and game data**: `BLD` (every building: size, cost, workers, `des` = [desirability,
-  range], `fire`, `makes`/`uses`/`rate` in units a month), `HOUSES` (the six house levels, capacity
-  and tax), `GODS` (Wodan, Donar, Frija, Nehalennia, Fosite, each with a wrath and a blessing),
-  `GOOD`, `MKT_MAX`. Balance changes go here.
+  range], `fire`, `makes`/`uses`/`rate` in units a month, `yield`, `crop` = harvested once a year,
+  `months` = the months it works, `winter` = output factor in winter, `carts`, `wall`, `onRoad`),
+  `HOUSES` (six levels, capacity and tax), `GOODS`/`GOOD` (with ship `buy`/`sell` prices), `FOODS`,
+  `MKT_MAX`, `GODS` (Wodan, Donar, Frija, Nehalennia, Fosite, each with a wrath and a blessing),
+  `SEASONS`, `HARVEST`, `PORTS`. Balance changes go here; `WAGE`, the `HOUSES` taxes and the
+  `RAIDER`/`SOLDIER` stats sit near their code.
 - **Map generation**: `genMap(seed, N)`, seeded: sea on the low-x edge, a river to the sea, `elev`
   0-3 from the distance to the sea (0 = salt marsh), fertility, bogs, trees, the old road in from
   the inland edge (`entry`, where settlers arrive) and a hunebed.
 - **The world / roads / walkers / simulation**: no DOM, so it runs in Node. Everything moves on
-  foot along roads: settlers (`immigrant`), handcarts (`cart`, `fetch`), the market `buyer`, and
-  roaming service walkers (`seller`, `priest`, `watch`, `tax`, `skald`) that serve every building
-  within 2 tiles of where they step (`serve`). `houseBest()` decides what level a house can reach,
-  `houseWants()` says why in words. `newMonth()` does taxes/wages, eating, fires, gods, storms
-  (`floodReach(level)`: water spreads over land lower than the storm, dikes block it) and mood.
-  The simulation talks to the screen only through `G.ev` (`['msg', text, kind, tile]`, `['sfx', name]`).
-- **Drawing**: all art is canvas code (`ART[type]`, `box`, `gable`, `hip`, `roofPlane`, `wallTex`),
-  cached per zoom level in `spr()`. Ground colour is one N×N canvas drawn through the iso transform
-  (`drawTint`) so tiles blend. Objects are drawn per diagonal: a building at its tile
-  (x + size - 1, y), walkers on the bigger x+y of the two tiles they walk between.
+  foot along roads: settlers (`immigrant`), handcarts (`cart` out, `fetch` in; farms send up to
+  `carts` at once), the market `buyer`, and roaming service walkers (`seller`, `priest`, `watch`,
+  `tax`, `skald`, `healer`) that serve every building within 2 tiles of where they step (`serve`).
+  Production chains: rye -> windmill -> bakery (bread, x2), barley -> brewery -> ale for the mead
+  hall, wool -> weaver, clay -> potter; peat and salt only in summer. `houseBest()` decides what
+  level a house can reach (peat needed in `isCold` months from level 4), `houseWants()` says why.
+  `newMonth()` does taxes/wages, eating, the harvest (`harvest()` in September moves `crop` into
+  `out`), fires, fever (`disease()`), gods, storms (`floodReach(level)`: water spreads over land
+  whose `groundLvl` = elev + terp is below the storm; dikes and sluices block it), ships and raids.
+  Trade: `spawnShip`/`shipStep`/`trade()` sail a ship from the map edge to a wharf and trade with
+  every connected storehouse per `G.trade[good]` ('none' | 'sell' | 'buy'). Raids: `raids()` warns,
+  `landRaid()` puts raiders (`G.units`) ashore; they and the militia path over land with
+  `landPath()` (Dijkstra; raiders hack through palisades, militia use gates), towers shoot in
+  `towerTick()`. The simulation talks to the screen only through `G.ev` (`['msg', text, kind,
+  tile]`, `['sfx', name]`, `['arrow', ...]`).
+- **Drawing**: all art is canvas code (`ART[type]`, `box`, `gable`, `hip`, `roofPlane`, `wallTex`,
+  `stakes`), cached per zoom level in `spr()`; keep `imageSmoothingQuality` at 'medium' ('high' is
+  very slow zoomed in). Ground colour is one N×N canvas drawn through the iso transform
+  (`drawTint`) so tiles blend; terps are drawn raised in `drawTerp` (`liftAt(i)`), and everything
+  standing on one is lifted too. Objects are drawn per diagonal: a building at its tile
+  (x + size - 1, y), walkers and units on the bigger x+y of their tiles. `drawSeason()` greys the
+  screen in winter, warms it in autumn and adds snow.
 
 To test without a browser, cut the script from "Constants" up to "Drawing:" into Node, call
 `makeWorld({ seed, size: 'medium', diff: 'normal' })`, lay roads/buildings with `build()`, and run
-`step()` (20 steps = 1 second, 200 = 1 month). Watch pop, silver, mood, house levels and whether
-farms say "Nowhere to take the goods".
+`step()` (20 steps = 1 second, 200 = 1 month). Watch pop, silver, mood, house levels, farm stock
+and statuses like "Nowhere to take the rye". Don't name test helpers like game functions
+(`houses`, `near` is fine): the eval shares one scope. Run a careful early game on the real
+starting silver too: silver should dip in year two and recover, not spiral into debt.

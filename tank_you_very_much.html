@@ -95,9 +95,13 @@ summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);
 .lobby-map{margin:14px 0 2px}
 .lobby-rules{color:var(--dim);font-size:19px;margin-bottom:8px}
 @media (max-width:600px){
-  .team{grid-template-columns:18px minmax(0,1fr) auto}
-  .team select.co,.team span.co{grid-column:2 / 3;width:100%}
-  .team select.tm,.team span.tm{grid-column:3 / 4;justify-self:end}
+  /* two even columns: name + player kind, then CO + team, so nothing gets squeezed to a stub */
+  .team{grid-template-columns:18px minmax(0,1fr) minmax(0,1.2fr);row-gap:6px}
+  .team select{width:100%;font-size:8px;padding:7px 4px}
+  .team select.co,.team span.co{grid-column:2 / 3}
+  .team select.tm,.team span.tm{grid-column:3 / 4}
+  .team span.tm{justify-self:end}
+  .team .who{grid-column:3 / 4;grid-row:1;justify-self:end}   /* lobby: YOU / HOST / CPU next to the name */
   .big{font-size:12px}
   .mapbox{grid-template-columns:1fr}
   #mapThumb{width:min(100%,320px);margin:0 auto}
@@ -134,12 +138,12 @@ summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);
 #coBtn:hover{color:var(--yellow)}
 #coBtn.ready{color:var(--yellow);animation:blink 1s steps(2) infinite}
 .meter{display:flex;align-items:center;gap:8px;margin-top:2px}
-.meter .stars{font-size:16px;letter-spacing:2px;color:var(--yellow);line-height:1}
+.meter .stars{line-height:0;white-space:nowrap}
 .meter .bar{flex:1;height:8px;border:2px solid var(--line);background:var(--shadow);position:relative}
 .meter .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--yellow);width:0}
 #funds{top:12px;right:12px;font-size:11px;color:var(--yellow);min-width:0;padding:12px 12px;white-space:nowrap}
 #terrainCard{bottom:12px;left:12px}
-#terrainCard .stars{font-size:12px;color:var(--yellow);margin-bottom:4px}
+#terrainCard .stars{margin:1px 0 5px}
 #unitCard{bottom:12px;right:12px;display:grid;grid-template-columns:48px 1fr;gap:2px 10px;min-width:210px}
 #unitCard[hidden]{display:none}
 #unitPic{width:48px;height:48px;image-rendering:pixelated;grid-row:span 2;background:var(--shadow);border:2px solid var(--line)}
@@ -151,10 +155,19 @@ summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);
 #bar{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;pointer-events:none}
 #bar .btn{pointer-events:auto;background:rgba(33,20,63,.92);min-width:118px;white-space:nowrap}
 #bar .btn[hidden]{display:none}
+#bar .slot{display:grid}
+#bar .slot>.btn{grid-area:1/1}
+#bar .btn.vh{visibility:hidden;pointer-events:none}
 #bar .zoom{display:flex;gap:8px}
 #bar .zoom .btn{min-width:0;flex:1;padding:9px 0}
 #ffBtn[aria-pressed="true"]{background:var(--green);color:var(--bg)}
 @keyframes blink{to{opacity:.35}}
+
+/* pixel stars (Press Start 2P has no star glyph): defence, power meter, CO card */
+.pstars{display:inline-flex;gap:2px;align-items:center;vertical-align:middle;line-height:0}
+.pst{display:inline-block;width:14px;height:14px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath fill='%235a4499' d='M3 0h1v1h-1zM2 1h3v1h-3zM0 2h7v1h-7zM1 3h5v1h-5zM2 4h3v1h-3zM1 5h2v1h-2zM4 5h2v1h-2zM1 6h1v1h-1zM5 6h1v1h-1z'/%3E%3C/svg%3E") center/100% 100% no-repeat;image-rendering:pixelated}
+.pst.on{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath fill='%23ffd23f' d='M3 0h1v1h-1zM2 1h3v1h-3zM0 2h7v1h-7zM1 3h5v1h-5zM2 4h3v1h-3zM1 5h2v1h-2zM4 5h2v1h-2zM1 6h1v1h-1zM5 6h1v1h-1z'/%3E%3C/svg%3E")}
+.pstars.sm .pst{width:7px;height:7px}
 
 /* toasts */
 #toasts{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:8;display:grid;gap:6px;pointer-events:none;width:max-content;max-width:90vw}
@@ -174,12 +187,15 @@ summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);
 .gmenu{position:fixed;z-index:7;background:var(--panel);border:3px solid var(--line);box-shadow:5px 5px 0 var(--shadow);
   padding:5px;min-width:160px;max-width:min(92vw,520px);max-height:84vh;overflow:auto;display:grid;gap:2px}
 .gmenu[hidden]{display:none}
-.gmenu .mt{font-family:'Press Start 2P',monospace;font-size:9px;color:var(--dim);padding:8px 10px 6px;line-height:1.5;border-bottom:2px dashed var(--line);margin-bottom:3px}
+.gmenu .mt{font-family:'Press Start 2P',monospace;font-size:9px;color:var(--dim);padding:8px 10px 6px;line-height:1.5;border-bottom:2px dashed var(--line);margin-bottom:3px;position:sticky;top:-5px;background:var(--panel);z-index:1}
 .gmenu .mi{display:flex;justify-content:flex-start;align-items:center;gap:14px;width:100%;text-align:left;background:transparent;border:0;
   color:var(--c,var(--ink));font-family:'Press Start 2P',monospace;font-size:10px;line-height:1.3;padding:9px 10px;cursor:pointer}
-.gmenu .mi .hint{color:var(--dim);font-size:8px;white-space:nowrap;margin-left:auto}
+.gmenu .mi .hint{color:var(--dim);font-size:8px;white-space:nowrap;margin-left:auto;display:flex;align-items:center;gap:6px}
+.gmenu .mt .mn{font-family:'VT323',monospace;font-size:19px;color:var(--ink);margin-top:6px;line-height:1.05;white-space:normal}
+.gmenu{scrollbar-width:thin;scrollbar-color:var(--line) var(--shadow)}
+.plist,.dtable{scrollbar-width:thin;scrollbar-color:var(--line) var(--shadow)}
 .gmenu .mi[aria-selected="true"]{background:var(--line);color:var(--yellow)}
-.gmenu .mi::before{content:"▶";font-size:8px;margin-right:-6px;visibility:hidden;flex:0 0 auto}
+.gmenu .mi::before{content:"►";font-size:10px;margin-right:-6px;visibility:hidden;flex:0 0 auto}
 .gmenu .mi[aria-selected="true"]::before{visibility:visible}
 .gmenu .mi:disabled{opacity:.45;cursor:default}
 #buildMenu{min-width:min(92vw,360px)}
@@ -191,7 +207,7 @@ summary{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--cyan);
 #buildMenu .mi .st{grid-column:2 / -1;font-family:'VT323',monospace;font-size:17px;color:var(--cyan);margin-top:2px}
 #buildMenu .mi .ds{grid-column:2 / -1;font-family:'VT323',monospace;font-size:17px;color:var(--dim);line-height:1.1;white-space:normal}
 #buildMenu .mi[aria-selected="true"] .ds{color:var(--ink)}
-#buildMenu .mi::before{content:none}   /* the ▶ marker would take a grid cell */
+#buildMenu .mi::before{content:none}   /* the ► marker would take a grid cell */
 
 /* day / power banners and the power flash */
 #dayBanner,#powerBanner{position:fixed;left:0;right:0;top:36%;z-index:9;pointer-events:none;text-align:center;padding:20px 12px;
@@ -235,12 +251,33 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
 .dmgout{text-align:center;font-size:22px;color:var(--ink);min-height:2.4em;line-height:1.2}
 .dmgout b{font-family:'Press Start 2P',monospace;font-weight:400;font-size:14px;color:var(--yellow)}
 .dmgout .arrow{color:var(--dim);font-family:'Press Start 2P',monospace;font-size:10px}
+.dtnote{color:var(--dim);font-size:17px;text-align:center;margin:8px 0 6px}
+.dtable{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;max-height:min(40vh,330px);overflow:auto;padding-right:4px}
+.dtable .dth{display:grid;grid-template-columns:24px 1fr 44px 44px;gap:0 6px;padding:0 8px;font-family:'Press Start 2P',monospace;font-size:7px;color:var(--dim)}
+.dtable .dth span:nth-child(n+3){text-align:right}
+.dtr{display:grid;grid-template-columns:24px 1fr 44px 44px;gap:0 6px;align-items:center;padding:2px 6px;border:2px solid var(--line);background:rgba(5,2,12,.35);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.dtr canvas{width:24px;height:24px;image-rendering:pixelated}
+.dtr .nm{font-family:'Press Start 2P',monospace;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dtr .pc{font-family:'Press Start 2P',monospace;font-size:9px;color:var(--yellow);text-align:right}
+.dtr .pc.hi{color:var(--green)}
+.dtr .pc.bk{color:var(--pink)}
+.dtr .pc.no{color:var(--line)}
+.dtr.on,.dtr:hover,.dtr:focus-visible{border-color:var(--yellow)}
+.dtr.on{background:var(--line)}
+.coarmies{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:-4px 0 14px}
+.coa{display:flex;align-items:center;gap:6px;font-family:'Press Start 2P',monospace;font-size:8px;color:var(--c,var(--ink));background:rgba(5,2,12,.35);border:2px solid var(--line);padding:5px 7px;cursor:pointer}
+.coa>i{width:9px;height:9px;border:2px solid var(--shadow)}
+.coa.on{border-color:var(--c,var(--yellow));background:var(--line)}
+.coa.out{opacity:.45}
+.coa:hover,.coa:focus-visible{border-color:var(--yellow)}
 .cohead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:8px}
 .cohead .conm{font-family:'Press Start 2P',monospace;font-size:18px}
 .cohead .cotag{color:var(--dim)}
 .cotext{font-size:21px;line-height:1.15;margin:8px 0}
 .cotext b{font-family:'Press Start 2P',monospace;font-size:9px;font-weight:400;color:var(--cyan);display:block;margin:12px 0 4px}
 .pan-tabs{display:flex;gap:6px;margin-bottom:12px}
+.gkeys .keys{font-size:19px}
+.gkeys .keys b{font-family:'Press Start 2P',monospace;font-size:8px;align-self:center}
 .pan-tabs .btn{flex:1;padding:8px 6px;font-size:9px}
 
 /* results table inside #over */
@@ -248,8 +285,8 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
 .rres .sw{width:14px;height:14px;border:2px solid var(--shadow)}
 .rres .nm{font-size:21px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rres .nm small{display:block;font-family:'Press Start 2P',monospace;font-size:8px;color:var(--dim);margin-top:3px;overflow:hidden;text-overflow:ellipsis}
-.rres .in{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--dim);text-align:right;line-height:1.6}
-.rres .in b{font-weight:400;color:var(--cyan)}
+.rres .in{font-family:'Press Start 2P',monospace;font-size:7px;color:var(--dim);display:grid;grid-template-columns:repeat(4,auto) minmax(52px,auto);gap:0 10px;text-align:right;line-height:1.5}
+.rres .in b{display:block;font-weight:400;color:var(--cyan);font-size:10px}
 .rres.out{opacity:.55}
 .rres.winner .nm{color:var(--yellow)}
 
@@ -271,7 +308,7 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
   #unitCard{bottom:64px;right:8px;min-width:0;grid-template-columns:36px 1fr;gap:0 6px}
   #unitPic{width:36px;height:36px}
   .ustats{font-size:15px;gap:0 6px}
-  .ustats b{font-size:7px}
+  .ustats b{font-size:8px}
   .ustats .hpbar{width:40px}
   #bar{right:0;left:0;top:auto;bottom:0;transform:none;flex-direction:row;justify-content:center;flex-wrap:nowrap;gap:6px;padding:8px 6px calc(8px + env(safe-area-inset-bottom));
     background:rgba(15,8,32,.9);border-top:3px solid var(--line);pointer-events:auto}
@@ -279,8 +316,16 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
   #bar .zoom{flex:0 0 auto}
   #bar .zoom .btn{width:40px;padding:10px 0}
   #dmgBox{font-size:9px}
+  #toasts{top:auto;bottom:calc(72px + env(safe-area-inset-bottom));max-width:94vw}   /* above the button bar, clear of the DAY / FUNDS cards */
+  .toast{font-size:8px;padding:7px 9px}
   .gmenu .mi{padding:10px 8px;font-size:9px}
+  #buildMenu .mi .st,#buildMenu .mi .ds{font-size:15px}
   #dayBanner,#powerBanner{top:30%}
+  .dtable{grid-template-columns:1fr}
+  .dtable .dth:nth-child(2){display:none}
+  .pst{width:10px;height:10px}
+  .rres{grid-template-columns:auto 1fr}
+  .rres .in{grid-column:1 / -1;justify-content:space-between;text-align:left;padding-left:24px}
 }
 
 /* ===== Battle cutscene box ===== */
@@ -301,13 +346,13 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
     <div class="pixel day" id="hudDay">DAY 1</div>
     <div class="pixel army" id="hudArmy">CRIMSON CORPS</div>
     <div class="who" id="hudWho"></div>
-    <button class="pixel" id="coBtn" type="button" title="Commanding officer">ROOKIE ▶</button>
-    <div class="meter" aria-label="power meter"><span class="stars" id="meterStars">☆☆☆</span><span class="bar"><i id="meterBar"></i></span></div>
+    <button class="pixel" id="coBtn" type="button" title="Commanding officer (C)">ROOKIE ►</button>
+    <div class="meter" aria-label="power meter"><span class="stars pstars" id="meterStars"></span><span class="bar"><i id="meterBar"></i></span></div>
   </div>
   <div id="funds" class="card pixel">FUNDS 0</div>
   <div id="terrainCard" class="card">
     <div class="pixel ttl" id="terName">PLAINS</div>
-    <div class="pixel stars" id="terDef">★☆☆☆</div>
+    <div class="stars pstars" id="terDef" title="Defence"></div>
     <div class="sub" id="terOwner"></div>
     <div class="sub" id="terInfo"></div>
   </div>
@@ -318,11 +363,11 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
     <div class="ustats" id="unitStats"></div>
   </div>
   <div id="bar">
-    <button class="btn" id="endBtn" type="button" style="--c:var(--yellow)">END TURN</button>
-    <button class="btn" id="menuBtn" type="button" style="--c:var(--cyan)">MENU</button>
-    <button class="btn" id="cancelBtn" type="button" style="--c:var(--pink)" hidden>✕ CANCEL</button>
-    <button class="btn" id="ffBtn" type="button" style="--c:var(--green)" aria-pressed="false" title="Fast forward" hidden>⏩ FAST</button>
-    <span class="zoom"><button class="btn" id="zoomIn" type="button" title="Zoom in">+</button><button class="btn" id="zoomOut" type="button" title="Zoom out">−</button></span>
+    <button class="btn" id="endBtn" type="button" style="--c:var(--yellow)" title="End turn (E)">END TURN</button>
+    <button class="btn" id="menuBtn" type="button" style="--c:var(--cyan)" title="Menu (P)">MENU</button>
+    <!-- one fixed slot: CANCEL on your turn, FAST while others play; the slot is always reserved so nothing shifts -->
+    <span class="slot"><button class="btn vh" id="cancelBtn" type="button" style="--c:var(--pink)" title="Back one step (Esc, right click)" disabled tabindex="-1">CANCEL</button><button class="btn vh" id="ffBtn" type="button" style="--c:var(--green)" aria-pressed="false" title="Fast forward (F)" disabled tabindex="-1">►► FAST</button></span>
+    <span class="zoom"><button class="btn" id="zoomIn" type="button" title="Zoom in">+</button><button class="btn" id="zoomOut" type="button" title="Zoom out">-</button></span>
   </div>
 </div>
 <div id="toasts" aria-live="polite"></div>
@@ -341,14 +386,14 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
     <div class="win-title" id="passName">RED</div>
     <div class="pixel" id="passArmy"></div>
     <div id="passSub">No peeking at the other side's fog.</div>
-    <button class="btn big" id="passBtn" type="button">▶ READY</button>
+    <button class="btn big" id="passBtn" type="button">► READY</button>
   </div>
 </div>
 
 <!-- INTEL: unit list with stats and a damage lookup -->
 <div id="intel" class="overlay gpanel" hidden>
   <div class="panel">
-    <button class="xbtn" type="button" data-close="intel">✕</button>
+    <button class="xbtn" type="button" title="Close (Esc)" data-close="intel">X</button>
     <div class="ptitle">INTEL</div>
     <div class="pan-tabs seg" id="intelTabs"></div>
     <div id="intelUnits" class="plist"></div>
@@ -356,6 +401,8 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
       <div class="dmgrow"><select id="dmgA" aria-label="attacker"></select><span class="pixel" style="font-size:9px;color:var(--dim)">VS</span><select id="dmgD" aria-label="defender"></select></div>
       <div class="dmgout" id="dmgOut"></div>
       <div class="dmgout" id="dmgOut2" style="color:var(--dim)"></div>
+      <div class="dtnote">Base damage between full-strength units. Pick a row to compare.</div>
+      <div id="dmgTable" class="dtable"></div>
     </div>
   </div>
 </div>
@@ -363,7 +410,7 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
 <!-- UNIT LIST: your own units, click to jump -->
 <div id="unitList" class="overlay gpanel" hidden>
   <div class="panel">
-    <button class="xbtn" type="button" data-close="unitList">✕</button>
+    <button class="xbtn" type="button" title="Close (Esc)" data-close="unitList">X</button>
     <div class="ptitle">UNIT LIST</div>
     <div id="unitListRows" class="plist"></div>
   </div>
@@ -372,31 +419,44 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
 <!-- OPTIONS: per-screen settings -->
 <div id="options" class="overlay gpanel" hidden>
   <div class="panel">
-    <button class="xbtn" type="button" data-close="options">✕</button>
+    <button class="xbtn" type="button" title="Close (Esc)" data-close="options">X</button>
     <div class="ptitle">OPTIONS</div>
     <div class="row"><label>BATTLE SCENES</label><div class="seg" id="optScenesGame"></div></div>
     <div class="row"><label>SOUND</label><div class="seg" id="optSound"></div></div>
     <div class="row"><label>GRID</label><div class="seg" id="optGrid"></div></div>
     <div class="row"><label>ANIMATION</label><div class="seg" id="optSpeed"></div></div>
     <div class="row"><label>ASK BEFORE END TURN</label><div class="seg" id="optAsk"></div></div>
+    <details class="gkeys"><summary>KEYS</summary>
+      <div class="keys">
+        <b>ARROWS / WASD</b><span>Move the cursor</span>
+        <b>ENTER / SPACE / Z</b><span>Select, confirm, fire</span>
+        <b>ESC / X / RIGHT CLICK</b><span>Back one step</span>
+        <b>TAB / N</b><span>Next unit that can still move (next target while aiming)</span>
+        <b>E</b><span>End turn</span>
+        <b>R</b><span>Attack range of the unit under the cursor</span>
+        <b>C · I · P</b><span>CO card · Intel · Menu</span>
+        <b>F · M · + -</b><span>Fast forward · Sound · Zoom</span>
+      </div>
+    </details>
   </div>
 </div>
 
 <!-- CO card: passive, power, activate -->
 <div id="coInfo" class="overlay gpanel" hidden>
   <div class="panel">
-    <button class="xbtn" type="button" data-close="coInfo">✕</button>
+    <button class="xbtn" type="button" title="Close (Esc)" data-close="coInfo">X</button>
     <div class="ptitle">COMMANDING OFFICER</div>
+    <div class="coarmies" id="coArmies"></div>
     <div class="cohead"><span class="conm" id="coName"></span><span class="cotag" id="coTag"></span></div>
     <div class="cotext" id="coText"></div>
-    <div class="meter" style="margin:12px 0"><span class="stars" id="coStars"></span><span class="bar"><i id="coBar"></i></span></div>
-    <button class="btn big" id="coActivate" type="button" style="--c:var(--pink)">★ ACTIVATE POWER</button>
+    <div class="meter" style="margin:12px 0"><span class="stars pstars" id="coStars"></span><span class="bar"><i id="coBar"></i></span></div>
+    <button class="btn big" id="coActivate" type="button" style="--c:var(--pink)">► ACTIVATE POWER</button>
   </div>
 </div>
 <div id="battleBox" hidden role="img" aria-label="Battle scene (tap to skip)"><canvas id="battle"></canvas></div>
 <div id="setup" class="overlay">
   <div class="panel">
-    <a class="back" href="index.html">◀ ARCADE</a>
+    <a class="back" href="index.html">◄ ARCADE</a>
     <h1>TANK YOU<span>VERY MUCH</span></h1>
     <div class="seg tabs" id="optMode" role="group" aria-label="Where you play"></div>
 
@@ -410,7 +470,7 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
         <div class="row"><label>SIZE</label><div class="seg" id="optSize"></div></div>
         <div class="row"><label>SEA</label><div class="seg" id="optSea"></div></div>
         <div class="row"><label>PLAYERS</label><div class="seg" id="optN"></div></div>
-        <div class="row"><label>SEED</label><button class="btn" style="--c:var(--green)" id="rerollBtn" type="button">↻ NEW MAP</button></div>
+        <div class="row"><label>SEED</label><button class="btn" style="--c:var(--green)" id="rerollBtn" type="button">NEW MAP</button></div>
       </div>
       <div class="lbl armies">ARMIES</div>
       <div class="teams" id="playerRows"></div>
@@ -426,15 +486,15 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
         <div class="status" id="roomStatus"></div>
       </div>
       <div class="status" id="hostStatus"></div>
-      <button class="btn big" style="--c:var(--green)" id="resumeBtn2" type="button" hidden>▶ CONTINUE</button>
-      <button class="btn big" id="startBtn" type="button">▶ START BATTLE</button>
+      <button class="btn big" style="--c:var(--green)" id="resumeBtn2" type="button" hidden>► CONTINUE</button>
+      <button class="btn big" id="startBtn" type="button">► START BATTLE</button>
     </div>
 
     <div id="joinSide" hidden>
       <div class="field"><label class="lbl" for="joinName">YOUR NAME</label><input id="joinName" maxlength="16" autocomplete="nickname"></div>
       <div class="field"><label class="lbl" for="joinCo">YOUR CO</label><select id="joinCo"></select></div>
       <div class="field"><label class="lbl" for="joinCode">ROOM CODE</label><input id="joinCode" maxlength="5" autocomplete="off" spellcheck="false" autocapitalize="characters"></div>
-      <button class="btn big" id="joinBtn" type="button">▶ JOIN ROOM</button>
+      <button class="btn big" id="joinBtn" type="button">► JOIN ROOM</button>
       <button class="btn big" style="--c:var(--pink)" id="joinLeaveBtn" type="button" hidden>LEAVE ROOM</button>
       <div class="status" id="joinStatus"></div>
       <div class="teams" id="lobbyRows"></div>
@@ -459,7 +519,7 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
         <b>TAB · N</b><span>Jump to the next unit that hasn't moved</span>
         <b>E</b><span>End turn</span>
         <b>R</b><span>Show the attack range of the unit under the cursor</span>
-        <b>+ · −</b><span>Zoom in and out</span>
+        <b>+ · -</b><span>Zoom in and out</span>
         <b>F</b><span>Fast-forward CPU turns</span>
         <b>P</b><span>Pause and the game menu</span>
         <b>M</b><span>Mute</span>
@@ -487,7 +547,7 @@ button.urow:hover,button.urow:focus-visible{border-color:var(--yellow)}
     <div class="win-title" id="winText"></div>
     <div class="results" id="resultRows"></div>
     <div class="stack">
-      <button class="btn" style="--c:var(--yellow)" id="rematchBtn" type="button">▶ REMATCH</button>
+      <button class="btn" style="--c:var(--yellow)" id="rematchBtn" type="button">► REMATCH</button>
       <button class="btn" style="--c:var(--green)" id="newMapBtn" type="button">NEW MAP</button>
       <button class="btn" style="--c:var(--cyan)" id="setupBtn" type="button">CHANGE SETUP</button>
       <div class="status" id="waitHost" hidden>Waiting for the host to start the next battle…</div>
@@ -2327,8 +2387,10 @@ function stateHash(w) {
 //  It plays fair: it only knows the enemy units its team can see right now
 //  (plus where it last saw them); terrain and ownership are public. It has
 //  its own RNG (world seed + slot) because only the host runs it.
-//  Per turn: CO power -> passengers board ferries -> artillery -> direct
-//  units -> transports -> infantry -> (late powers) -> building -> end.
+//  Per turn: CO power -> HQ guard -> passengers board ferries -> artillery
+//  -> direct units -> transports -> infantry -> (late powers) -> building
+//  -> end. Once a turn aiStrat picks the enemy to go after and decides
+//  whether we are far enough ahead to push for their HQ (see there).
 // ====================================================================
 const AI_INF = 1000000;          // "unreachable" in a distance field
 const AI_FMAX = 60;              // distances are capped here when scoring
@@ -2371,6 +2433,7 @@ function aiDecide(w, slot, ai) {
     M.turnKey = tk; M.tried.clear(); M.built.clear(); M.saving = false; M.assigned = '';
     M.pwStart = M.pwAfter = M.pwBuild = false;
     M.easyPower = ai.rng() < 0.5; M.saveRoll = ai.rng() < 0.3;
+    M.airFirst = ai.rng() < 0.4; M.seaFirst = ai.rng() < 0.5;
   }
   const C = aiCtx(w, slot, ai);
   // 1. powers that pay off before anybody moves
@@ -2378,20 +2441,23 @@ function aiDecide(w, slot, ai) {
   // a unit whose command was refused gets a plain wait, then it is left alone
   const todo = C.mine.filter(u => !u.done && (M.tried.get(u.id) || 0) < 2);
   for (const u of todo) if (M.tried.get(u.id) === 1) return { t: 'move', id: u.id, path: [[u.x, u.y]], act: 'wait', uid: u.id };
-  // 2. stranded troops climb into a ferry that hasn't sailed yet
+  // 2. an enemy rifle squad could walk onto our HQ next turn: somebody sits on it
+  const g = aiHqGuard(C, todo);
+  if (g) return g;
+  // 3. stranded troops climb into a ferry that hasn't sailed yet
   const b = aiBoarding(C, todo);
   if (b) return b;
-  // 3. units by category: indirect, direct, transports, infantry
+  // 4. units by category: indirect, direct, transports, infantry
   for (let cat = 0; cat < 4; cat++) {
     const list = todo.filter(u => aiCat(u) === cat);
     if (!list.length) continue;
     const plan = cat === 2 ? aiTransportPlan(C, list[0]) : aiBestOf(C, list, cat);
     if (plan) return plan.cmd;
   }
-  // 4. SECOND WIND once everybody has acted, GOLD RUSH right before shopping
+  // 5. SECOND WIND once everybody has acted, GOLD RUSH right before shopping
   if (!M.pwAfter) { M.pwAfter = true; if (aiPowerNow(C, 'after')) { M.tried.clear(); return { t: 'power' }; } }
   if (!M.pwBuild) { M.pwBuild = true; if (aiPowerNow(C, 'build')) return { t: 'power' }; }
-  // 5. shopping
+  // 6. shopping
   const bc = aiBuild(C);
   if (bc) return bc;
   if (M.saving) M.saved++;
@@ -2434,6 +2500,8 @@ function aiCtx(w, slot, ai) {
   for (const g of C.ghosts) theirs += UNITS[g.t].cost * g.hp / 200;
   const base = C.diff === 'easy' ? 0.35 : C.diff === 'hard' ? 0.45 : 0.6;
   C.threatW = base * clamp(theirs / Math.max(1, mine), 0.3, 1.4) * Math.max(0.2, 1 - (w.day - 1) / 45);
+  C.S = aiStrat(C);
+  if (C.S.push) C.threatW *= C.diff === 'hard' ? 0.75 : 0.8;          // bolder, not reckless
   C.threat = aiThreatMap(C);
   // hard: an enemy can only shoot one of us, so its threat is shared by everybody it can reach
   C.share = null;
@@ -2454,6 +2522,54 @@ function aiRemember(C) {
     if (C.enemies.some(e => e.id === id)) continue;
     C.ghosts.push(g);
   }
+}
+
+// ---------- the big picture ----------
+// Once a turn: which enemy to go after (the focus: weak and close by) and whether we are far
+// enough ahead to stop trading blows and go for their HQ (push). Enemy armies are estimates
+// from what we have seen (fog); property counts are public. Easy never pushes.
+function aiStrat(C) {
+  const { w, M, slot } = C;
+  if (M.strat && M.strat.key === M.turnKey) return M.strat;
+  const est = M.est || (M.est = {}), vis = {};
+  for (const e of C.enemies) vis[e.p] = (vis[e.p] || 0) + UNITS[e.t].cost * e.hp / 100;
+  for (const g of C.ghosts) vis[g.p] = (vis[g.p] || 0) + UNITS[g.t].cost * g.hp / 100;
+  const myHq = aiHqOf(C, slot), my = armyValue(w, slot), myProps = Math.max(1, propertyCount(w, slot));
+  const foes = [];
+  for (const p of w.players) {
+    if (!p.alive || isAlly(w, p.slot, slot)) continue;
+    const props = propertyCount(w, p.slot);
+    let v = vis[p.slot] || 0;
+    // in fog, what we saw lately fades slowly, and nobody is assumed to be broke
+    if (w.fog) v = Math.max(v, (est[p.slot] || 0) * 0.85, my * props / myProps);
+    est[p.slot] = v;
+    let hq = -1;
+    for (let i = 0; i < C.n; i++) if (w.ter[i] === T_HQ && w.own[i] === p.slot) { hq = i; break; }
+    const d = myHq >= 0 && hq >= 0 ? dist(myHq % C.W, (myHq / C.W) | 0, hq % C.W, (hq / C.W) | 0) : 20;
+    // stick with the one we are already marching on: turning the army round costs days
+    const stick = p.slot === M.focus ? (M.pushed ? 0.5 : 0.8) : 1;
+    foes.push({ slot: p.slot, army: v, props, hq, d, score: (v + 2000 * props) * (0.3 + d / 20) * stick });
+  }
+  const S = { key: M.turnKey, focus: -1, push: false, foes: foes.length, my, myProps, ratio: 1 };
+  if (foes.length) {
+    let f = foes[0];
+    for (const g of foes) if (g.score < f.score) f = g;
+    S.focus = f.slot; S.focusHq = f.hq; S.fArmy = f.army; S.fProps = f.props;
+    M.focus = f.slot;
+    // part of the army keeps an eye on the other players
+    const mine = my * (foes.length > 1 ? 0.75 : 1);
+    S.ratio = mine / Math.max(3000, f.army);
+    // the longer it drags on, the less of an edge it takes to go for it
+    const late = foes.length > 1 ? clamp((w.day - 8) / 20, 0, 1) : clamp((w.day - 12) / 24, 0, 1);
+    if (C.diff !== 'easy') {
+      S.push = (S.ratio >= 1.35 - 0.45 * late && myProps >= f.props - 1) ||
+        (S.ratio >= 1.1 && myProps >= f.props + 3) ||
+        (f.army < 6000 && my >= 12000);
+    }
+  }
+  M.pushed = S.push;
+  M.strat = S;
+  return S;
 }
 
 // ---------- distance fields (terrain only, units ignored) ----------
@@ -2532,9 +2648,27 @@ function aiCapField(C, mc) {
   });
 }
 // toward the enemies unit type t can hurt (firing positions for indirect units), then enemy property
+// (only what we see, who owns what and the turn's strategy go in, so it is kept between calls)
+function aiCombatSig(C) {
+  if (C.csig !== undefined) return C.csig;
+  const { w } = C;
+  let h = 0;
+  for (let i = 0; i < C.n; i++) h = (Math.imul(h, 31) + w.own[i] + 2) | 0;
+  let sig = C.M.turnKey + '|' + h + '|' + C.S.focus + (C.S.push ? 'p' : '') + (C.P.power ? 'P' : '');
+  for (const e of C.enemies) sig += ',' + e.id + ':' + e.y * C.W + e.x + (e.dived ? 'd' : '') + (e.cap > 0 ? 'c' : '');
+  for (const g of C.ghosts) sig += ';' + g.id + ':' + g.y * C.W + g.x;
+  return (C.csig = sig);
+}
 function aiCombatField(C, t) {
+  const M = C.M, sig = aiCombatSig(C);
+  if (!M.cmb || M.cmb.sig !== sig) M.cmb = { sig, f: new Map() };
+  let kept = M.cmb.f.get(t);
+  if (!kept) { kept = aiCombatFieldMake(C, t); M.cmb.f.set(t, kept); }
+  return kept;
+}
+function aiCombatFieldMake(C, t) {
   return aiCached(C, 'cmb' + t, () => {
-    const { w, slot } = C, W = C.W, d = UNITS[t], mc = d.mc, tc = aiTerCost(C, mc), s = [];
+    const { w, slot } = C, W = C.W, d = UNITS[t], mc = d.mc, tc = aiTerCost(C, mc), s = [], S = C.S;
     const [rmin, rmax] = rangeOf(w, { t, p: slot });
     const hq = aiHqOf(C, slot);
     const seedAround = (x, y, init) => {
@@ -2556,7 +2690,8 @@ function aiCombatField(C, t) {
       for (const e of C.enemies) {
         if (!aiCanHurt(t, e.t) || (e.dived && t !== U_CRUISER && t !== U_SUB)) continue;
         const danger = e.cap > 0 || (hq >= 0 && dist(e.x, e.y, hq % W, (hq / W) | 0) <= 3);
-        seedAround(e.x, e.y, danger ? 0 : 2);
+        // in a free-for-all the others' armies only matter when they come close (or we are marching on somebody)
+        seedAround(e.x, e.y, danger ? 0 : S.foes > 1 && e.p !== S.focus ? (S.push ? 12 : 5) : 2);
       }
       for (const g of C.ghosts) if (aiCanHurt(t, g.t)) seedAround(g.x, g.y, 4);
     }
@@ -2565,7 +2700,10 @@ function aiCombatField(C, t) {
       for (let i = 0; i < C.n; i++) {
         const o = w.own[i];
         if (o < 0 || isAlly(w, o, slot) || !TERRAIN[w.ter[i]].prop) continue;
-        const init = TERRAIN[w.ter[i]].hq ? 8 : 12;
+        const T = TERRAIN[w.ter[i]];
+        let init = T.hq ? 8 : 12;
+        if (S.push && o === S.focus) init = T.hq ? 0 : T.builds ? 4 : 8;      // go for the throat
+        else if (S.foes > 1 && o !== S.focus) init += 8;                     // the others can wait
         if (tc[i]) s.push(i, init); else seedAround(i % W, (i / W) | 0, init);
       }
     }
@@ -2690,6 +2828,8 @@ function aiPos(C, u, x, y, G, hp, skipId, worth) {
   if (d.cat !== 'air') v += T.def * Math.ceil(hp / 10) * (th > 0 ? 20 : 2);
   if (G) v -= G.k * Math.min(G.f[i], AI_FMAX);
   if (w.own[i] === C.slot && T.builds && !(G && G.retreat && T.repair === d.cat && d.cat !== 'ground')) v -= 1500;
+  // don't park on a town our rifles are coming to take (least of all their HQ)
+  if (!d.capture && C.captSet[i]) v -= T.hq ? 2500 : 250;
   return v;
 }
 // what attacking e from (x,y) is worth: damage dealt minus the counter, in funds
@@ -2702,8 +2842,16 @@ function aiAttack(C, u, x, y, e) {
   let gain = Math.min(dmg, e.hp) * de.cost / 100;
   if (kill) gain *= 1.3;
   const i = e.y * C.W + e.x;
-  if (e.cap > 0) gain *= w.ter[i] === T_HQ && w.own[i] >= 0 && isAlly(w, w.own[i], C.slot) ? 4 : 1.5;
-  else if (de.rmin > 1) gain *= 1.5;
+  if (e.cap > 0) {
+    gain *= w.ter[i] === T_HQ && w.own[i] >= 0 && isAlly(w, w.own[i], C.slot) ? 4 : 1.5;
+    // knocking a squad below what it needs to finish the capture next turn buys us a day
+    const hpLeft = e.hp - dmg, pts = hpLeft <= 0 ? 0 : capturePoints(w, w.players[e.p], { t: e.t, hp: hpLeft });
+    if (pts < e.cap) gain += (kill ? 1 : 0.5) * (w.own[i] < 0 ? 0.3 : 1) * Math.min(6000, aiPropVal(C, i) / 2);
+  } else if (de.rmin > 1) gain *= 1.5;
+  // a squad that could walk onto our HQ next turn goes first
+  if (C.diff !== 'easy' && aiHqDanger(C).has(e.id)) gain += 2500;
+  // whoever sits on the HQ we are marching on is the last thing between us and the win
+  if (C.S.push && w.ter[i] === T_HQ && w.own[i] === C.S.focus) gain = gain * 1.5 + (kill ? 3000 : 0);
   if (C.diff === 'hard') {
     gain *= 1 + (100 - e.hp) / 200;                              // focus fire: finish what is hurt
     if (!kill) gain *= aiKillable(C, e) ? 1.25 : 0.85;           // and what the rest of us can finish this turn
@@ -2823,6 +2971,19 @@ function aiEvalUnit(C, u) {
       }
     }
   }
+  // two hurt squads (or tanks...) of the same kind merge when nothing better comes up;
+  // topping up a squad that is halfway through a capture is worth a lot
+  if (C.diff !== 'easy' && u.hp <= 60 && !u.cargo.length && !(u.cap > 0 && C.captSet[u.y * W + u.x])) {
+    for (const o of C.mine) {
+      if (o === u || o.t !== u.t || !o.done || o.hp >= 100 || o.cargo.length || u.hp + o.hp > 120) continue;
+      const r = R.get(o.x + ',' + o.y);
+      if (!r || !r.stop || canStop(w, u, o.x, o.y) !== 'join') continue;
+      const merged = Math.min(100, u.hp + o.hp);
+      const v = aiPos(C, o, o.x, o.y, G, merged, 0) + 250 + (u.hp <= 30 ? 300 : 0) +
+        (o.cap > 0 && C.captSet[o.y * W + o.x] ? 1200 : 0);
+      if (!best || v > best.score) best = { score: v, x: o.x, y: o.y, act: 'join', extra: null, atk: false };
+    }
+  }
   if (!best) return { score: 0, atk: false, gain: 0, cmd: { t: 'move', id: u.id, path: [[u.x, u.y]], act: 'wait', uid: u.id } };
   const path = pathTo(R, best.x, best.y) || [[u.x, u.y]];
   const cmd = { t: 'move', id: u.id, path, act: best.act, uid: u.id };
@@ -2874,6 +3035,67 @@ function aiBestOf(C, list, cat) {
   return aiEvalUnit(C, pick);
 }
 
+// ---------- HQ guard ----------
+// A unit standing on the HQ blocks any capture. When a visible enemy capturer (or a loaded
+// transport) could reach our HQ on its next move, the cheapest unit that can get there
+// sits on it; the one already sitting there stays put (and shoots from there if it can).
+// the enemy units that could stand on (or unload next to) our HQ next turn
+function aiHqDanger(C) {
+  if (C.hqd) return C.hqd;
+  const { w } = C, W = C.W, hq = aiHqOf(C, C.slot), out = new Set();
+  C.hqd = out;
+  if (hq < 0) return out;
+  const hx = hq % W, hy = (hq / W) | 0;
+  for (const e of C.enemies) {
+    const d = UNITS[e.t];
+    let mp = movePoints(w, e) + 1;                       // +1: DOUBLE TIME, or a power we can't see coming
+    if (!d.capture) {
+      // a loaded APC / lifter drops its squad next to the HQ
+      if (!d.carry || !e.cargo || !e.cargo.length) continue;
+      mp += 1;
+    }
+    if (dist(e.x, e.y, hx, hy) > mp) continue;
+    if (aiStatic(C, d.mc, hq)[e.y * W + e.x] <= mp) out.add(e.id);
+  }
+  return out;
+}
+function aiHqGuard(C, todo) {
+  if (C.diff === 'easy') return null;
+  const { w, slot } = C, W = C.W, hq = aiHqOf(C, slot);
+  if (hq < 0) return null;
+  const hx = hq % W, hy = (hq / W) | 0, on = unitAt(w, hx, hy);
+  if (on && !isAlly(w, on.p, slot)) return null;          // already on it: everybody shoots it (see aiAttack)
+  if (on && (on.p !== slot || on.done)) return null;
+  if (!aiHqDanger(C).size) return null;
+  if (on) {
+    if ((C.M.tried.get(on.id) || 0) > 0) return null;
+    // stay; fire from the HQ if somebody is in reach
+    let best = null;
+    for (const [x, y] of [[hx + 1, hy], [hx - 1, hy], [hx, hy + 1], [hx, hy - 1]]) {
+      if (!inBounds(w, x, y)) continue;
+      const id = C.egrid[y * W + x]; if (!id) continue;
+      const e = w.byId[id]; if (!e || UNITS[on.t].rmin > 1) continue;
+      const a = aiAttack(C, on, hx, hy, e);
+      if (a && a.gain > 0 && (!best || a.gain > best.gain)) best = { gain: a.gain, e };
+    }
+    if (best) return { t: 'move', id: on.id, path: [[hx, hy]], act: 'attack', tx: best.e.x, ty: best.e.y, uid: on.id };
+    return { t: 'move', id: on.id, path: [[hx, hy]], act: 'wait', uid: on.id };
+  }
+  let pick = null, pv = Infinity, ppath = null;
+  for (const u of todo) {
+    const d = UNITS[u.t];
+    if (d.cat !== 'ground' || u.cargo.length || dist(u.x, u.y, hx, hy) > movePoints(w, u)) continue;
+    if (u.cap > 0 && C.captSet[u.y * W + u.x] && u.cap <= 10) continue;   // about to take a town: let it
+    const R = reach(w, u), r = R.get(hx + ',' + hy);
+    if (!r || !r.stop) continue;
+    // cheap and not needed for a fight; artillery would waste its turn
+    const v = UNITS[u.t].cost * u.hp / 100 + (aiCanEngage(C, u) ? 6000 : 0) + (d.rmin > 1 ? 8000 : 0);
+    if (v < pv) { pv = v; pick = u; ppath = pathTo(R, hx, hy); }
+  }
+  if (!pick || !ppath) return null;
+  return { t: 'move', id: pick.id, path: ppath, act: 'wait', uid: pick.id };
+}
+
 // ---------- infantry targets ----------
 // Once a turn every foot soldier is handed a property to go and take (greedy on value / time),
 // so two squads don't walk to the same town.
@@ -2883,6 +3105,13 @@ function aiAssign(C) {
   M.assigned = M.turnKey;
   M.claim = new Map();
   const taken = new Set(), infs = C.mine.filter(u => UNITS[u.t].capture), pairs = [];
+  // how soon an enemy squad could stand on each town (a race we would lose is worth less)
+  const rival = new Map(), eInf = C.enemies.filter(e => UNITS[e.t].capture);
+  if (eInf.length) for (const i of C.capt) {
+    let best = AI_INF;
+    for (const e of eInf) best = Math.min(best, aiStatic(C, UNITS[e.t].mc, i)[e.y * C.W + e.x] / Math.max(1, movePoints(w, e)));
+    rival.set(i, best);
+  }
   for (const u of infs) { const i = u.y * C.W + u.x; if (u.cap > 0 && C.captSet[i]) { M.claim.set(u.id, i); taken.add(i); } }
   for (const u of infs) {
     if (M.claim.has(u.id)) continue;
@@ -2892,17 +3121,36 @@ function aiAssign(C) {
       const df = aiStatic(C, d.mc, i)[at];
       if (df >= AI_INF) continue;
       const t = w.ter[i];
+      const o = w.own[i], turns = df / mp + ct;
       let v = t === T_HQ ? 9000 : t === T_BASE ? 6000 : t === T_AIRPORT ? 4000 : t === T_PORT ? 3500 : 3000;
-      if (w.own[i] >= 0) v *= 1.2;
-      pairs.push([v / (2 + df / mp + ct), u.id, i]);
+      if (o >= 0) {
+        // the enemy's towns are defended; neutral ones are free for the taking. Their HQ only
+        // becomes the prize once we are pushing (or it's right in front of us)
+        if (o === C.S.focus && C.S.push) v *= t === T_HQ ? 3 : 1.6;
+        else {
+          if (t === T_HQ && turns > 3) v = 4000;
+          v *= C.S.foes > 1 && o !== C.S.focus ? 0.4 : 0.6;
+        }
+      }
+      if (o < 0 && rival.has(i) && rival.get(i) < df / mp - 0.01) v *= 0.5;
+      pairs.push([v / Math.pow(1 + turns, 1.5), u.id, i]);
     }
   }
   pairs.sort((a, b) => b[0] - a[0]);
-  for (const [, id, i] of pairs) { if (M.claim.has(id) || taken.has(i)) continue; M.claim.set(id, i); taken.add(i); }
+  // a town more than a week's walk away isn't worth the trip: those squads march with the army.
+  // The HQ we are pushing on gets two squads (one may not survive the walk)
+  const hq2 = C.S.push && C.S.focusHq >= 0 ? C.S.focusHq : -1;
+  for (const [sc, id, i] of pairs) {
+    if (M.claim.has(id) || sc < 120) continue;
+    if (taken.has(i)) { if (i !== hq2 || taken.has(-2)) continue; taken.add(-2); }
+    M.claim.set(id, i); taken.add(i);
+  }
+  for (const u of infs) if (!M.claim.has(u.id)) M.claim.set(u.id, -1);
 }
 function aiInfTarget(C, u) {
   aiAssign(C);
   const i = C.M.claim.get(u.id);
+  if (i === -1) return -1;                 // nothing worth the walk: follow the army
   if (i !== undefined && C.captSet[i]) return i;
   // the target fell mid-turn: take the nearest free one
   const taken = new Set(C.M.claim.values()), d = UNITS[u.t], at = u.y * C.W + u.x;
@@ -3089,13 +3337,18 @@ function aiPowerNow(C, phase) {
   const { P } = C;
   if (P.power) return false;
   const co = COS[CO_BY_ID[P.co]] || COS[0];
-  if (P.meter < co.stars * METER_STAR) return false;
+  if (P.meter < co.stars * METER_STAR) { C.M.fullTurns = 0; return false; }
   if (C.diff === 'easy') return phase === 'start' && C.M.easyPower;
   const engaged = f => C.mine.filter(u => !u.done && f(UNITS[u.t]) && aiCanEngage(C, u)).length;
   switch (co.id) {
-    case 'nova': return phase === 'after' && C.mine.filter(u => !UNITS[u.t].capture && aiArmed(u.t) && aiCanEngage(C, u)).length >= 2;
+    case 'nova': return phase === 'after' && aiSecondWind(C) >= 5000;
     case 'penny': return phase === 'build' && P.funds >= 5000;
-    case 'tide': return phase === 'start' && C.enemies.length > 0;
+    case 'tide': {
+      if (phase !== 'start') return false;
+      // waiting on a full meter wastes charge, so the bar drops a little every turn we wait
+      C.M.fullTurns = (C.M.fullTurns || 0) + 1;
+      return aiTsunami(C) >= Math.max(2500, 9000 - 2000 * (C.M.fullTurns - 1));
+    }
     case 'rookie': {
       if (phase !== 'start') return false;
       let miss = 0;
@@ -3107,6 +3360,40 @@ function aiPowerNow(C, phase) {
     case 'dozer': return phase === 'start' && (engaged(d => !!d.capture) >= 2 || C.mine.filter(u => u.cap > 0).length >= 2);
     default: return phase === 'start' && engaged(() => true) >= 2;
   }
+}
+
+// SECOND WIND: what the units that already acted could still hit if they went again (funds)
+function aiSecondWind(C) {
+  const w = C.w;
+  let sum = 0, n = 0;
+  for (const u of C.mine) {
+    const d = UNITS[u.t];
+    if (d.capture || !aiArmed(u.t)) continue;
+    const [rmin, rmax] = rangeOf(w, u), mp = movePoints(w, u);
+    let best = 0;
+    for (const e of C.enemies) {
+      const r = dist(u.x, u.y, e.x, e.y);
+      if (d.rmin > 1 ? r < rmin || r > rmax : r > mp + 1) continue;
+      if (!weaponFor(w, u, e) || !canFightDived(u, e)) continue;
+      const dm = Math.min(e.hp, aiDmg(w, u, u.hp, e, e.hp, e.x, e.y, AI_LUCK));
+      best = Math.max(best, dm * UNITS[e.t].cost / 100);
+    }
+    if (best > 0) { sum += best; n++; }
+  }
+  return n >= 2 ? sum : 0;
+}
+// TSUNAMI: 1 HP off every enemy and half their fuel. Worth: the damage, plus planes and
+// ships it leaves without the fuel to get home, plus the wrecks it puts in reach of a kill
+function aiTsunami(C) {
+  let v = 0;
+  for (const e of C.enemies) {
+    const d = UNITS[e.t], c = d.cost, cut = Math.min(10, e.hp - 1);
+    if (cut <= 0) continue;
+    v += cut * c / 100;
+    if (e.hp - cut <= 20) v += c * 0.25;
+    if (d.burn && Math.floor(e.fuel / 2) < d.burn * 3) v += c * 0.4;
+  }
+  return v;
 }
 
 // ---------- building ----------
@@ -3125,9 +3412,18 @@ function aiBuild(C) {
   const rank = i => {
     const b = TERRAIN[w.ter[i]].builds;
     if (!K.landRoute) return b === 'sea' ? 0 : b === 'air' ? 1 : 2;
-    return b === 'ground' ? (K.ferryNeed > 0 ? 1 : 0) : b === 'air' ? (K.ferryNeed > 0 ? 0 : 1) : 2;
+    // some days the money goes into planes or warships first: they fly over a jammed front
+    const late = w.day >= 6 && C.diff !== 'easy';
+    if (b === 'air') return K.ferryNeed > 0 || (late && M.airFirst) ? -1 : 1;
+    if (b === 'sea') return late && M.seaFirst && aiPortUse(C, i) ? -2 : 2;
+    return K.ferryNeed > 0 ? 1 : 0;
   };
   props.sort((a, b) => rank(a) - rank(b) || a - b);
+  // a battleship shells every coast in reach and breaks island stalemates: save up for one
+  K.navy = false;
+  if (C.diff !== 'easy' && w.day >= 5 && K.mine[U_BSHIP] < Math.min(4, 1 + Math.floor(w.day / 12))) {
+    for (const i of props) if (w.ter[i] === T_PORT && (!K.landRoute || aiPortUse(C, i))) { K.navy = true; break; }
+  }
   for (let k = 0; k < props.length; k++) {
     const i = props[k];
     M.built.add(i);
@@ -3138,6 +3434,25 @@ function aiBuild(C) {
   }
   return null;
 }
+// can warships from this port reach the enemy's coast? (a battleship hits 6 tiles inland)
+function aiPortUse(C, i) {
+  const { w, M } = C;
+  if (!M.portUse || M.portDay !== w.day) { M.portUse = new Map(); M.portDay = w.day; }
+  if (M.portUse.has(i)) return M.portUse.get(i);
+  const f = aiStatic(C, MC.SEA, i), W = C.W;
+  let use = false;
+  for (let j = 0; j < C.n && !use; j++) {
+    const o = w.own[j];
+    if (o < 0 || isAlly(w, o, C.slot) || !TERRAIN[w.ter[j]].prop) continue;
+    const x = j % W, y = (j / W) | 0;
+    for (let dy = -5; dy <= 5 && !use; dy++) for (let dx = -5 + Math.abs(dy); dx <= 5 - Math.abs(dy); dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < W && ny < w.h && f[ny * W + nx] < AI_INF) { use = true; break; }
+    }
+  }
+  M.portUse.set(i, use);
+  return use;
+}
 // a visible enemy within 8 tiles of this property: no time to save up
 function aiHomeThreat(C, i) {
   const x = i % C.W, y = (i / C.W) | 0;
@@ -3146,7 +3461,7 @@ function aiHomeThreat(C, i) {
 // what we know about both armies, for the shopping list
 function aiKnow(C) {
   const { w, slot } = C;
-  const K = { eAir: 0, eHeli: 0, eSea: 0, eSub: 0, eArmour: 0, eInf: 0, eUnits: [], mine: new Array(UNITS.length).fill(0), myInf: 0, room: 0, landerRoom: 0 };
+  const K = { infWant: 2, eAir: 0, eHeli: 0, eSea: 0, eSub: 0, eArmour: 0, eInf: 0, eUnits: [], mine: new Array(UNITS.length).fill(0), myInf: 0, room: 0, landerRoom: 0 };
   const seen = C.enemies.map(e => ({ t: e.t, hp: e.hp })).concat(C.ghosts.map(g => ({ t: g.t, hp: g.hp })));
   for (const e of seen) {
     const d = UNITS[e.t];
@@ -3158,9 +3473,11 @@ function aiKnow(C) {
     if (d.capture) K.eInf++;
     K.eUnits.push(e);
   }
+  K.myGround = 0;
   for (const u of w.units) {
     if (u.p !== slot) continue;
     K.mine[u.t]++;
+    if (UNITS[u.t].cat === 'ground' && !u.inId) K.myGround++;
     if (UNITS[u.t].capture) K.myInf++;
     if (aiIsFerry(u)) { const r = UNITS[u.t].carry - u.cargo.length; K.room += u.t === U_TCOPTER ? r : 0; K.landerRoom += u.t === U_LANDER ? r : 0; }
   }
@@ -3172,6 +3489,8 @@ function aiKnow(C) {
   const hq = aiHqOf(C, slot);
   K.landRoute = hq >= 0 ? aiCombatField(C, U_TANK)[hq] < AI_INF : true;
   K.capLand = hq >= 0 ? aiCapField(C, MC.FOOT)[hq] < AI_INF : true;
+  // close to the unit cap: no more cheap filler, the slots are worth more than the money
+  K.crowd = unitCount(w, slot) >= UNIT_CAP - 12;
   return K;
 }
 // how well type t fares against what we've seen of the enemy (1 = neutral)
@@ -3194,16 +3513,24 @@ function aiPick(C, i, K, left) {
   const cost = t => unitCost(w, slot, t);
   const reserve = day >= 4 ? 1000 : 0;
   const can = t => cost(t) <= funds && (t === U_INF || funds - cost(t) >= reserve);
+  if (K.navy && !easy) {
+    if (cat === 'sea' && can(U_BSHIP)) return U_BSHIP;
+    // keep the money for the warship (a couple of squads still get bought for the ferries)
+    if (funds < cost(U_BSHIP) && !(cat === 'ground' && K.myInf < 2) && !aiHomeThreat(C, i)) { M.saving = 'navy'; return -1; }
+  }
   const cand = [];
   const add = (t, wt) => { if (wt > 0 && can(t)) cand.push([t, wt]); };
   if (cat === 'ground') {
     if (!can(U_INF)) return -1;
+    // islands: troops nobody can ship anywhere just clog the beaches and the factories
+    if (!K.landRoute && !easy && K.myGround >= 8 + 2 * (K.room + K.landerRoom) && !aiHomeThreat(C, i)) { M.saving = 'island'; return -1; }
     let near = 0;
     // towns to take nearby (once the opening is over, only the neutral ones call for more boots)
-    for (const j of C.capt) if ((day <= 12 || w.own[j] < 0) && aiStatic(C, MC.FOOT, j)[i] <= 8) near++;
-    const infTarget = Math.min(near, 4) + 2;
+    for (const j of C.capt) if ((day <= 12 || w.own[j] < 0) && aiStatic(C, MC.FOOT, j)[i] <= 10) near++;
+    const infTarget = Math.min(near, 4) + 2 + (C.S.push ? 2 : 0);          // pushing: rifles to take their towns
+    K.infWant = infTarget;
     // infantry first for the captures, unless the money is there for something heavier
-    if (K.myInf < infTarget && (K.myInf < 2 || funds < 2 * cost(U_TANK)) && (near > 0 || K.myInf < 2 || !K.capLand)) return U_INF;
+    if (K.myInf < infTarget && (K.myInf < 2 || funds < 2 * cost(U_TANK) || day <= 3) && (near > 0 || K.myInf < 2 || !K.capLand) && !(K.crowd && K.myInf >= 3)) return U_INF;
     if (easy) {
       add(U_INF, 20); add(U_TANK, 30); add(U_ARTY, 18); add(U_RECON, 12);
     } else {
@@ -3232,18 +3559,32 @@ function aiPick(C, i, K, left) {
       else if (!K.capLand && K.mine[U_TCOPTER] < 2) add(U_TCOPTER, 10);
     }
   } else if (cat === 'sea') {
-    if (easy || (K.landRoute && !K.eSea)) return -1;
+    const coast = K.landRoute && aiPortUse(C, i);
+    if (easy || (K.landRoute && !K.eSea && !coast)) return -1;
     if (K.mine[U_LANDER] < 3 && (K.strGround > K.landerRoom || (K.ferryNeed > 0 && K.mine[U_LANDER] < 1))) add(U_LANDER, 200);
     add(U_CRUISER, 10 + 15 * (K.eSub + K.eHeli));
     add(U_SUB, K.eSea ? 20 : 6);
-    if (day >= 8) add(U_BSHIP, 25);
+    if (day >= 8 || coast) add(U_BSHIP, coast ? 45 : 25);
+  }
+  if (K.crowd && K.myInf >= 3 && !easy) {
+    for (let k = cand.length - 1; k >= 0; k--) if (cost(cand[k][0]) < 6000) cand.splice(k, 1);
+    if (!cand.length) { M.saving = 'crowd'; return -1; }
   }
   if (!cand.length) return cat === 'ground' ? U_INF : -1;
   // spend the money that's there: favour what uses this property's share of the budget
-  const budget = Math.max(1000, Math.min(funds - 1000 * (left - 1), 1.6 * funds / Math.max(1, left)));
+  // the money goes into one good unit rather than three cheap ones: the other empty
+  // factories only keep enough back for the rifle squads we still want
+  let budget;
+  if (easy) budget = Math.max(1000, Math.min(funds - 1000 * (left - 1), 1.6 * funds / Math.max(1, left)));
+  else {
+    const spare = cat === 'ground' ? Math.min(left - 1, Math.max(0, K.infWant - K.myInf) + 1) : Math.min(left - 1, 1);
+    budget = Math.max(1000, funds - 1000 * spare);
+  }
+  // money piling up (more than a day's income per empty factory): buy the big stuff
+  const glut = !easy && funds / Math.max(1, left) > Math.max(10000, 1.5 * propertyCount(w, slot) * w.income);
   for (const c of cand) {
     const ct = cost(c[0]);
-    if (!easy) c[1] *= ct <= budget ? 0.15 + 1.5 * Math.pow(ct / budget, 1.5) : 0.25;
+    if (!easy) c[1] *= ct <= budget ? (glut ? 0.03 + 2 * Math.pow(ct / budget, 2) : 0.15 + 1.5 * Math.pow(ct / budget, 1.5)) : 0.25;
     if (!easy) {
       c[1] *= aiCounter(C, c[0], K);
       // variety: every copy we already field makes the next one less attractive (support units faster)
@@ -3257,7 +3598,7 @@ function aiPick(C, i, K, left) {
   for (const c of cand) { r -= c[1]; if (r <= 0) { t = c[0]; break; } }
   // hard sometimes skips a cheap buy to afford a heavy unit next turn
   if (C.diff === 'hard' && cat === 'ground' && day >= 5 && M.saveRoll && cost(t) < 15000 && funds < cost(U_MTANK) &&
-      funds + propertyCount(w, slot) * w.income >= cost(U_MTANK) && K.myInf >= 2 && !aiHomeThreat(C, i)) { M.saving = true; return -1; }
+      funds + propertyCount(w, slot) * w.income >= cost(U_MTANK) && K.myInf >= 2 && !aiHomeThreat(C, i)) { M.saving = 'heavy'; return -1; }
   return t;
 }
 
@@ -4845,7 +5186,8 @@ function btCorner(s, side, t, off) {
   const tx = L ? 4 : BT_W - 4, ter = TERRAIN[side.ter];
   btText(ctx, ter.name, tx, 56, '#efe6ff');
   const stars = side.cat === 'air' ? 0 : ter.def;
-  for (let i = 0; i < 4; i++) btMiniStar(ctx, L ? 4 + i * 9 : BT_W - 11 - i * 9, 60, i < stars ? '#ffd23f' : '#4b3590');
+  // filled stars first, reading left to right on both sides (like the terrain card on the map)
+  for (let i = 0; i < 4; i++) btMiniStar(ctx, L ? 4 + i * 9 : BT_W - 11 - (3 - i) * 9, 60, i < stars ? '#ffd23f' : '#4b3590');
   btText(ctx, TEAMS[side.p].army, tx, BT_H - 6, pal.m);
   ctx.restore();
 }
@@ -5080,6 +5422,7 @@ function clampCam() {
 }
 function zoomAt(x, y, f) {
   const nts = snapPx(clamp(view.ts * f, 20, 96)); if (nts === view.ts) return;
+  ui.userCamAt = performance.now();
   view.ox = x - (x - view.ox) * nts / view.ts; view.oy = y - (y - view.oy) * nts / view.ts;
   view.ts = nts; view.tox = view.toy = null; clampCam();
 }
@@ -5179,6 +5522,7 @@ function quitGame() {
 function issueCmd(cmd) {
   if (!G) return;
   if (netRole() === 'client') {
+    if (ui.pending) return;                                            // one order in flight at a time: no double sends
     ui.pending = true; ui.pendingAt = ui.lastT || performance.now();   // same clock as tick()
     send(net.conn, { t: 'cmd', c: cmd });
   } else runCmd(G.turn, cmd);
@@ -5198,30 +5542,53 @@ function runCmd(slot, cmd) {
   if (netRole() === 'offline') { if (G.phase === 'over') clearAutosave(); else autosave(); }
   return r;
 }
+// Guest side of the online game. The host's echo is the only way a command reaches this board,
+// so a guest never runs ahead of the host. A sync that has to wait for the animations keeps the
+// commands that arrive after it and replays them on top, so it never rolls the board back.
 function applyRemoteCmd(m) {
   if (!G || !m || !m.c) return;
+  if (ui.deferredState) { (ui.deferredState._after = ui.deferredState._after || []).push(m); return; }
   const r = applyCmd(G, m.s, m.c);
   const evs = G.ev.slice(); G.ev.length = 0;
-  if (!r.ok || (typeof m.h === 'number' && stateHash(G) !== m.h)) send(net.conn, { t: 'resync' });
+  if (!r.ok || (typeof m.h === 'number' && stateHash(G) !== m.h)) uiNetResync();
   ui.stateVer++; ui.pending = false;
   if (ui.state !== 'idle' && m.s === G.turn && !ui.mySlots.includes(G.turn)) resetSel();
   if (r.ok) queueEvents(evs);
+}
+// one request until the answer comes (or 4 s pass): a board that is off stays off for every
+// command until the sync arrives, and each of them would ask again
+function uiNetResync() {
+  const now = performance.now();
+  if (ui.resyncAt && now - ui.resyncAt < 4000) return;
+  ui.resyncAt = now; send(net.conn, { t: 'resync' });
 }
 function onReject(err) {
   ui.pending = false; resetSel(); closeMenu();
   toast(err || 'THE HOST SAID NO', PINK); sfx('error');
 }
+// worlds that differ at most in who runs each army (a guest left, a seat was taken back)
+function uiNetSame(a, b) {
+  const flat = w => { const o = serialize(w); o.cfg = null; o.players = o.players.map(p => ({ ...p, kind: '', diff: '', name: '' })); return JSON.stringify(o); };
+  try { return flat(a) === flat(b); } catch (e) { return false; }
+}
 function loadState(obj) {
   let w; try { w = deserialize(obj); } catch (e) { return; }
   if (!w) return;
-  if (animBusy()) { ui.deferredState = w; return; }   // let the banner / battle finish first
+  ui.resyncAt = 0;
+  if (G && !ui.deferredState && uiNetSame(G, w)) {   // the usual turn sync: the board is right, so nothing is redrawn
+    G.players.forEach((p, i) => { const q = w.players[i]; if (q) { p.kind = q.kind; p.diff = q.diff; p.name = q.name; } });
+    return;
+  }
+  if (animBusy()) { w._after = []; ui.deferredState = w; return; }   // let the banner / battle finish first
   applyLoaded(w);
 }
 function applyLoaded(w) {
+  const after = w._after || []; delete w._after;
   G = w; ui.deferredState = null; clearAnim(); resetSel(); closeMenu();
   ui.pending = false; ui.stateVer++; ui.pov = computePov();
   if (G.phase === 'play') ui.resultsShown = false;
   if ($('hud').hidden) { $('hud').hidden = false; fitCanvas(); fitView(); }
+  for (const m of after) applyRemoteCmd(m);   // what the host did while the sync waited
 }
 function remoteLeft(slot, name) {
   if (!G || !G.players[slot]) return;
@@ -5284,6 +5651,13 @@ function easeOut(p) { return 1 - (1 - p) * (1 - p); }
 function moveSfxOf(def) { return def.mc === MC.AIR ? (def.id === 'fighter' || def.id === 'bomber' ? 'jet' : 'rotor') : MOVE_SFX[def.mc] || 'tread'; }
 const NUM_KINDS = new Set(['supply', 'income', 'repair', 'heal', 'hit']);
 
+// While someone else plays (CPU, online friend), the camera glides to what they do, unless the
+// player has just moved the camera themselves to look somewhere else.
+function uiFollow(x, y) {
+  if (!G || ui.mySlots.includes(G.turn) || !inBounds(G, x, y) || !tileSeen(x, y)) return;
+  if (performance.now() - (ui.userCamAt || -1e9) < 2500) return;
+  ensureVisible(x, y);
+}
 function startItem(e) {
   const it = { e, kind: e[0], t: 0, dur: 0, wait: false, phase: 0 }; anim.cur = it;
   const sp = speedMul();
@@ -5293,10 +5667,11 @@ function startItem(e) {
       const seen = ui.pov === -1 || friendOfPov(e[4]) || path.some(p => tileSeen(p[0], p[1]));   // moves in the fog take no time
       it.dur = path.length > 1 && seen ? (path.length - 1) / (9 * sp) * 1000 : 0; it.step = -1;
       if (!seen) delete anim.pos[e[1]];
+      else if (path.length) { const end = path[path.length - 1]; uiFollow(end[0], end[1]); }
       break;
     }
     case 'trap': it.dur = 400 / sp; addFx({ kind: 'bubble', x: e[2], y: e[3], dur: it.dur }); sfx('trap'); break;
-    case 'battle': startBattleItem(it); break;
+    case 'battle': uiFollow(e[1].dx, e[1].dy); startBattleItem(it); break;
     case 'die': {
       const list = [e]; while (anim.queue.length && anim.queue[0][0] === 'die') list.push(anim.queue.shift());
       it.dur = 450 / sp; let seen = 0;
@@ -5305,16 +5680,18 @@ function startItem(e) {
       sfx(e[2] === 'crash' ? 'boom' : 'die'); anim.shake = 200; break;
     }
     case 'crash': it.dur = 500 / sp; addFx({ kind: 'smoke', x: e[1].x, y: e[1].y, dur: it.dur }); sfx('crash'); break;
-    case 'capture': it.dur = 420 / sp; addFx({ kind: 'pulse', x: e[2], y: e[3], dur: it.dur, color: '#ffd23f' }); addFx({ kind: 'num', x: e[2], y: e[3], text: `${CAP_POINTS - e[4]}/${CAP_POINTS}`, color: '#ffd23f', dur: it.dur }); sfx('capture'); break;
+    case 'capture': if (!tileSeen(e[2], e[3])) { it.dur = 0; break; }   // hidden in the fog: nothing to show
+      uiFollow(e[2], e[3]); it.dur = 420 / sp; addFx({ kind: 'pulse', x: e[2], y: e[3], dur: it.dur, color: '#ffd23f' }); addFx({ kind: 'num', x: e[2], y: e[3], text: `${CAP_POINTS - e[4]}/${CAP_POINTS}`, color: '#ffd23f', dur: it.dur }); sfx('capture'); break;
     case 'captured': {
       const i = e[2] * G.w + e[1]; anim.ownOv.delete(i); it.dur = 500 / sp;
+      if (!e[5] && !tileSeen(e[1], e[2])) { it.dur = 0; break; }   // a capture nobody here could see stays quiet (an HQ falling is news for everyone)
       addFx({ kind: 'flash', x: e[1], y: e[2], dur: it.dur, color: '#fff' }); sfx('captured');
       const ter = TERRAIN[G.ter[i]];
       if (e[5]) { banner('HQ CAPTURED!', `${TEAMS[e[3]].army} TAKES THE HEADQUARTERS`, teamUi(e[3]), 1300 / sp); it.dur = 1300 / sp; }
       else toast(`${TEAMS[e[3]].army} CAPTURED A ${ter.name}`, teamUi(e[3]));
       break;
     }
-    case 'build': { const s = e[1]; anim.hide.delete(s.id); it.dur = 220 / sp; anim.scale[s.id] = 0; it.scaleId = s.id; sfx('build'); break; }
+    case 'build': { const s = e[1]; uiFollow(s.x, s.y); anim.hide.delete(s.id); it.dur = 220 / sp; anim.scale[s.id] = 0; it.scaleId = s.id; sfx('build'); break; }
     case 'load': it.dur = 120 / sp; sfx('load'); break;
     case 'unload': anim.hide.delete(e[1]); it.dur = 180 / sp; anim.scale[e[1]] = 0; it.scaleId = e[1]; sfx('unload'); break;
     case 'join': { anim.ghosts.delete(e[2]); delete anim.pos[e[2]]; const k = G.byId[e[1]]; it.dur = 350 / sp; if (k) addFx({ kind: 'num', x: k.x, y: k.y, text: `${dispOf(e[3])}HP`, color: '#7dff6a', dur: it.dur }); sfx('repair'); break; }
@@ -5325,8 +5702,8 @@ function startItem(e) {
       for (const n of list) {
         if (n[0] === 'income') { const h = homeTile(n[1]); addFx({ kind: 'num', x: h[0], y: h[1], text: `+${n[2]}`, color: '#ffd23f', dur: it.dur }); snd = snd || 'income'; continue; }
         const u = G.byId[n[1]]; if (!u || !unitShown(u) || u.inId) continue;
-        const txt = n[0] === 'supply' ? '⛽' : n[0] === 'repair' ? '+HP' : n[0] === 'heal' ? '+2' : '-1';
-        addFx({ kind: 'num', x: u.x, y: u.y, text: txt, color: n[0] === 'hit' ? '#ff4fa3' : n[0] === 'supply' ? '#3ff0ff' : '#7dff6a', dur: it.dur });
+        const txt = n[0] === 'supply' ? '+' : n[0] === 'repair' ? '+HP' : n[0] === 'heal' ? '+2' : '-1';
+        addFx({ kind: 'num', x: u.x, y: u.y, text: txt, icon: n[0] === 'supply' ? 'fuel' : null, color: n[0] === 'hit' ? '#ff4fa3' : n[0] === 'supply' ? '#3ff0ff' : '#7dff6a', dur: it.dur });
         snd = n[0] === 'hit' ? 'boom' : snd || (n[0] === 'supply' ? 'supply' : 'repair');
       }
       if (snd) sfx(snd);
@@ -5362,11 +5739,12 @@ function startTurnItem(it) {
 }
 function beginTurnBanner(it) {
   const slot = it.e[1], P = G.players[slot], co = COS[CO_BY_ID[P.co]] || COS[0], sp = speedMul();
-  it.phase = 'banner'; it.wait = false; it.t = 0; it.dur = 1300 / sp;
+  const show = (ui.mySlots.includes(slot) ? 1300 : 1000) / sp;   // other players' banners are shorter: you only watch
+  it.phase = 'banner'; it.wait = false; it.t = 0; it.dur = show * 0.84;   // the income numbers start while it slides out
   ui.pov = computePov(); ui.maskKey = '';
   const home = homeTile(slot); centerOn(home[0], home[1]);
   if (ui.mySlots.includes(slot)) { ui.cx = home[0]; ui.cy = home[1]; }
-  banner(`DAY ${G.day}`, `${TEAMS[slot].army} · ${co.name}${P.kind === 'cpu' ? ' · CPU' : ''}`, teamUi(slot), it.dur);
+  banner(`DAY ${G.day}`, `${TEAMS[slot].army} · ${co.name}${P.kind === 'cpu' ? ' · CPU' : ''}`, teamUi(slot), show);
   sfx('turn');
   ui.cpu.turn = -1;
 }
@@ -5421,7 +5799,7 @@ function endItem(it) {
     case 'move': delete anim.pos[it.e[1]]; break;
     case 'build': case 'unload': delete anim.scale[it.scaleId]; break;
     case 'win': showResults(); break;
-    case 'turn': $('dayBanner').hidden = true; break;
+    case 'turn': if (it.phase !== 'banner' || it.skipped) $('dayBanner').hidden = true; break;   // else banner() hides it once it has slid out
     case 'power': $('powerBanner').hidden = true; break;
   }
   anim.cur = null;
@@ -5445,7 +5823,7 @@ function animTick(dt) {
 function skipAnim() {
   const it = anim.cur; if (!it) return;
   if (it.wait) { if (it.kind === 'battle' && typeof skipBattle === 'function') skipBattle(); return; }   // the pass screen needs READY
-  it.t = it.dur;
+  it.t = it.dur; it.skipped = true;
   if (it.kind === 'turn') $('dayBanner').hidden = true;
   if (it.kind === 'power') $('powerBanner').hidden = true;
 }
@@ -5455,9 +5833,13 @@ function skipAnim() {
 // ====================================================================
 function toast(text, color) {
   const box = $('toasts'); if (!box) return;
-  const d = document.createElement('div'); d.className = 'toast'; d.textContent = String(text).toUpperCase(); d.style.color = color || CYAN;
+  const s = String(text).toUpperCase(), last = box.lastElementChild;
+  if (last && last.textContent === s) {   // the same message again (a buzzing click): restart it, don't stack copies
+    last.style.animation = 'none'; void last.offsetWidth; last.style.animation = ''; clearTimeout(last.uiT); last.uiT = setTimeout(() => last.remove(), 1900); return;
+  }
+  const d = document.createElement('div'); d.className = 'toast'; d.textContent = s; d.style.color = color || CYAN;
   box.append(d); while (box.children.length > 3) box.firstChild.remove();
-  setTimeout(() => d.remove(), 1900);
+  d.uiT = setTimeout(() => d.remove(), 1900);
 }
 function banner(text, sub, color, dur = 1300) {
   const b = $('dayBanner'); if (!b) return;
@@ -5518,23 +5900,46 @@ function cpuStep(dt) {
 function hudUpdate() {
   if (!G) return;
   const slot = G.turn, P = G.players[slot]; if (!P) return;
+  uiUnstick();
   const co = COS[CO_BY_ID[P.co]] || COS[0];
   setText($('hudDay'), `DAY ${G.day}` + (G.dayLimit > 0 ? ` / ${G.dayLimit}` : ''));
   const army = $('hudArmy'); setText(army, TEAMS[slot].army); army.style.color = teamUi(slot);
   setText($('hudWho'), `${P.name || ''}${P.kind === 'cpu' ? ' · CPU' : P.kind === 'remote' ? ' · ONLINE' : ''}`);
   const stars = co.stars, filled = Math.min(stars, Math.floor(P.meter / METER_STAR)), ready = P.meter >= stars * METER_STAR;
-  setText($('meterStars'), '★'.repeat(filled) + '☆'.repeat(Math.max(0, stars - filled)));
+  uiStars($('meterStars'), P.power || ready ? stars : filled, stars);
   $('meterBar').style.width = (P.power || ready ? 100 : ((P.meter % METER_STAR) / METER_STAR) * 100) + '%';
-  const cb = $('coBtn'); setText(cb, P.power ? `${co.name} · POWER ON!` : ready ? `${co.name} · POWER READY ▶` : `${co.name} ▶`);
+  const cb = $('coBtn'); setText(cb, P.power ? `${co.name} · POWER ON!` : ready ? `${co.name} · POWER READY ►` : `${co.name} ►`);
   cb.classList.toggle('ready', ready && !P.power && ui.mySlots.includes(slot));
   setText($('funds'), `FUNDS ${P.funds}`);
   terrainCard(); unitCard(); cardPeek();
   if (ui.state === 'target' && !$('dmgBox').hidden && ui.targets[ui.tIdx]) placeNear($('dmgBox'), ui.targets[ui.tIdx].u.x, ui.targets[ui.tIdx].u.y);
-  const mine = ui.mySlots.includes(slot) && G.phase === 'play';
+  const mine = ui.mySlots.includes(slot) && G.phase === 'play', ff = !mine && G.phase === 'play';
   $('endBtn').disabled = !mine || ui.pending;
-  $('cancelBtn').hidden = ui.state === 'idle' && !ui.rangeUnit && !menuBox.open;
-  $('ffBtn').hidden = mine || G.phase !== 'play'; $('ffBtn').setAttribute('aria-pressed', ui.ff ? 'true' : 'false');
+  // CANCEL and FAST share one fixed slot that is always reserved, so no button ever slides under the pointer
+  uiSlotBtn($('cancelBtn'), !ff, ui.state !== 'idle' || !!ui.rangeUnit || menuBox.open);   // greyed out when there is nothing to step back from
+  uiSlotBtn($('ffBtn'), ff, ff); $('ffBtn').setAttribute('aria-pressed', ui.ff ? 'true' : 'false');
 }
+// safety net: a state that needs a menu but has none (closed by something unexpected) never leaves the player stuck
+function uiUnstick() {
+  if (menuBox.open || ui.panel) return;
+  if (ui.state === 'build' || ui.state === 'menu' || ui.state === 'confirm') ui.state = 'idle';
+  else if ((ui.state === 'action' || ui.state === 'dropPick') && !animBusy()) {
+    if (ui.sel && ui.dest && G.byId[ui.sel.id] === ui.sel && canAct()) openActionMenu(); else resetSel();
+  }
+}
+function uiSlotBtn(b, show, on) {
+  if (!b) return;
+  if (b.classList.contains('vh') === show) b.classList.toggle('vh', !show);
+  if (b.disabled !== !on) { b.disabled = !on; b.tabIndex = on ? 0 : -1; }
+}
+// pixel stars: Press Start 2P has no star glyph, so stars are little sprites (.pst in 05_game.css)
+function uiStars(el, on, total) {
+  if (!el) return;
+  const k = on + '/' + total; if (el.dataset.stars === k) return; el.dataset.stars = k;
+  const out = []; for (let i = 0; i < total; i++) { const s = document.createElement('i'); s.className = i < on ? 'pst on' : 'pst'; out.push(s); }
+  el.replaceChildren(...out); el.setAttribute('aria-label', `${on} of ${total} stars`);
+}
+function uiStarSpan(on, total, cls) { const s = document.createElement('span'); s.className = 'pstars' + (cls ? ' ' + cls : ''); uiStars(s, on, total); return s; }
 // a HUD card that sits over the cursor turns see-through so the tile under it stays readable
 function cardPeek() {
   const px = view.ox + ui.cx * view.ts, py = view.oy + ui.cy * view.ts, T = view.ts;
@@ -5548,7 +5953,7 @@ function terrainCard() {
   const x = ui.cx, y = ui.cy; if (!inBounds(G, x, y)) return;
   const i = idx(G, x, y), ter = TERRAIN[G.ter[i]], own = G.own[i];
   setText($('terName'), ter.name);
-  setText($('terDef'), '★'.repeat(ter.def) + '☆'.repeat(4 - ter.def));
+  uiStars($('terDef'), ter.def, 4);
   const ownerEl = $('terOwner');
   setText(ownerEl, ter.prop ? (own >= 0 ? TEAMS[own].army : 'NEUTRAL') : (ter.hide ? 'Hides units in fog' : ''));
   ownerEl.style.color = ter.prop && own >= 0 ? teamUi(own) : '';
@@ -5563,7 +5968,7 @@ function unitCard() {
   const card = $('unitCard'), u = unitAt(G, ui.cx, ui.cy);
   if (!u || anim.hide.has(u.id) || !unitShown(u)) { if (!card.hidden) { card.hidden = true; ui.unitKey = ''; } return; }
   const def = UNITS[u.t], hp = u.id in anim.hp ? anim.hp[u.id] : u.hp;
-  const key = [u.id, hp, u.fuel, u.ammo, u.cargo.length, u.done, u.p, u.dived, view.dpr, G.turn].join('|');
+  const key = [u.id, hp, u.fuel, u.ammo, u.cargo.length, u.done, u.p, u.dived, u.x, u.y, u.cap, view.dpr, G.turn].join('|');
   if (key === ui.unitKey && !card.hidden) return;
   ui.unitKey = key; card.hidden = false;
   const pic = $('unitPic'), pc = pic.getContext('2d'); pc.clearRect(0, 0, 48, 48); pc.imageSmoothingEnabled = false;
@@ -5580,6 +5985,7 @@ function unitCard() {
   row('MOVE', `${mv} · ${MC_NAMES[def.mc]}`);
   row('RANGE', def.rmax ? (def.rmin === def.rmax ? `${def.rmin}` : `${def.rmin}-${def.rmax}`) + (def.rmin > 1 ? ' indirect' : '') : '—');
   row('VISION', `${def.vision}`);
+  row('COVER', def.cat === 'air' ? 'none in the air' : [uiStarSpan(TERRAIN[G.ter[idx(G, u.x, u.y)]].def, 4)]);
   if (def.carry) {
     const mine = ui.pov === -1 || friendOfPov(u.p);
     const names = mine ? u.cargo.map(id => { const c = G.byId[id]; return c ? `${UNITS[c.t].name} ${dispOf(c.hp)}` : '?'; }) : (u.cargo.length ? ['?'] : []);
@@ -5593,28 +5999,36 @@ function unitCard() {
 // ====================================================================
 //  DOM menu (action menu, game menu, confirmations, build list)
 // ====================================================================
-const menuBox = { items: [], sel: 0, el: null, onCancel: null, open: false };
+const menuBox = { items: [], sel: 0, el: null, onCancel: null, open: false, at: 0, o: null };
 function openMenu(items, o = {}) {
   closeMenu();
   const el = $(o.el || 'menu'); el.replaceChildren();
-  if (o.title) { const t = document.createElement('div'); t.className = 'mt'; t.textContent = o.title; el.append(t); }
+  if (o.title) { const t = document.createElement('div'); t.className = 'mt'; t.textContent = o.title; if (o.note) { const n = document.createElement('div'); n.className = 'mn'; n.textContent = o.note; t.append(n); } el.append(t); }
   items.forEach((it, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'mi'; b.setAttribute('role', 'menuitem'); b.disabled = !!it.disabled;
     if (it.color) b.style.setProperty('--c', it.color);
     if (it.render) it.render(b);
-    else { b.append(document.createTextNode(it.label)); if (it.hint) { const h = document.createElement('span'); h.className = 'hint'; h.textContent = it.hint; b.append(h); } }
+    else {
+      b.append(document.createTextNode(it.label));
+      if (it.hint || it.stars) { const h = document.createElement('span'); h.className = 'hint'; if (it.hint) h.append(it.hint); if (it.stars) h.append(uiStarSpan(it.stars[0], it.stars[1], 'sm')); b.append(h); }
+    }
     b.addEventListener('pointerenter', () => { if (!b.disabled && menuBox.open) setMenuSel(i); });
     b.addEventListener('click', ev => { ev.stopPropagation(); if (!b.disabled) pickMenu(i); });
     el.append(b);
   });
-  menuBox.items = items; menuBox.el = el; menuBox.onCancel = o.onCancel || null; menuBox.open = true;
+  menuBox.items = items; menuBox.el = el; menuBox.onCancel = o.onCancel || null; menuBox.open = true; menuBox.o = o;
+  menuBox.at = performance.now();   // a second click/tap right after the one that opened it must not close it again
   menuBox.sel = Math.max(0, items.findIndex(it => !it.disabled));
   el.hidden = false; positionMenu(el, o); setMenuSel(menuBox.sel); sfx('menu');
 }
 function setMenuSel(i) {
   menuBox.sel = i;
   const bs = menuBox.el.querySelectorAll('.mi'); bs.forEach((b, k) => b.setAttribute('aria-selected', k === i ? 'true' : 'false'));
-  const b = bs[i]; if (b && b.scrollIntoView) b.scrollIntoView({ block: 'nearest' });
+  const b = bs[i], el = menuBox.el;   // scroll the menu itself (scrollIntoView could also shift the whole page)
+  if (b && el.scrollHeight > el.clientHeight) {
+    const top = b.offsetTop, bottom = top + b.offsetHeight, head = el.querySelector('.mt'), pad = head ? head.offsetHeight : 0;
+    if (top - pad < el.scrollTop) el.scrollTop = Math.max(0, top - pad); else if (bottom > el.scrollTop + el.clientHeight) el.scrollTop = bottom - el.clientHeight;
+  }
 }
 function moveMenuSel(d) {
   const n = menuBox.items.length; let i = menuBox.sel;
@@ -5627,16 +6041,23 @@ function positionMenu(el, o) {
   const vw = view.w, vh = view.h, small = vw <= 720 || vh <= 520, padB = small ? 78 : 8;
   if (!o.tile) { el.style.left = '50%'; el.style.top = '50%'; el.style.transform = 'translate(-50%,-50%)'; el.style.maxHeight = `calc(100vh - ${padB + 16}px)`; return; }
   el.style.transform = ''; el.style.maxHeight = `calc(100vh - ${padB + 16}px)`;
-  const w = el.offsetWidth, h = el.offsetHeight;
-  let x = view.ox + (o.tile.x + 1) * view.ts + 8, y = view.oy + o.tile.y * view.ts - 4;
-  if (x + w > vw - 8) x = view.ox + o.tile.x * view.ts - w - 8;
+  const w = el.offsetWidth, h = el.offsetHeight, T = view.ts, tl = view.ox + o.tile.x * T;
+  // beside the tile but one tile further out, so the unit's neighbours (its targets, drop tiles) stay in view
+  let x = tl + 2 * T + 6, y = view.oy + o.tile.y * T - 4;
+  if (x + w > vw - 8) { const lx = tl - T - w - 6; x = lx >= 8 ? lx : (tl + T / 2 < vw / 2 ? vw - w - 8 : 8); }
   x = clamp(x, 8, Math.max(8, vw - w - 8)); y = clamp(y, 8, Math.max(8, vh - h - padB));
   el.style.left = Math.round(x) + 'px'; el.style.top = Math.round(y) + 'px';
 }
-function openPanel(id) { closeMenu(); closePanels(); ui.panel = id; $(id).hidden = false; }
+function openPanel(id) { closeMenu(); closePanels(); ui.panel = id; ui.panelBack = null; $(id).hidden = false; }
+// Escape / X / a click beside the panel: one step back (to the game menu when it was opened from there)
+function uiPanelCancel() {
+  const back = ui.panelBack; sfx('cancel'); closePanels();
+  if (back === 'menu' && G) openGameMenu();
+}
 function panelFocus(d) {   // arrow keys walk through the buttons and selects of the open panel
   const el = ui.panel && $(ui.panel); if (!el) return;
-  const list = [...el.querySelectorAll('button:not([disabled]), select')].filter(b => b.offsetParent !== null);
+  const all = [...el.querySelectorAll('button:not([disabled]), select, summary')].filter(b => b.offsetParent !== null);
+  const list = all.filter(b => !b.classList.contains('xbtn')).concat(all.filter(b => b.classList.contains('xbtn')));   // the X comes last
   if (!list.length) return;
   const i = list.indexOf(document.activeElement), n = list.length;
   const next = list[i < 0 ? (d > 0 ? 0 : n - 1) : (i + d + n) % n];
@@ -5644,7 +6065,7 @@ function panelFocus(d) {   // arrow keys walk through the buttons and selects of
 }
 function closePanels() {
   for (const id of ['intel', 'unitList', 'options', 'coInfo']) { const el = $(id); if (el) el.hidden = true; }
-  ui.panel = null;
+  ui.panel = null; ui.panelBack = null;
   const a = document.activeElement; if (a && a.closest && a.closest('.gpanel') && a.blur) a.blur();
 }
 function optSeg(id, options, cur, pick, color) {   // local copy of the arcade's seg() helper: [value, label] buttons
@@ -5685,6 +6106,7 @@ function moveCursor(dx, dy) {
     setCursor(best[0], best[1]); return;
   }
   setCursor(ui.cx + dx, ui.cy + dy); ensureVisible(ui.cx, ui.cy);
+  if (G && !ui.mySlots.includes(G.turn)) ui.userCamAt = performance.now();   // browsing while others play: don't drag the camera away
 }
 function stepCost(u, x, y) { return TERRAIN[G.ter[idx(G, x, y)]].cost[UNITS[u.t].mc]; }
 function pathCostOf(u, path) { let c = 0; for (let i = 1; i < path.length; i++) c += stepCost(u, path[i][0], path[i][1]); return c; }
@@ -5826,12 +6248,24 @@ function showDmgBox() {
   }
   box.hidden = false; placeNear(box, t.u.x, t.u.y);
 }
-function placeNear(el, tx, ty) {   // above the tile, or below it when there is no room up there
-  const w = el.offsetWidth, h = el.offsetHeight, ins = hudInsets();
-  const cx = view.ox + (tx + 0.5) * view.ts, top = view.oy + ty * view.ts;
-  let y = top - h - 8; if (y < Math.min(ins.top, 60)) y = top + view.ts + 8;
-  el.style.transform = ''; el.style.left = Math.round(clamp(cx - w / 2, 6, Math.max(6, view.w - w - 6))) + 'px';
-  el.style.top = Math.round(clamp(y, 6, Math.max(6, view.h - h - 6))) + 'px';
+// Above the tile, else below, right or left: the first spot that fits on screen and covers neither
+// the other targets nor the attacker (near an edge the plain 'above' would sit on a neighbour).
+function placeNear(el, tx, ty) {
+  const w = el.offsetWidth, h = el.offsetHeight, ins = hudInsets(), T = view.ts;
+  const cx = view.ox + (tx + 0.5) * T, top = view.oy + ty * T, left = view.ox + tx * T, cy = top + T / 2;
+  const avoid = ui.targets.map(t => [t.u.x, t.u.y]); if (ui.dest) avoid.push([ui.dest.x, ui.dest.y]);
+  const fit = (x, y) => [clamp(x, 6, Math.max(6, view.w - w - 6)), clamp(y, 6, Math.max(6, view.h - h - Math.max(6, ins.bottom)))];
+  const hits = (x, y) => avoid.some(([ax, ay]) => { const px = view.ox + ax * T, py = view.oy + ay * T; return x < px + T && x + w > px && y < py + T && y + h > py; });
+  const cands = [[cx - w / 2, top - h - 8], [cx - w / 2, top + T + 8], [left + T + 8, cy - h / 2], [left - w - 8, cy - h / 2]];
+  let best = null;
+  for (const [x, y] of cands) {
+    const [fx, fy] = fit(x, y);
+    if (Math.abs(fx - x) > 1 || Math.abs(fy - y) > 1) continue;   // would be pushed back onto the board somewhere else
+    if (!hits(fx, fy)) { best = [fx, fy]; break; }
+    if (!best) best = [fx, fy];
+  }
+  if (!best) best = fit(cands[0][0], cands[0][1] < Math.min(ins.top, 60) ? cands[1][1] : cands[0][1]);
+  el.style.transform = ''; el.style.left = Math.round(best[0]) + 'px'; el.style.top = Math.round(best[1]) + 'px';
 }
 function dropTilesFor(c) {
   const def = UNITS[c.t], res = [];
@@ -5877,28 +6311,41 @@ function toggleRange() {
   if (ui.rangeUnit) { const same = ui.rangeUnit === u; clearRange(); if (same) { sfx('cancel'); return; } }
   if (u && unitShown(u)) showRange(u);
 }
+function uiIdleUnits() { return G.units.filter(u => u.p === G.turn && !u.done && !u.inId).sort((a, b) => a.y - b.y || a.x - b.x); }
 function nextIdleUnit() {
   if (!G || ui.state !== 'idle' || !ui.mySlots.includes(G.turn)) return;
-  const list = G.units.filter(u => u.p === G.turn && !u.done && !u.inId).sort((a, b) => a.y - b.y || a.x - b.x);
+  const list = uiIdleUnits();
   if (!list.length) { toast('EVERY UNIT HAS MOVED', CYAN); return; }
   const k = list.findIndex(u => u.y > ui.cy || (u.y === ui.cy && u.x > ui.cx)), u = list[k < 0 ? 0 : k];
   clearRange(); closeMenu(); setCursor(u.x, u.y); ensureVisible(u.x, u.y);
+}
+// "TANK x2 · RIFLES": what is still waiting for orders, biggest group first
+function uiIdleSummary(list) {
+  const n = new Map(); for (const u of list) n.set(u.t, (n.get(u.t) || 0) + 1);
+  const parts = [...n].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([t, k]) => UNITS[t].name + (k > 1 ? ` ×${k}` : ''));
+  return parts.length > 4 ? parts.slice(0, 4).join(' · ') + ' · …' : parts.join(' · ');
 }
 function endTurnAsk() {
   if (!G || !ui.mySlots.includes(G.turn) || G.phase !== 'play') return;
   if (animBusy()) { skipAnim(); return; }
   if (ui.pending) return;
   resetSel(); closeMenu(); closePanels();
-  const n = G.units.filter(u => u.p === G.turn && !u.done && !u.inId).length;
-  if (n && opts.confirmEnd) confirmDialog(`${n} UNIT${n === 1 ? " HASN'T" : "S HAVEN'T"} MOVED · END TURN?`, () => issueCmd({ t: 'end' }));
-  else issueCmd({ t: 'end' });
+  const list = uiIdleUnits(), n = list.length;
+  if (!n || !opts.confirmEnd) { issueCmd({ t: 'end' }); return; }
+  // NO (or Escape) puts the cursor on the first unit that still has orders to take
+  const goIdle = () => { const u = uiIdleUnits()[0]; if (!u) return; clearRange(); setCursor(u.x, u.y, true); centerOn(u.x, u.y); };
+  confirmDialog(`${n} UNIT${n === 1 ? " HASN'T" : "S HAVEN'T"} MOVED · END TURN?`, () => issueCmd({ t: 'end' }), false,
+    { note: uiIdleSummary(list), noHint: `SHOW ${UNITS[list[0].t].name}`, back: goIdle });
 }
-function confirmDialog(title, yes, safeNo) {   // safeNo: a destructive question starts on NO
+// safeNo: a destructive question starts on NO. o.back runs after NO / Escape (one step back).
+function confirmDialog(title, yes, safeNo, o = {}) {
   closeMenu(); ui.state = 'confirm';
-  openMenu([{ label: 'YES', color: GREEN, pick: () => { closeMenu(); ui.state = 'idle'; yes(); } }, { label: 'NO', pick: cancelStep }], { title, onCancel: cancelStep });
+  const no = () => { cancelStep(); if (o.back) o.back(); };
+  openMenu([{ label: 'YES', color: GREEN, pick: () => { closeMenu(); ui.state = 'idle'; yes(); } }, { label: 'NO', hint: o.noHint || '', pick: no }], { title, note: o.note, onCancel: no });
   if (safeNo) setMenuSel(1);
 }
 function menuThen(fn) { return () => { closeMenu(); ui.state = 'idle'; fn(); }; }
+function uiMenuPanel(fn) { return () => { closeMenu(); ui.state = 'idle'; fn(); if (ui.panel) ui.panelBack = 'menu'; }; }   // panels opened from the menu step back to it
 function openGameMenu() {
   if (!G) return;
   closeMenu(); closePanels(); if (ui.state !== 'idle') resetSel();
@@ -5906,15 +6353,15 @@ function openGameMenu() {
   const ready = P.meter >= co.stars * METER_STAR && !P.power, playing = ui.mySlots.includes(slot) && G.phase === 'play';
   if (playing) {
     items.push({ label: 'END TURN', color: YELLOW, pick: menuThen(endTurnAsk) });
-    items.push({ label: 'CO POWER', hint: P.power ? 'ACTIVE' : ready ? 'READY!' : `${Math.min(co.stars, Math.floor(P.meter / METER_STAR))}/${co.stars} ★`, color: PINK, disabled: !ready || !my, pick: menuThen(() => issueCmd({ t: 'power' })) });
+    items.push({ label: 'CO POWER', hint: P.power ? 'ACTIVE' : ready ? 'READY!' : '', stars: P.power || ready ? null : [Math.min(co.stars, Math.floor(P.meter / METER_STAR)), co.stars], color: PINK, disabled: !ready || !my, pick: menuThen(() => issueCmd({ t: 'power' })) });
     const u = unitAt(G, ui.cx, ui.cy);
-    if (u && u.p === slot && my) items.push({ label: 'DELETE UNIT', hint: UNITS[u.t].name, pick: () => confirmDialog(`SCRAP THE ${UNITS[u.t].name}?`, () => issueCmd({ t: 'delete', id: u.id }), true) });
+    if (u && u.p === slot && my) items.push({ label: 'DELETE UNIT', hint: UNITS[u.t].name, pick: () => confirmDialog(`SCRAP THE ${UNITS[u.t].name}?`, () => issueCmd({ t: 'delete', id: u.id }), true, { back: openGameMenu }) });
   }
-  items.push({ label: 'INTEL', color: CYAN, pick: menuThen(openIntel) });
-  items.push({ label: 'UNIT LIST', color: CYAN, pick: menuThen(openUnitList) });
-  items.push({ label: 'OPTIONS', pick: menuThen(openOptions) });
-  if (playing) items.push({ label: 'RESIGN', color: PINK, disabled: !my, pick: () => confirmDialog('GIVE UP THE FIGHT?', () => issueCmd({ t: 'resign' }), true) });
-  items.push({ label: netRole() === 'client' ? 'LEAVE ROOM' : 'QUIT TO SETUP', color: PINK, pick: () => confirmDialog(G.phase === 'over' ? 'LEAVE THE BATTLEFIELD?' : netRole() === 'offline' ? 'QUIT? THE BATTLE IS SAVED' : 'QUIT THIS BATTLE?', doQuit, true) });
+  items.push({ label: 'INTEL', color: CYAN, pick: uiMenuPanel(openIntel) });
+  items.push({ label: 'UNIT LIST', color: CYAN, pick: uiMenuPanel(openUnitList) });
+  items.push({ label: 'OPTIONS', pick: uiMenuPanel(openOptions) });
+  if (playing) items.push({ label: 'RESIGN', color: PINK, disabled: !my, pick: () => confirmDialog('GIVE UP THE FIGHT?', () => issueCmd({ t: 'resign' }), true, { back: openGameMenu }) });
+  items.push({ label: netRole() === 'client' ? 'LEAVE ROOM' : 'QUIT TO SETUP', color: PINK, pick: () => confirmDialog(G.phase === 'over' ? 'LEAVE THE BATTLEFIELD?' : netRole() === 'offline' ? 'QUIT? THE BATTLE IS SAVED' : 'QUIT THIS BATTLE?', doQuit, true, { back: openGameMenu }) });
   ui.state = 'menu'; openMenu(items, { title: 'MENU', onCancel: cancelStep });
 }
 function doQuit() {
@@ -5966,14 +6413,21 @@ function openIntel() {
   const showTab = tab => {
     optSeg('intelTabs', [['units', 'UNITS'], ['dmg', 'DAMAGE CHART']], tab, showTab, 'var(--cyan)');
     $('intelUnits').hidden = tab !== 'units'; $('intelDmg').hidden = tab !== 'dmg';
-    if (tab === 'units' && !$('intelUnits').children.length) {
-      $('intelUnits').replaceChildren(...UNITS.map((d, t) => unitRow(t, team, [d.name, `${d.cost}`], `${d.long} · ${statStrip(d)}`, d.desc + (d.carry ? ` Carries ${d.carry}.` : ''), false)));
+    if (tab === 'units' && $('intelUnits').dataset.team !== String(team)) {
+      $('intelUnits').dataset.team = String(team);
+      $('intelUnits').replaceChildren(...UNITS.map((d, t) => {   // a row opens the damage chart for that unit
+        const r = unitRow(t, team, [d.name, `${d.cost}`], `${d.long} · ${statStrip(d)}`, d.desc + (d.carry ? ` Carries ${d.carry}.` : ''), true);
+        r.title = 'Damage chart'; r.addEventListener('click', () => { sfx('select'); cur = { t }; showTab('dmg'); }); return r;
+      }));
     }
     if (tab === 'dmg') {
       for (const id of ['dmgA', 'dmgD']) { const sel = $(id); if (!sel.children.length) { sel.replaceChildren(...UNITS.map((d, t) => { const o = document.createElement('option'); o.value = t; o.textContent = d.name; return o; })); sel.addEventListener('change', updateDmgOut); } }
+      if (cur) { $('dmgA').value = String(cur.t); cur = null; }
       updateDmgOut();
     }
   };
+  // the unit under the cursor is the one the player is wondering about: start the lookup with it
+  let cur = G ? unitAt(G, ui.cx, ui.cy) : null; if (cur && !unitShown(cur)) cur = null;
   showTab('units');
 }
 function dmgLine(a, d) {
@@ -5984,8 +6438,38 @@ function dmgLine(a, d) {
 }
 function updateDmgOut() {
   const a = +$('dmgA').value || 0, d = +$('dmgD').value || 0;
-  const fill = (el, x, y) => { el.replaceChildren(); const b = document.createElement('b'); b.textContent = UNITS[x].name; const ar = document.createElement('span'); ar.className = 'arrow'; ar.textContent = ' ▶ '; const b2 = document.createElement('b'); b2.textContent = UNITS[y].name; el.append(b, ar, b2, document.createElement('br'), document.createTextNode(dmgLine(x, y))); };
+  const fill = (el, x, y) => { el.replaceChildren(); const b = document.createElement('b'); b.textContent = UNITS[x].name; const ar = document.createElement('span'); ar.className = 'arrow'; ar.textContent = ' ► '; const b2 = document.createElement('b'); b2.textContent = UNITS[y].name; el.append(b, ar, b2, document.createElement('br'), document.createTextNode(dmgLine(x, y))); };
   fill($('dmgOut'), a, d); fill($('dmgOut2'), d, a);
+  uiDmgTable(a, d);
+}
+function uiBestDmg(a, d) { const A = UNITS[a]; return Math.max(A.prim ? PRIM[a][d] : 0, A.sec ? SEC[a][d] : 0); }
+// the attacker against every unit at once: what it deals and what it gets back; a click picks the defender
+function uiDmgTable(a, d) {
+  const box = $('dmgTable'); if (!box) return;
+  const team = ui.pov >= 0 ? ui.pov : ui.mySlots.length ? ui.mySlots[0] : (G ? G.turn : 0);
+  if (box.dataset.k !== a + '|' + team) {
+    box.dataset.k = a + '|' + team;
+    const rows = [];
+    for (let k = 0; k < 2; k++) {   // one header per column of the table
+      const head = document.createElement('div'); head.className = 'dth'; head.append(document.createElement('span'));
+      for (const t of ['VS', 'HITS', 'BACK']) { const s = document.createElement('span'); s.textContent = t; head.append(s); }
+      rows.push(head);
+    }
+    UNITS.forEach((D, t) => {
+      const r = document.createElement('button'); r.type = 'button'; r.className = 'dtr'; r.dataset.t = t;
+      const pic = document.createElement('canvas'); pic.width = pic.height = 24; const pc = pic.getContext('2d'); pc.imageSmoothingEnabled = false;
+      try { pc.drawImage(unitSprite(t, (team + 1) % 4, { facing: -1, done: false, ts: 24, frame: 0 }), 0, 0, 24, 24); } catch (e) { /* no sprites yet */ }
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = D.name;
+      const hit = uiBestDmg(a, t), back = hit && UNITS[t].rmin === 1 && UNITS[a].rmin === 1 ? uiBestDmg(t, a) : 0;   // no fight, no counter
+      const h = document.createElement('span'); h.className = 'pc' + (hit >= 75 ? ' hi' : hit ? '' : ' no'); h.textContent = hit ? hit + '%' : '—';
+      const b = document.createElement('span'); b.className = 'pc bk' + (back ? '' : ' no'); b.textContent = back ? back + '%' : '—';
+      r.append(pic, nm, h, b);
+      r.addEventListener('click', () => { sfx('cursor'); $('dmgD').value = String(t); updateDmgOut(); });
+      rows.push(r);
+    });
+    box.replaceChildren(...rows);
+  }
+  for (const r of box.querySelectorAll('.dtr')) r.classList.toggle('on', +r.dataset.t === d);
 }
 function openUnitList() {
   if (!G) return; openPanel('unitList');
@@ -6004,24 +6488,48 @@ function openUnitList() {
 }
 function openOptions() {
   openPanel('options');
-  const again = () => { saveSettings(); openOptions(); };
+  const again = () => {   // re-render, keeping where Escape goes back to and which button has the keyboard focus
+    const back = ui.panelBack, a = document.activeElement, seg = a && a.parentElement && a.parentElement.id, k = seg ? [...a.parentElement.children].indexOf(a) : -1;
+    saveSettings(); openOptions(); ui.panelBack = back;
+    const b = seg && $(seg) && $(seg).children[k]; if (b && b.focus) b.focus({ preventScroll: true });
+  };
   optSeg('optScenesGame', [['on', 'ON'], ['fast', 'FAST'], ['off', 'OFF']], opts.scenes, v => { opts.scenes = v; again(); }, 'var(--cyan)');
   optSeg('optSound', [[true, 'ON'], [false, 'OFF']], opts.sound, v => { opts.sound = v; muted = !v; if (v) { audio(); sfx('select'); } again(); }, 'var(--green)');
   optSeg('optGrid', [[true, 'ON'], [false, 'OFF']], opts.grid, v => { opts.grid = v; again(); }, 'var(--yellow)');
   optSeg('optSpeed', [[0.5, 'SLOW'], [1, 'NORMAL'], [2, 'FAST']], opts.speed, v => { opts.speed = v; again(); }, 'var(--pink)');
   optSeg('optAsk', [[true, 'ON'], [false, 'OFF']], opts.confirmEnd, v => { opts.confirmEnd = v; again(); }, 'var(--violet)');
 }
-function openCoInfo() {
+function openCoInfo(want) {   // want: the army to show (default: whoever's turn it is)
   if (!G) return; openPanel('coInfo');
-  const slot = G.turn, P = G.players[slot], co = COS[CO_BY_ID[P.co]] || COS[0];
+  const slot = G.players[want] && G.players[want].kind !== 'off' ? want : G.turn, P = G.players[slot], co = COS[CO_BY_ID[P.co]] || COS[0];
+  uiCoArmies(slot);
   const nm = $('coName'); nm.textContent = co.name; nm.style.color = co.color; $('coTag').textContent = `${co.tag} · ${TEAMS[slot].army}`;
   const txt = $('coText'); txt.replaceChildren();
   const add = (label, body) => { const b = document.createElement('b'); b.textContent = label; txt.append(b, document.createTextNode(body)); };
-  txt.append(document.createTextNode(co.blurb)); add('PASSIVE', CO_PASSIVE[co.id] || '—'); add(`POWER · ${co.power.name} (${co.stars} ★)`, co.power.desc + ` Plus +${POWER_BOOST}% attack and defence until the end of the turn.`);
+  txt.append(document.createTextNode(co.blurb)); add('PASSIVE', CO_PASSIVE[co.id] || '—'); add(`POWER · ${co.power.name} · ${co.stars} STARS`, co.power.desc + ` Plus +${POWER_BOOST}% attack and defence until the end of the turn.`);
   const filled = Math.min(co.stars, Math.floor(P.meter / METER_STAR)), ready = P.meter >= co.stars * METER_STAR && !P.power;
-  $('coStars').textContent = '★'.repeat(filled) + '☆'.repeat(Math.max(0, co.stars - filled)); $('coBar').style.width = (ready || P.power ? 100 : ((P.meter % METER_STAR) / METER_STAR) * 100) + '%';
-  const btn = $('coActivate'); btn.disabled = !(ready && ui.mySlots.includes(slot) && G.phase === 'play' && !ui.pending);
-  btn.textContent = P.power ? 'POWER IS ON' : ready ? `★ ACTIVATE ${co.power.name}` : `CHARGING · ${filled}/${co.stars} ★`;
+  uiStars($('coStars'), ready || P.power ? co.stars : filled, co.stars); $('coBar').style.width = (ready || P.power ? 100 : ((P.meter % METER_STAR) / METER_STAR) * 100) + '%';
+  const mine = ui.mySlots.includes(slot) && slot === G.turn, btn = $('coActivate');   // only the army whose turn it is can fire its power
+  btn.disabled = !(ready && mine && G.phase === 'play' && !ui.pending);
+  btn.textContent = P.power ? 'POWER IS ON' : !mine ? `${co.power.name} · ${filled}/${co.stars} STARS` : ready ? `► ACTIVATE ${co.power.name}` : `CHARGING · ${filled}/${co.stars} STARS`;
+  if (!btn.disabled) btn.focus({ preventScroll: true });   // Enter fires it straight away
+}
+// every army in the war with its CO and power meter: is the enemy's power about to go off? A click shows that CO.
+function uiCoArmies(cur) {
+  const box = $('coArmies'); if (!box) return;
+  const rows = [];
+  G.players.forEach((p, s) => {
+    if (!p || p.kind === 'off') return;
+    const co = COS[CO_BY_ID[p.co]] || COS[0], ready = p.meter >= co.stars * METER_STAR;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'coa' + (s === cur ? ' on' : '') + (p.alive === false ? ' out' : '');
+    b.style.setProperty('--c', teamUi(s)); b.title = `${TEAMS[s].army} · ${co.name}`;
+    const sw = document.createElement('i'); sw.style.background = TEAMS[s].main;
+    const nm = document.createElement('span'); nm.textContent = co.name + (p.power ? ' ON' : '');
+    b.append(sw, nm, uiStarSpan(p.power || ready ? co.stars : Math.min(co.stars, Math.floor(p.meter / METER_STAR)), co.stars, 'sm'));
+    b.addEventListener('click', () => { sfx('cursor'); openCoInfo(s); });
+    rows.push(b);
+  });
+  box.replaceChildren(...rows);
 }
 
 // ====================================================================
@@ -6034,14 +6542,29 @@ function keyActive() {
   const t = document.activeElement; if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName) && !(ui.panel && t.closest && t.closest('.gpanel'))) return false;
   return !overlayOpen('setup') && !overlayOpen('over') && !overlayOpen('pause');
 }
+// the results screen (filled by showResults): arrows walk its buttons, Enter/Space press the focused one
+function uiOverKeys(e, k) {
+  const list = [...$('over').querySelectorAll('.stack .btn')].filter(b => b.offsetParent !== null && !b.disabled);
+  if (!list.length) return;
+  const i = list.indexOf(document.activeElement);
+  if (k === 'ArrowDown' || k === 'ArrowUp' || k === 's' || k === 'w' || k === 'Tab') {
+    e.preventDefault(); const d = k === 'ArrowUp' || k === 'w' || (k === 'Tab' && e.shiftKey) ? -1 : 1;
+    list[i < 0 ? 0 : (i + d + list.length) % list.length].focus(); sfx('cursor');
+  } else if ((k === 'Enter' || k === ' ') && i < 0) { e.preventDefault(); list[0].focus(); }
+}
 function onKeyDown(e) {
+  if (G && overlayOpen('over') && !e.metaKey && !e.ctrlKey && !e.altKey) { uiOverKeys(e, e.key.length === 1 ? e.key.toLowerCase() : e.key); return; }
   if (!keyActive() || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  if (overlayOpen('pass')) { if (k === 'Enter' || k === ' ') { e.preventDefault(); passReady(); } return; }
+  if (overlayOpen('pass')) { if (k === 'Enter' || k === ' ' || k === 'z') { e.preventDefault(); passReady(); } return; }
   if (ui.panel) {
-    const inSelect = document.activeElement && document.activeElement.tagName === 'SELECT';
-    if (k === 'Escape' || (!inSelect && (k === 'x' || k === 'Backspace'))) { e.preventDefault(); closePanels(); sfx('cancel'); }
-    else if (!inSelect && (k === 'ArrowDown' || k === 'ArrowUp' || k === 's' || k === 'w' || k === 'ArrowLeft' || k === 'ArrowRight')) { e.preventDefault(); panelFocus(k === 'ArrowDown' || k === 's' || k === 'ArrowRight' ? 1 : -1); }
+    const a = document.activeElement, inSelect = a && a.tagName === 'SELECT';
+    if (k === 'Escape' || (!inSelect && (k === 'x' || k === 'Backspace'))) { e.preventDefault(); uiPanelCancel(); }
+    else if (inSelect && (k === 'ArrowLeft' || k === 'ArrowRight')) {   // step through a list without opening it
+      e.preventDefault(); const n = a.options.length; a.selectedIndex = (a.selectedIndex + (k === 'ArrowRight' ? 1 : -1) + n) % n; a.dispatchEvent(new Event('change')); sfx('cursor');
+    }
+    else if (!inSelect && (k === 'ArrowDown' || k === 'ArrowUp' || k === 's' || k === 'w' || k === 'ArrowLeft' || k === 'ArrowRight' || k === 'a' || k === 'd')) { e.preventDefault(); panelFocus(k === 'ArrowDown' || k === 's' || k === 'ArrowRight' || k === 'd' ? 1 : -1); }
+    else if (!inSelect && k === 'z' && a && a.closest && a.closest('.gpanel') && a.click) { e.preventDefault(); a.click(); }
     return;
   }
   if (k === 'm') { toggleMute(); return; }
@@ -6068,6 +6591,8 @@ function onKeyDown(e) {
     case 'e': endTurnAsk(); break;
     case 'r': toggleRange(); break;
     case 'p': if (ui.state === 'idle') openGameMenu(); else cancelStep(); break;
+    case 'c': if (ui.state === 'idle') { clearRange(); openCoInfo(); } break;
+    case 'i': if (ui.state === 'idle') { clearRange(); openIntel(); } break;
   }
 }
 function onKeyUp(e) { ui.held.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key); }
@@ -6113,7 +6638,7 @@ function onPointerMove(e) {
     return;
   }
   if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 6) p.moved = true;
-  if (p.moved) { view.ox += dx; view.oy += dy; view.tox = view.toy = null; clampCam(); }
+  if (p.moved) { view.ox += dx; view.oy += dy; view.tox = view.toy = null; clampCam(); ui.userCamAt = performance.now(); }
   else hoverAt(e);
 }
 function onPointerUp(e) {
@@ -6123,7 +6648,7 @@ function onPointerUp(e) {
   if (p.button === 2) { if (animBusy()) skipAnim(); else if (menuBox.open) menuCancel(); else if (ui.state !== 'idle' || ui.rangeUnit) cancelStep(); return; }
   if (overlayOpen('pass') || ui.panel) return;
   if (animBusy()) { skipAnim(); return; }
-  if (menuBox.open) { menuCancel(); return; }
+  if (menuBox.open) { if (performance.now() - menuBox.at > 350) menuCancel(); return; }   // a double click/tap keeps what it just opened
   const [tx, ty] = tileAt(e.clientX, e.clientY); if (!inBounds(G, tx, ty)) return;
   const touchTarget = p.type !== 'mouse' && ui.state === 'target';
   if (!touchTarget) setCursor(tx, ty, true);
@@ -6141,8 +6666,12 @@ function uiInit() {
   // that just opened under the finger and buys or picks whatever is there
   c.addEventListener('touchend', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
   window.addEventListener('keydown', onKeyDown); window.addEventListener('keyup', onKeyUp); window.addEventListener('blur', () => ui.held.clear());
-  window.addEventListener('resize', () => { fitCanvas(); if (menuBox.open) closeMenu(); });
-  const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', ev => { ev.stopPropagation(); audio(); fn(ev); }); };
+  // the game screen never scrolls: a page nudged by focus or scrollIntoView would put every click on the wrong tile
+  window.addEventListener('scroll', () => { if (G && !$('hud').hidden && (window.scrollX || window.scrollY)) window.scrollTo(0, 0); });
+  // rotating a phone or its address bar sliding away resizes the window: keep the open menu, just re-place it
+  window.addEventListener('resize', () => { fitCanvas(); if (menuBox.open) positionMenu(menuBox.el, menuBox.o || {}); });
+  // a clicked/tapped HUD button lets go of the focus, so a later Space or Enter meant for the map can't press it again
+  const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', ev => { ev.stopPropagation(); audio(); if (ev.detail > 0 && el.closest('#hud') && el.blur) el.blur(); fn(ev); }); };
   on('endBtn', endTurnAsk);
   on('menuBtn', () => { if (!G) return; if (menuBox.open && ui.state === 'menu') cancelStep(); else if (animBusy()) skipAnim(); else openGameMenu(); });
   on('cancelBtn', () => { if (animBusy()) skipAnim(); else if (menuBox.open) menuCancel(); else cancelStep(); });
@@ -6151,8 +6680,15 @@ function uiInit() {
   on('passBtn', passReady);
   on('coBtn', () => { if (G && !animBusy()) { closeMenu(); if (ui.state !== 'idle') resetSel(); openCoInfo(); } });
   on('coActivate', () => { closePanels(); if (canAct()) issueCmd({ t: 'power' }); });
-  for (const b of document.querySelectorAll('[data-close]')) b.addEventListener('click', () => { sfx('cancel'); closePanels(); });
-  for (const id of ['intel', 'unitList', 'options', 'coInfo']) { const el = $(id); if (el) el.addEventListener('click', ev => { if (ev.target === el) { sfx('cancel'); closePanels(); } }); }
+  // right click on a DOM menu or panel steps back too (the canvas handles its own right clicks)
+  document.addEventListener('contextmenu', e => {
+    if (!G || $('hud').hidden || e.target === c || !e.target.closest) return;
+    if (ui.panel && e.target.closest('.gpanel')) { e.preventDefault(); uiPanelCancel(); }
+    else if (menuBox.open && e.target.closest('.gmenu')) { e.preventDefault(); menuCancel(); }
+    else if (e.target.closest('#hud')) { e.preventDefault(); if (animBusy()) skipAnim(); else if (menuBox.open) menuCancel(); else if (ui.state !== 'idle' || ui.rangeUnit) cancelStep(); }
+  });
+  for (const b of document.querySelectorAll('[data-close]')) b.addEventListener('click', uiPanelCancel);
+  for (const id of ['intel', 'unitList', 'options', 'coInfo']) { const el = $(id); if (el) el.addEventListener('click', ev => { if (ev.target === el) uiPanelCancel(); }); }
   fitCanvas();
 }
 
@@ -6191,12 +6727,15 @@ function drawMap(R, frame) {
 }
 function drawFog(R) {
   const m = currentMask(); if (!m) return;
-  const { ctx, T, ox, oy } = R, p = new Path2D(); let any = false;
-  for (let y = R.y0; y <= R.y1; y++) for (let x = R.x0; x <= R.x1; x++) if (!m[y * G.w + x]) { p.rect(ox + x * T, oy + y * T, T, T); any = true; }
-  if (!any) return;
-  ctx.save();
-  ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#777'; ctx.fill(p);
-  ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = 'rgba(10,6,28,.55)'; ctx.fill(p);
+  if (ui.fogKey !== ui.maskKey) {   // the fogged tiles as one path in tile units, rebuilt only when the mask changes
+    ui.fogKey = ui.maskKey; ui.fogPath = new Path2D(); ui.fogAny = false;
+    for (let i = 0; i < m.length; i++) if (!m[i]) { ui.fogPath.rect(i % G.w, (i / G.w) | 0, 1, 1); ui.fogAny = true; }
+  }
+  if (!ui.fogAny) return;
+  const { ctx, T, ox, oy } = R;
+  ctx.save(); ctx.setTransform(T, 0, 0, T, ox, oy);
+  ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#777'; ctx.fill(ui.fogPath);
+  ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = 'rgba(10,6,28,.55)'; ctx.fill(ui.fogPath);
   ctx.restore();
 }
 function tileSet(R, set, fill, stroke) {
@@ -6211,7 +6750,10 @@ function drawHighlights(R) {
   const { ctx, T, ox, oy, now } = R;
   if (ui.rangeUnit) { if (ui.rangeMove) tileSet(R, ui.rangeMove, 'rgba(63,240,255,.13)', 'rgba(63,240,255,.3)'); if (ui.rangeAtk) tileSet(R, ui.rangeAtk, 'rgba(255,79,109,.3)', 'rgba(255,79,109,.7)'); }
   if (ui.state === 'moving' && ui.reachSet) tileSet(R, ui.reachSet, 'rgba(63,240,255,.28)', 'rgba(63,240,255,.8)');
-  if (ui.state === 'dropTile') tileSet(R, new Set(ui.dropTiles.map(t => t[1] * G.w + t[0])), 'rgba(125,255,106,.3)', 'rgba(125,255,106,.85)');
+  if (ui.state === 'dropTile') {
+    if (ui.dropIdxOf !== ui.dropTiles) { ui.dropIdxOf = ui.dropTiles; ui.dropIdx = ui.dropTiles.map(t => t[1] * G.w + t[0]); }
+    tileSet(R, ui.dropIdx, 'rgba(125,255,106,.3)', 'rgba(125,255,106,.85)');
+  }
   if (ui.state === 'target') {
     const a = 0.55 + 0.45 * Math.sin(now / 110), lw = Math.max(2, Math.round(T / 10));
     ui.targets.forEach((t, i) => {
@@ -6224,11 +6766,11 @@ function drawHighlights(R) {
 }
 function drawPathArrow(R) {
   if (!ui.path || ui.path.length < 2 || !['moving', 'action', 'target', 'dropPick', 'dropTile'].includes(ui.state)) return;
-  const { ctx, T, ox, oy } = R, pts = ui.path.map(p => [ox + (p[0] + 0.5) * T, oy + (p[1] + 0.5) * T]), n = pts.length;
-  const [lx, ly] = pts[n - 1], [px, py] = pts[n - 2], dx = Math.sign(lx - px), dy = Math.sign(ly - py);
+  const { ctx, T, ox, oy } = R, P = ui.path, n = P.length, X = i => ox + (P[i][0] + 0.5) * T, Y = i => oy + (P[i][1] + 0.5) * T;
+  const lx = X(n - 1), ly = Y(n - 1), dx = Math.sign(lx - X(n - 2)), dy = Math.sign(ly - Y(n - 2));
   const w = Math.max(4, T * 0.26), head = T * 0.42, endX = lx - dx * head * 0.5, endY = ly - dy * head * 0.5;
   ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
-  const line = (lw, color) => { ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < n - 1; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.lineTo(endX, endY); ctx.stroke(); };
+  const line = (lw, color) => { ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(X(0), Y(0)); for (let i = 1; i < n - 1; i++) ctx.lineTo(X(i), Y(i)); ctx.lineTo(endX, endY); ctx.stroke(); };
   const arrow = (grow, color) => {
     const hw = head * 0.85 + grow, hl = head + grow, tipX = lx + dx * hl * 0.55, tipY = ly + dy * hl * 0.55, bx = tipX - dx * hl, by = tipY - dy * hl;
     ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(bx + dy * hw, by + dx * hw); ctx.lineTo(bx - dy * hw, by - dx * hw); ctx.closePath(); ctx.fill();
@@ -6242,12 +6784,15 @@ function collectLive() {
   const add = e => { if (!e) return; if (e[0] === 'move' || e[0] === 'capture' || e[0] === 'dive' || e[0] === 'rise' || e[0] === 'load') uiLive.add(e[1]); else if (e[0] === 'battle' && e[1] && e[1].a) uiLive.add(e[1].a.id); };
   if (anim.cur) add(anim.cur.e); for (const e of anim.queue) add(e);
 }
+const uiDrawList = [];   // reused every frame
+function uiDrawOrder(a, b) { return ((UNITS[a.t].cat === 'air') - (UNITS[b.t].cat === 'air')) || ((a.id in anim.pos) - (b.id in anim.pos)) || (a.y - b.y); }
 function drawUnits(R) {
-  const list = []; collectLive();
+  const list = uiDrawList; list.length = 0; collectLive();
   for (const u of G.units) { if (anim.hide.has(u.id) || (u.inId && !anim.pos[u.id]) || !unitShown(u)) continue; list.push(u); }
   for (const g of anim.ghosts.values()) if (ghostSeen(g)) list.push(g);
-  list.sort((a, b) => ((UNITS[a.t].cat === 'air') - (UNITS[b.t].cat === 'air')) || ((a.id in anim.pos) - (b.id in anim.pos)) || (a.y - b.y));
+  list.sort(uiDrawOrder);
   for (const u of list) drawOneUnit(R, u, anim.pos[u.id] || u, false);
+  list.length = 0;
   if (previewState() || (ui.drops.length && ui.sel && ui.dest)) {
     if (previewState()) drawOneUnit(R, ui.sel, ui.dest, true);
     for (const [cid, x, y] of ui.drops) { const c = G.byId[cid]; if (c) drawOneUnit(R, c, { x, y }, true); }
@@ -6285,10 +6830,25 @@ function drawOneUnit(R, u, pos, preview) {
   }
 }
 function drawDigit(ctx, s, rx, by, T) {
-  const fs = Math.max(8, Math.round(T * 0.34));
-  ctx.font = `${fs}px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
-  ctx.lineWidth = Math.max(2, Math.round(fs / 4)); ctx.lineJoin = 'round'; ctx.strokeStyle = '#1a0f2a'; ctx.strokeText(s, rx, by);
-  ctx.fillStyle = '#fff'; ctx.fillText(s, rx, by);
+  const fs = Math.max(8, Math.round(T * 0.34)), c = uiTextSprite(s, fs, '#fff');
+  ctx.drawImage(c, Math.round(rx - c.width + c.uiPad), Math.round(by - c.uiBase));
+}
+// outlined Press Start text rendered once into a canvas (HP digits, floating numbers): no text layout per frame
+const uiTextCache = new Map();
+function uiFontOk() { if (!ui.fontOk) { try { ui.fontOk = document.fonts.check(`12px ${FONT}`); } catch (e) { ui.fontOk = true; } } return ui.fontOk; }
+function uiTextSprite(text, fs, color, icon) {
+  const key = text + '|' + fs + '|' + color + '|' + (icon || '');
+  let c = uiTextCache.get(key); if (c) return c;
+  const lw = Math.max(2, Math.round(fs / 4)), pad = lw + 1, is = icon ? Math.round(fs * 1.5) : 0;
+  c = document.createElement('canvas'); const x = c.getContext('2d');
+  x.font = `${fs}px ${FONT}`; const tw = text ? Math.ceil(x.measureText(text).width) : 0;
+  c.width = Math.max(1, tw + is + pad * 2 + (icon && text ? 2 : 0)); c.height = Math.max(fs, is) + pad * 2 + 2;
+  c.uiPad = pad; c.uiBase = pad + Math.max(fs, is);   // baseline of the text inside the canvas
+  x.font = `${fs}px ${FONT}`; x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.lineWidth = lw; x.lineJoin = 'round'; x.strokeStyle = '#1a0f2a';
+  if (text) { x.strokeText(text, pad, c.uiBase); x.fillStyle = color; x.fillText(text, pad, c.uiBase); }
+  if (icon) { try { x.imageSmoothingEnabled = false; x.drawImage(iconSprite(icon, is), pad + tw + (text ? 2 : 0), c.uiBase - is, is, is); } catch (e) { /* icon missing */ } }
+  if (uiFontOk()) { if (uiTextCache.size > 400) uiTextCache.clear(); uiTextCache.set(key, c); }   // never cache a fallback-font rendering
+  return c;
 }
 function drawCursor(R) {
   if (overlayOpen('pass')) return;
@@ -6309,9 +6869,8 @@ function drawFx(R) {
     switch (f.kind) {
       case 'boom': { const i = Math.min(5, Math.floor(p * 6)), s = Math.round(T * 1.3); try { ctx.drawImage(explosionFrame(i, s), cx - s / 2, cy - s / 2, s, s); } catch (err) { ctx.fillStyle = `rgba(255,${200 - p * 150},60,${1 - p})`; ctx.beginPath(); ctx.arc(cx, cy, T * 0.5 * (0.4 + p), 0, Math.PI * 2); ctx.fill(); } break; }
       case 'num': {
-        ctx.globalAlpha = p > 0.7 ? 1 - (p - 0.7) / 0.3 : 1; const fs = Math.max(9, Math.round(T * 0.36));
-        ctx.font = `${fs}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = Math.max(2, fs / 4); ctx.lineJoin = 'round'; ctx.strokeStyle = '#1a0f2a';
-        const y = cy - T * 0.15 - easeOut(p) * T * 0.7; ctx.strokeText(f.text, cx, y); ctx.fillStyle = f.color; ctx.fillText(f.text, cx, y); ctx.globalAlpha = 1; break;
+        ctx.globalAlpha = p > 0.7 ? 1 - (p - 0.7) / 0.3 : 1; const fs = Math.max(9, Math.round(T * 0.36)), spr = uiTextSprite(f.text, fs, f.color, f.icon);
+        const y = cy - T * 0.15 - easeOut(p) * T * 0.7; ctx.drawImage(spr, Math.round(cx - spr.width / 2), Math.round(y - spr.height / 2)); ctx.globalAlpha = 1; break;
       }
       case 'flash': ctx.globalAlpha = 0.75 * (1 - p); ctx.fillStyle = f.color; ctx.fillRect(ox + f.x * T, oy + f.y * T, T, T); ctx.globalAlpha = 1; break;
       case 'tracer': {
@@ -6356,9 +6915,10 @@ function showResults() {
     const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = p.name || TEAMS[p.slot].army;
     const sm = document.createElement('small'); sm.textContent = `${TEAMS[p.slot].army} · ${(COS[CO_BY_ID[p.co]] || COS[0]).name}${p.alive === false ? ' · OUT' : ''}`; nm.append(sm);
     const st = p.stats || {}, props = propertyCount(G, p.slot);
-    const inf = document.createElement('span'); inf.className = 'in';
-    const b1 = document.createElement('b'); b1.textContent = `${props}`; const b2 = document.createElement('b'); b2.textContent = `${st.built || 0}/${st.lost || 0}/${st.killed || 0}`; const b3 = document.createElement('b'); b3.textContent = `${p.funds}`;
-    inf.append('PROPS ', b1, document.createElement('br'), 'BUILT/LOST/KILLED ', b2, document.createElement('br'), 'FUNDS ', b3);
+    const inf = document.createElement('span'); inf.className = 'in';   // one labelled cell per number: readable on a phone too
+    for (const [label, v] of [['PROPS', props], ['BUILT', st.built || 0], ['LOST', st.lost || 0], ['KILLS', st.killed || 0], ['FUNDS', p.funds]]) {
+      const cell = document.createElement('span'), b = document.createElement('b'); b.textContent = `${v}`; cell.append(label, b); inf.append(cell);
+    }
     d.append(sw, nm, inf); return d;
   });
   if ($('resultRows')) $('resultRows').replaceChildren(...rows);
@@ -6397,6 +6957,8 @@ function show(id) {
 function gameOn() { return !!G && $('setup').hidden; }
 
 function cleanName(s) { return String(s || '').replace(/[^\p{L}\p{N} '._-]/gu, '').trim().slice(0, 16); }
+// map names keep their '#' and brackets (RANDOM #0421): they are shown, never sent anywhere
+function cleanLabel(s) { return String(s || '').replace(/[^\p{L}\p{N} '#()._-]/gu, '').trim().slice(0, 28); }
 function hasCo(c) { return typeof c === 'string' && Object.prototype.hasOwnProperty.call(CO_BY_ID, c); }
 function cleanCo(c) { return c === 'random' || hasCo(c) ? c : 'random'; }
 function pickCo(c) { return hasCo(c) ? c : COS[Math.random() * COS.length | 0].id; }
@@ -6436,6 +6998,7 @@ if (!['on', 'fast', 'off'].includes(setup.scenes)) setup.scenes = 'on';
 setup.sound = setup.sound !== false;
 setup.myName = cleanName(setup.myName);
 setup.myCo = cleanCo(setup.myCo);
+setup.lastRoom = typeof setup.lastRoom === 'string' && /^[A-Z0-9]{5}$/.test(setup.lastRoom) ? setup.lastRoom : '';
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...setup, mode: setup.mode === 'join' ? 'join' : 'local' })); } catch (e) { /* private mode */ } }
 
 function seg(id, opts, cur, pick, color = 'var(--cyan)') {
@@ -6543,8 +7106,8 @@ function renderSetup() {
   }
   const saved = setup.mode === 'local' ? readAutosave() : null;
   $('resumeBtn2').hidden = !saved;
-  if (saved) $('resumeBtn2').textContent = `▶ CONTINUE DAY ${saved.day | 0 || 1} · ${cleanName(saved.mapName) || 'SAVED GAME'}`;
-  $('startBtn').textContent = setup.mode === 'host' && !hosting ? '▶ OPEN ROOM' : '▶ START BATTLE';
+  if (saved) $('resumeBtn2').textContent = `► CONTINUE DAY ${saved.day | 0 || 1} · ${cleanLabel(saved.mapName) || 'SAVED GAME'}`;
+  $('startBtn').textContent = setup.mode === 'host' && !hosting ? '► OPEN ROOM' : '► START BATTLE';
 
   const problem = setupProblem(map);
   if (problem) { setStatus('hostStatus', problem, 'err'); setupWarn = problem; }
@@ -6625,7 +7188,7 @@ function renderLobby() {
   if (!L) { $('lobbyRows').replaceChildren(); return; }
   const head = document.createElement('div'); head.className = 'lbl lobby-map';
   const m = L.map && typeof L.map === 'object' ? L.map : null;
-  head.textContent = m ? `${cleanName(m.name) || 'MAP'} · ${m.players | 0}P · ${m.w | 0}×${m.h | 0}` : 'MAP · ?';
+  head.textContent = m ? `${cleanLabel(m.name) || 'MAP'} · ${m.players | 0}P · ${m.w | 0}×${m.h | 0}` : 'MAP · ?';
   const rules = document.createElement('div'); rules.className = 'lobby-rules';
   rules.textContent = `Fog ${L.fog ? 'on' : 'off'} · ${L.funds | 0} to start · ${L.income | 0} per building a day · ${L.dayLimit | 0 ? `${L.dayLimit | 0} days` : 'no day limit'}`;
   const rows = (Array.isArray(L.rows) ? L.rows : []).slice(0, MAX_PLAYERS).map((r, i) => {
@@ -6680,7 +7243,7 @@ function setupCfg(map) {
 }
 const mySlotsOf = cfg => cfg.players.map((p, i) => p.kind === 'human' ? i : -1).filter(i => i >= 0);
 function launchGame(cfg) {
-  setupLastCfg = cfg; net.seq = 0;
+  setupLastCfg = cfg; net.seq = 0; net.left = {};
   try { localStorage.removeItem(GAME_SAVE_KEY); } catch (e) { /* ignore */ }
   show(null);
   startGame(cfg, { mySlots: mySlotsOf(cfg) });
@@ -6734,12 +7297,14 @@ function overButtons() {
   const client = net.role === 'client';
   $('rematchBtn').hidden = client; $('newMapBtn').hidden = client; $('setupBtn').hidden = client;
   $('waitHost').hidden = !client; $('leaveBtn').hidden = !client;
+  $('setupBtn').textContent = 'CHANGE SETUP';
 }
 
 // ====================================================================
 //  Online (PeerJS / WebRTC, the host's browser runs the battle)
 // ====================================================================
-const net = { role: 'offline', peer: null, conn: null, code: null, players: [], lobby: null, seq: 0 };
+// left: slot -> name of the guest who held that seat in this battle (the CPU minds it until they come back)
+const net = { role: 'offline', peer: null, conn: null, code: null, players: [], lobby: null, seq: 0, left: {}, pinger: 0 };
 function loadPeerLib() {
   if (window.Peer) return Promise.resolve();
   return new Promise((res, rej) => {
@@ -6752,16 +7317,20 @@ function roomCode() { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; 
 function send(conn, m) { try { if (conn && conn.open) conn.send(m); } catch (e) { /* dropped connection */ } }
 function broadcast(m) { if (net.role === 'host') for (const p of net.players) send(p.conn, m); }
 // A browser that vanishes (tab closed, phone asleep) often leaves the link 'disconnected' for good
-// instead of closing it: give it a few seconds to come back, then treat the other side as gone.
-const NET_GRACE = 8000;
+// instead of closing it. Both sides send a small 'ping' every NET_PING ms, so the grace period counts
+// from the last thing heard: a dead link is dropped about NET_GRACE ms after it went quiet (WebRTC
+// itself only notices after ~5 s of silence), a short hiccup that recovers is forgiven.
+const NET_GRACE = 8000, NET_PING = 2000;
 function watchLink(conn, gone) {
-  let timer = 0;
+  let timer = 0; conn.heardAt = Date.now();
+  conn.on('data', () => { conn.heardAt = Date.now(); });
   conn.on('iceStateChanged', st => {
     clearTimeout(timer);
-    if (st === 'disconnected') timer = setTimeout(() => { try { conn.close(); } catch (e) { /* already closed */ } gone(); }, NET_GRACE);
+    if (st === 'disconnected') timer = setTimeout(() => { gone(); try { conn.close(); } catch (e) { /* already closed */ } }, clamp(NET_GRACE - (Date.now() - conn.heardAt), 1500, NET_GRACE));
     else if (st === 'failed' || st === 'closed') gone();
   });
 }
+function netPinger(fn) { clearInterval(net.pinger); net.pinger = setInterval(fn, NET_PING); }
 
 // ---------- host ----------
 async function openRoom() {
@@ -6769,7 +7338,8 @@ async function openRoom() {
   try { await loadPeerLib(); } catch (e) { setStatus('hostStatus', 'Could not load the online library. Check your connection.', 'err'); return; }
   const code = roomCode();
   const peer = new Peer(ROOM_PREFIX + code, { debug: 0 });
-  Object.assign(net, { role: 'host', peer, code, players: [], seq: 0 });
+  Object.assign(net, { role: 'host', peer, code, players: [], seq: 0, left: {} });
+  netPinger(() => broadcast({ t: 'ping' }));
   peer.on('open', () => { setStatus('hostStatus', ''); sfx('join'); renderSetup(); });
   peer.on('connection', conn => {
     conn.on('data', m => hostOnData(conn, m));
@@ -6793,9 +7363,8 @@ function hostOnData(conn, m) {
     p = { id: conn.peer, name: cleanName(m.name) || 'Player', co: cleanCo(m.co), conn, slot: -1 };
     net.players.push(p);
     sfx('join');
-    if (gameOn()) {                                   // mid-battle: a seat in the stands
-      send(conn, { t: 'full' }); send(conn, startMsg(p));
-      toast(`${p.name.toUpperCase()} IS WATCHING`, '#3ff0ff');
+    if (gameOn()) {                                   // mid-battle: their old army back, or a seat in the stands
+      if (!hostReseat(p)) { send(conn, { t: 'full' }); send(conn, startMsg(p)); toast(`${p.name.toUpperCase()} IS WATCHING`, '#3ff0ff'); }
     } else { assignSlots(); broadcastLobby(); }
     renderSetup();
     return;
@@ -6818,8 +7387,31 @@ function hostOnClose(conn) {
   const i = net.players.findIndex(q => q.id === conn.peer);
   if (i < 0) return;
   const [p] = net.players.splice(i, 1);
-  if (gameOn() && p.slot >= 0 && G.players[p.slot] && G.players[p.slot].kind === 'remote') remoteLeft(p.slot, p.name);
+  if (gameOn() && p.slot >= 0 && G.players[p.slot] && G.players[p.slot].kind === 'remote') {
+    remoteLeft(p.slot, p.name);
+    net.left[p.slot] = p.name;
+    // the same name already back in the stands (a refresh that beat the timeout): hand the army over
+    const back = net.players.find(q => q.slot < 0 && q.name.toLowerCase() === p.name.toLowerCase());
+    if (!(back && hostReseat(back))) hostSendSync();   // everyone sees the CPU take over
+  }
   assignSlots(); broadcastLobby(); renderSetup();
+}
+// A guest who comes back during the battle (page refreshed, phone woke up) gets their army back
+// from the CPU, matched by name. Anyone else who joins mid-battle watches.
+function hostReseat(p) {
+  if (!gameOn() || G.phase !== 'play') return false;
+  for (const k of Object.keys(net.left)) {
+    const slot = +k, P = G.players[slot];
+    if (!P || !P.alive || P.kind !== 'cpu' || String(net.left[k]).toLowerCase() !== p.name.toLowerCase() || net.players.some(q => q.slot === slot)) continue;
+    delete net.left[k];
+    p.slot = slot; P.kind = 'remote'; P.name = p.name;
+    send(p.conn, { ...startMsg(p), back: true });
+    hostSendSync();                                    // the others see who runs that army again
+    toast(`${p.name.toUpperCase()} IS BACK IN COMMAND`, TEAMS[slot].ui);
+    sfx('join');
+    return true;
+  }
+  return false;
 }
 // guests take the ONLINE PLAYER seats in the order they arrived; the rest watch.
 // Seats are frozen during a battle so a leaver doesn't shuffle everyone else's slot;
@@ -6852,12 +7444,13 @@ async function joinRoom() {
   const code = $('joinCode').value.trim().toUpperCase();
   if (!name) { setStatus('joinStatus', 'Type your name first.', 'err'); return; }
   if (!/^[A-Z0-9]{5}$/.test(code)) { setStatus('joinStatus', 'Room codes are 5 letters or numbers.', 'err'); return; }
-  setup.myName = name; setup.myCo = cleanCo($('joinCo').value); save();
+  setup.myName = name; setup.myCo = cleanCo($('joinCo').value); setup.lastRoom = code; save();
   leaveOnline(false);
   setStatus('joinStatus', 'Connecting…');
   try { await loadPeerLib(); } catch (e) { setStatus('joinStatus', 'Could not load the online library. Check your connection.', 'err'); return; }
   const peer = new Peer({ debug: 0 });
   Object.assign(net, { role: 'client', peer, code, lobby: null, seq: 0 });
+  netPinger(() => send(net.conn, { t: 'ping' }));
   peer.on('open', () => {
     const conn = peer.connect(ROOM_PREFIX + code, { reliable: true, serialization: 'json' });
     net.conn = conn;
@@ -6888,17 +7481,25 @@ function clientLost(msg) {
     $('resultRows').replaceChildren(Object.assign(document.createElement('p'), { textContent: msg }));
     show('over');
     $('rematchBtn').hidden = $('newMapBtn').hidden = $('waitHost').hidden = $('leaveBtn').hidden = true; $('setupBtn').hidden = false;
+    $('setupBtn').textContent = 'BACK TO SETUP';
   } else { show('setup'); renderSetup(); setStatus('joinStatus', msg, 'err'); }
 }
 function clientOnData(m) {
   if (!m || typeof m !== 'object') return;
   switch (m.t) {
-    case 'lobby':
+    case 'lobby': {
+      const prev = net.lobby, was = gameOn();
       net.lobby = m;
-      if (gameOn()) quitGame();                        // the host went back to the setup screen
+      if (was) quitGame();                             // the host went back to the setup screen
       setup.mode = 'join'; show('setup'); renderSetup();
-      setStatus('joinStatus', m.spectator ? 'Connected! Every seat is taken, so you will be watching.' : 'Connected! Waiting for the host to start…', 'ok');
+      // say so when the seat changes hands (the host gave it to the CPU, or one came free)
+      if (!prev || was || !prev.spectator !== !m.spectator) {
+        setStatus('joinStatus', !m.spectator ? (prev && prev.spectator ? 'A seat came free: you are in! Waiting for the host to start…' : 'Connected! Waiting for the host to start…')
+          : prev && !prev.spectator && !was ? `The host gave your seat to ${lobbySeatNow(prev, m)}, so you will be watching.` : 'Connected! Every seat is taken, so you will be watching.', 'ok');
+        if (prev && !prev.spectator !== !m.spectator && !was) sfx(m.spectator ? 'cancel' : 'join');
+      }
       break;
+    }
     case 'full':
       if (gameOn()) toast('NO FREE SEAT · YOU ARE WATCHING', '#3ff0ff');
       else setStatus('joinStatus', 'Every seat is taken. You can watch the battle.', '');
@@ -6913,8 +7514,13 @@ function clientOnData(m) {
     case 'bye': clientLost('The host left the room.'); break;
   }
 }
+// who sits in the seat this guest just lost, for the lobby note
+function lobbySeatNow(prev, m) {
+  const i = Array.isArray(prev.rows) ? prev.rows.findIndex(r => r && r.you) : -1, r = i >= 0 && Array.isArray(m.rows) ? m.rows[i] : null;
+  return !r ? 'someone else' : r.label === 'CPU' ? 'the CPU' : r.label === 'OFF' ? 'nobody (that army is off)' : r.label === 'HOST' ? 'a player on the host\'s screen' : 'someone else';
+}
 async function startClient(m) {
-  await fontsReady;
+  if (!netFontsOk) await fontsReady;                  // later starts run at once, so no 'cmd' can slip in before them
   audio();
   let world = null;
   try { world = m.state && typeof m.state === 'object' ? deserialize(m.state) : null; } catch (e) { world = null; }
@@ -6925,21 +7531,44 @@ async function startClient(m) {
   show(null);
   startGame(cfg, { mySlots: slot >= 0 ? [slot] : [], replica: true, world });
   if (slot < 0) toast('YOU ARE WATCHING THIS BATTLE', '#3ff0ff');
+  else if (m.back) toast('WELCOME BACK · YOUR ARMY IS WAITING', TEAMS[slot].ui);
 }
 function leaveOnline(toSetup = true) {
   try { if (net.conn) net.conn.close(); } catch (e) { /* ignore */ }
   for (const p of net.players) { try { p.conn.close(); } catch (e) { /* ignore */ } }
   try { if (net.peer) net.peer.destroy(); } catch (e) { /* ignore */ }
+  clearInterval(net.pinger);
   const wasOnline = net.role !== 'offline', playing = gameOn();
-  Object.assign(net, { role: 'offline', peer: null, conn: null, code: null, players: [], lobby: null, seq: 0 });
+  Object.assign(net, { role: 'offline', peer: null, conn: null, code: null, players: [], lobby: null, seq: 0, left: {}, pinger: 0 });
   if (wasOnline && playing) quitGame();
   if (toSetup) { show('setup'); renderSetup(); }
+}
+
+// A tab in the background gets no animation frames. Offline that just pauses the game, but online
+// a hidden host would freeze the battle for everybody (CPU armies, a seat the CPU took over) and a
+// hidden guest would come back to minutes of replays. While hidden, this timer (the browser runs it
+// about once a second) finishes the animations at once and lets the host's CPU players move.
+let netPumping = false;
+async function netPump() {
+  if (netPumping || !document.hidden || net.role === 'offline' || !G || typeof animBusy !== 'function') return;
+  netPumping = true;
+  try {
+    for (let k = 0; k < 12; k++) {
+      for (let n = 0; n < 80 && animBusy(); n++) { skipAnim(); animTick(1000); await null; }   // a skipped battle resolves a tick later
+      if (animBusy() || net.role !== 'host' || !G || G.phase !== 'play') break;
+      const P = G.players[G.turn]; if (!P || P.kind !== 'cpu') break;
+      tick(1000, performance.now());                                   // one CPU order (its pause is already over)
+    }
+    if (G && G.phase === 'over' && !animBusy()) tick(0, performance.now());   // results screen
+  } catch (e) { /* the next visible frame reports it */ }
+  netPumping = false;
 }
 
 // ====================================================================
 //  Buttons and boot
 // ====================================================================
 const fontsReady = document.fonts ? document.fonts.load(`8px ${FONT}`).catch(() => {}) : Promise.resolve();
+let netFontsOk = false; fontsReady.then(() => { netFontsOk = true; });
 const roomParam = new URLSearchParams(location.search).get('room');
 function bootSetup() {
   for (const [v, l] of coOptions()) option($('joinCo'), v, l);
@@ -6982,6 +7611,7 @@ function bootSetup() {
   };
 
   if (roomParam) { setup.mode = 'join'; $('joinCode').value = roomParam.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); }
+  else $('joinCode').value = setup.lastRoom;           // a refreshed page rejoins with one click
   muted = !setup.sound;
   renderSetup();
   window.addEventListener('resize', () => fitCanvas());
@@ -6989,6 +7619,7 @@ function bootSetup() {
   window.addEventListener('pagehide', () => { if (net.role === 'client') send(net.conn, { t: 'bye' }); else broadcast({ t: 'bye' }); });
   fitCanvas();
   requestAnimationFrame(frame);
+  setInterval(netPump, 500);
 }
 bootSetup();
 </script>

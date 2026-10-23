@@ -251,6 +251,15 @@ footer .hi{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--ink
  */
 const GAMES = [
   {
+    title: 'Tank You Very Much',
+    href: 'tank_you_very_much.html',
+    tags: ['Strategy', 'Multiplayer', 'Turn-based'],
+    blurb: 'Turn-based tactics in the spirit of Advance Wars: capture cities, build from 19 unit types, from rifle squads and tanks to jets, subs and battleships, and fire your CO\'s power at the right moment. Fight through the fog of war with a battle scene for every clash, on one screen with friends, against the CPU or online.',
+    image: 'assets/tank_you_very_much.svg',
+    added: '2026-10-23T16:57:27+02:00',
+    updated: '2026-10-23T16:57:27+02:00',
+  },
+  {
     title: 'Polderheim',
     href: 'polderheim.html',
     tags: ['Simulation', 'Strategy', 'City Builder'],
@@ -378,6 +387,7 @@ const GAMES = [
 const TAG_COLORS = {
   Tycoon: 'var(--yellow)', Simulation: 'var(--cyan)', Strategy: 'var(--violet)',
   Puzzle: 'var(--green)', Arcade: 'var(--pink)', Action: 'var(--orange)', Multiplayer: 'var(--pink)', Fighting: 'var(--orange)',
+  'Turn-based': 'var(--green)',
 };
 const PALETTE = ['var(--pink)', 'var(--green)', 'var(--orange)', 'var(--cyan)', 'var(--violet)', 'var(--yellow)'];
 const allTags = [...new Set(GAMES.flatMap(g => g.tags))].sort();

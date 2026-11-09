@@ -251,6 +251,15 @@ footer .hi{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--ink
  */
 const GAMES = [
   {
+    title: 'Check, Please!',
+    href: 'check_please.html',
+    tags: ['Board Game', 'Strategy', 'Multiplayer', 'Turn-based'],
+    blurb: 'Chess school with a sheep for a coach. 21 bite-size lessons take you from how a rook moves to mating with two rooks. Then take on a pigeon or three tougher CPUs with a coach who explains every illegal move and warns you before you blunder, or play a friend on one screen or online. The pieces have googly eyes and capture each other with bonks, belly-flops and blast-offs.',
+    image: 'assets/check_please.svg',
+    added: '2026-11-09T21:08:26+01:00',
+    updated: '2026-11-09T21:08:26+01:00',
+  },
+  {
     title: 'Tank You Very Much',
     href: 'tank_you_very_much.html',
     tags: ['Strategy', 'Multiplayer', 'Turn-based'],
@@ -387,7 +396,7 @@ const GAMES = [
 const TAG_COLORS = {
   Tycoon: 'var(--yellow)', Simulation: 'var(--cyan)', Strategy: 'var(--violet)',
   Puzzle: 'var(--green)', Arcade: 'var(--pink)', Action: 'var(--orange)', Multiplayer: 'var(--pink)', Fighting: 'var(--orange)',
-  'Turn-based': 'var(--green)',
+  'Turn-based': 'var(--green)', 'Board Game': 'var(--yellow)',
 };
 const PALETTE = ['var(--pink)', 'var(--green)', 'var(--orange)', 'var(--cyan)', 'var(--violet)', 'var(--yellow)'];
 const allTags = [...new Set(GAMES.flatMap(g => g.tags))].sort();
